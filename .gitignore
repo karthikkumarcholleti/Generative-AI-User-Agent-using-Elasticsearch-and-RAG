@@ -1,0 +1,124 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.next/
+out/
+build/
+
+# Environment variables (may contain secrets)
+.env
+.env.local
+.env.*.local
+*.env
+*.env.backup*
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Elasticsearch (exclude entire bundled installation + tarball)
+elasticsearch-8.14.0/
+elasticsearch-*.tar.gz
+*.log
+
+# Model files (too large for GitHub — use HuggingFace Hub instead)
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.onnx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Process IDs
+*.pid
+backend.pid
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Large data directories
+data/Converted_Data/
+data/all_converted_files/
+data/
+*.json.gz
+*.csv.gz
+
+# Patient data / SQL dumps (PHI - do not commit)
+*.sql
+*.sql.gz
+mysql_dumps/
+
+# Elasticsearch bundled JDK (large)
+elasticsearch-8.14.0/jdk/
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Frontend build artifacts
+.next/
+out/
+.nuxt/
+.cache/
+
+# Large test/validation reports
+*_report_*.json
+*_results_*.json
+*_test_results_*.log
+
+# Conda
+conda/
+
+# Frontend logs
+frontend.log
+nextjs.log
+express.log
+backend.log
+

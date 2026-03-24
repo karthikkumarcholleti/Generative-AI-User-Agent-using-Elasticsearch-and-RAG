@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-09-16T14:13:16.408Z",
+  "processing_stats": {
+    "total_records": 751,
+    "updated": 751,
+    "failed": 0,
+    "skipped": 0
+  },
+  "final_stats": {
+    "total_hospitals": 1123,
+    "with_coordinates": 1123,
+    "without_coordinates": 0,
+    "real_names": 1123
+  }
+}

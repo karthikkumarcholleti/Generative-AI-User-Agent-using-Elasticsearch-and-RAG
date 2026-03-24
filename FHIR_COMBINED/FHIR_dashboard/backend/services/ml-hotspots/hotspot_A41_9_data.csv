@@ -1,0 +1,8 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+COVINGTON General Hospital,24,COVINGTON,MI,46.54133,-88.537082,A41.9,A41.9,3,38.6,38.6,0.0,38.6,38.6,3,3,100.0,0.0,1.0,1649.201154882875
+CRYSTAL FALLS General Hospital,5,CRYSTAL FALLS,MI,46.098007,-88.334024,A41.9,A41.9,3,74.0,74.0,0.0,74.0,74.0,0,3,0.0,0.0,1.0,1606.7355047450121
+Escanaba General Hospital,33,Escanaba,MI,45.745247,-87.06458,A41.9,A41.9,15,71.39999999999999,71.4,0.0,71.4,71.4,0,15,0.0,0.0,1.0,1463.4133267842267
+IRON RIVER General Hospital,6,IRON RIVER,MI,46.092732,-88.642354,A41.9,A41.9,3,68.8,68.8,0.0,68.8,68.8,3,3,100.0,0.0,1.0,1637.1851691725487
+ISHPEMING General Hospital,249,ISHPEMING,MI,46.488547,-87.667636,A41.9,A41.9,3,72.7,72.7,0.0,72.7,72.7,0,3,0.0,0.0,1.0,1561.5039901502619
+MARQUETTE General Hospital,42,MARQUETTE,MI,46.54362,-87.395371,A41.9,A41.9,4,57.4,57.4,0.0,57.4,57.4,0,4,0.0,0.0,1.0,1538.2054849014671
+MARQUETTE General Hospital,931,MARQUETTE,MI,0.0,0.0,A41.9,A41.9,6,47.0,47.0,0.0,47.0,47.0,6,6,100.0,0.0,1.0,9453.525177976102

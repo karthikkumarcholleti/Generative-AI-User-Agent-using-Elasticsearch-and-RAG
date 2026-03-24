@@ -1,0 +1,7 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+Escanaba General Hospital,33,Escanaba,MI,45.745247,-87.06458,J45.909,J45.909,6,71.39999999999999,71.4,0.0,71.4,71.4,0,6,0.0,0.0,1.0,1712.17299638393
+GWINN General Hospital,196,GWINN,MI,46.281056,-87.440972,J45.909,J45.909,1,34.4,34.4,,34.4,34.4,0,1,0.0,0.0,1.0,1777.3531019230243
+GWINN General Hospital,214,GWINN,MI,46.281056,-87.440972,J45.909,J45.909,1,66.0,66.0,,66.0,66.0,0,1,0.0,0.0,1.0,1777.3531019230243
+IRON RIVER General Hospital,6,IRON RIVER,MI,46.092732,-88.642354,J45.909,J45.909,3,15.1,15.1,0.0,15.1,15.1,0,3,0.0,0.0,1.0,1885.4394848778907
+IRONWOOD General Hospital,11,IRONWOOD,MI,46.45467,-90.171008,J45.909,J45.909,3,34.1,34.1,0.0,34.1,34.1,0,3,0.0,0.0,1.0,2055.51169542
+MANISTIQUE General Hospital,715,MANISTIQUE,MI,0.0,0.0,J45.909,J45.909,3,7.400000000000001,7.4,0.0,7.4,7.4,3,3,100.0,0.0,1.0,9204.808767229551

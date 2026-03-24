@@ -1,0 +1,2 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+OSF St. Francis Hospital,51,ESCANABA,MI,45.7427923,-87.0963037,B95.2,B95.2,12,56.20000000000001,56.2,0.0,56.2,56.2,0,12,0.0,0.0,1.0,0.0

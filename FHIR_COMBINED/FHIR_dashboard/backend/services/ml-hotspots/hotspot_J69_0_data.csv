@@ -1,0 +1,5 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+Aspirus Iron River Hospital,1,IRON RIVER,MI,46.0997441,-88.6192244,J69.0,J69.0,6,71.89999999999999,68.7,4.957418683145491,68.7,78.3,4,6,66.7,9.599999999999994,1.0,108.19219128987694
+Dickinson County Healthcare System,2,CRYSTAL FALLS,MI,46.0980066,-88.3340242,J69.0,J69.0,6,48.6,48.6,0.0,48.6,48.6,0,6,0.0,0.0,1.0,76.68967709247411
+Schoolcraft Memorial Hospital,262,MANISTIQUE,MI,45.9586136,-86.241097,J69.0,J69.0,4,15.8,15.8,0.0,15.8,15.8,0,4,0.0,0.0,1.0,157.93984371888703
+UP Health System Marquette,677,MARQUETTE,MI,46.5436199,-87.3953713,J69.0,J69.0,2,19.8,19.8,0.0,19.8,19.8,0,2,0.0,0.0,1.0,49.56827269312506

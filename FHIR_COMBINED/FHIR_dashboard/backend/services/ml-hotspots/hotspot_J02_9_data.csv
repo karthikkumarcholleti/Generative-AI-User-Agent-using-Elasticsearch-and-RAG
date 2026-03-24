@@ -1,0 +1,7 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+ESCANABA General Hospital,517,ESCANABA,MI,0.0,0.0,J02.9,J02.9,6,86.10000000000001,86.1,0.0,86.1,86.1,0,6,0.0,0.0,1.0,1819.714456988456
+GLADSTONE General Hospital,68,GLADSTONE,MI,45.852744,-87.021805,J02.9,J02.9,3,59.4,59.4,0.0,59.4,59.4,3,3,100.0,0.0,1.0,9098.572284942282
+GWINN General Hospital,910,GWINN,MI,0.0,0.0,J02.9,J02.9,3,50.20000000000001,50.2,0.0,50.2,50.2,0,3,0.0,0.0,1.0,1819.714456988456
+MANISTIQUE General Hospital,681,MANISTIQUE,MI,0.0,0.0,J02.9,J02.9,3,76.4,76.4,0.0,76.4,76.4,3,3,100.0,0.0,1.0,1819.714456988456
+MANISTIQUE General Hospital,705,MANISTIQUE,MI,0.0,0.0,J02.9,J02.9,6,31.400000000000002,31.4,0.0,31.4,31.4,6,6,100.0,0.0,1.0,1819.714456988456
+MANISTIQUE General Hospital,736,MANISTIQUE,MI,0.0,0.0,J02.9,J02.9,6,20.7,20.7,0.0,20.7,20.7,0,6,0.0,0.0,1.0,1819.714456988456

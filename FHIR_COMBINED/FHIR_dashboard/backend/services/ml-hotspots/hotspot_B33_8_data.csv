@@ -1,0 +1,5 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+GWINN General Hospital,18,GWINN,MI,46.281056,-87.440972,B33.8,B33.8,1,9.2,9.2,,9.2,9.2,1,1,100.0,0.0,1.0,2716.128838335999
+IRON RIVER General Hospital,6,IRON RIVER,MI,46.092732,-88.642354,B33.8,B33.8,2,11.3,11.3,0.0,11.3,11.3,2,2,100.0,0.0,1.0,2824.9911024567996
+MARQUETTE General Hospital,208,MARQUETTE,MI,46.54362,-87.395371,B33.8,B33.8,1,45.5,45.5,,45.5,45.5,1,1,100.0,0.0,1.0,2725.5700203073065
+MARQUETTE General Hospital,923,MARQUETTE,MI,0.0,0.0,B33.8,B33.8,3,62.20000000000001,62.2,0.0,62.2,62.2,3,3,100.0,0.0,1.0,8265.544679930868

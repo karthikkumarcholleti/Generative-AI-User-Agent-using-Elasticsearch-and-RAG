@@ -1,0 +1,6 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+Dickinson County Healthcare System,3,CASPIAN,MI,46.0641218,-88.6315207,J01.00,J01.00,2,22.0,22.0,0.0,22.0,22.0,0,2,0.0,0.0,1.0,175.32572990035385
+OSF St. Francis Hospital,37,ESCANABA,MI,45.7427923,-87.0963037,J01.00,J01.00,4,46.5,46.5,0.0,46.5,46.5,0,4,0.0,0.0,1.0,17.16249194960147
+OSF St. Francis Hospital,174,ESCANABA,MI,45.7427923,-87.0963037,J01.00,J01.00,2,49.4,49.4,0.0,49.4,49.4,2,2,100.0,0.0,1.0,17.16249194960147
+Schoolcraft Memorial Hospital,502,MANISTIQUE,MI,45.9586136,-86.241097,J01.00,J01.00,2,27.9,27.9,0.0,27.9,27.9,0,2,0.0,0.0,1.0,91.32603115900717
+Schoolcraft Memorial Hospital,517,MANISTIQUE,MI,45.9586136,-86.241097,J01.00,J01.00,2,39.9,39.9,0.0,39.9,39.9,0,2,0.0,0.0,1.0,91.32603115900717

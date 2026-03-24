@@ -1,0 +1,6 @@
+hospital_name,hospital_id,hospital_city,hospital_state,latitude,longitude,disease_code,disease_name,total_cases,mean_age,median_age,std_age,min_age,max_age,male_count,total_encounters,male_percentage,age_range,cases_per_encounter,distance_from_center_km
+MANISTIQUE General Hospital,310,MANISTIQUE,MI,45.957751,-86.246252,B35.1,B35.1,2,77.15,77.15,0.21213203435595723,77.0,77.3,1,2,50.0,0.29999999999999716,1.0,4339.070697533199
+MANISTIQUE General Hospital,318,MANISTIQUE,MI,45.957751,-86.246252,B35.1,B35.1,1,95.0,95.0,,95.0,95.0,1,1,100.0,0.0,1.0,4339.070697533199
+MANISTIQUE General Hospital,342,MANISTIQUE,MI,45.957751,-86.246252,B35.1,B35.1,1,71.5,71.5,,71.5,71.5,1,1,100.0,0.0,1.0,4339.070697533199
+MANISTIQUE General Hospital,661,MANISTIQUE,MI,0.0,0.0,B35.1,B35.1,6,40.199999999999996,40.2,0.0,40.2,40.2,0,6,0.0,0.0,1.0,6508.606046299798
+MANISTIQUE General Hospital,784,MANISTIQUE,MI,0.0,0.0,B35.1,B35.1,3,81.1,81.1,0.0,81.1,81.1,3,3,100.0,0.0,1.0,6508.606046299798

@@ -1,0 +1,74 @@
+==========================================
+COMPLETE SYSTEM FIX AND REINDEX
+==========================================
+
+Step 1: Stopping ElasticSearch...
+✅ ElasticSearch stopped
+
+Step 2: Starting ElasticSearch with new configuration...
+✅ ElasticSearch started (PID: 2076112)
+   Waiting for cluster to be ready...
+
+Step 3: Waiting for ElasticSearch cluster to be ready...
+   Waiting............................................................
+⚠️  Warning: ElasticSearch may not be fully ready, but continuing...
+
+Step 4: Removing read-only blocks...
+✅ Read-only blocks removed
+
+Step 5: Checking cluster health...
+Status: red, Active: 1, Unassigned: 4
+
+Step 6: Starting reindexing process...
+   This will index all patients with embeddings
+   This may take 30-60 minutes...
+
+INFO:__main__:================================================================================
+INFO:__main__:PERMANENT SOLUTION: Reindexing with Embeddings
+INFO:__main__:================================================================================
+INFO:__main__:
+INFO:__main__:Database: cocm_db (3,254 patients)
+INFO:__main__:
+INFO:__main__:This will:
+INFO:__main__:1. Recreate ElasticSearch index with content_embedding field
+INFO:__main__:2. Reindex all 3,254 patients with embeddings
+INFO:__main__:3. Enable semantic search permanently
+INFO:__main__:
+INFO:__main__:================================================================================
+INFO:__main__:STEP 1: Recreating ElasticSearch Index with Embeddings
+INFO:__main__:================================================================================
+INFO:elastic_transport.transport:HEAD https://localhost:9200/ [status:200 duration:0.003s]
+INFO:elastic_transport.transport:HEAD https://localhost:9200/patient_data [status:200 duration:0.007s]
+INFO:__main__:Deleting old index: patient_data
+INFO:elastic_transport.transport:DELETE https://localhost:9200/patient_data [status:200 duration:0.036s]
+INFO:__main__:Old index deleted
+INFO:__main__:Creating new index with content_embedding field...
+INFO:elastic_transport.transport:HEAD https://localhost:9200/ [status:200 duration:0.002s]
+INFO:elastic_transport.transport:HEAD https://localhost:9200/patient_data [status:404 duration:0.006s]
+INFO:elastic_transport.transport:PUT https://localhost:9200/patient_data [status:N/A duration:10.006s]
+WARNING:elastic_transport.node_pool:Node <Urllib3HttpNode(https://localhost:9200)> has failed for 1 times in a row, putting on 1 second timeout
+ERROR:app.api.elasticsearch_client:Failed to create index patient_data: Connection timed out
+ERROR:__main__:❌ Failed to create new index
+ERROR:__main__:Failed to recreate index. Aborting.
+
+⚠️  Reindexing may have had issues (exit code: 1)
+
+Step 7: Final system verification...
+
+Cluster Health:
+    "status": "red",
+    "active_shards": 1,
+    "unassigned_shards": 4,
+
+Index Status:
+health status index        uuid                   pri rep docs.count docs.deleted store.size pri.store.size dataset.size
+red    open   patient_data vxoX5bpvQj2meia-f2N2jg   1   1                                                               
+
+==========================================
+SYSTEM FIX COMPLETE!
+==========================================
+
+Next: Test the system with:
+  cd /home/kchollet/LLM_UA/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
+  python3 scripts/test_comprehensive_queries.py
+

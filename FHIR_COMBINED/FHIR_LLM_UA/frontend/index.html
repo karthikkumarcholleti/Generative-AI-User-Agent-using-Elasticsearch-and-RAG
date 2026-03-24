@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHIR LLM Generative AI Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Right Chat Panel */
+        .chat-panel {
+            width: 0;
+            background: #f8f9fa;
+            border-left: 1px solid #e9ecef;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-panel.expanded {
+            width: 400px;
+        }
+
+        .chat-panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-panel-header h3 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .chat-toggle-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .chat-toggle-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .chat-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 60px);
+        }
+
+        .chat-messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 85%;
+        }
+
+        .chat-message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+
+        .chat-message.agent {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-wrapper input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .chat-input-wrapper button {
+            padding: 10px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .chat-input-wrapper button:hover {
+            background: #5a6fd8;
+        }
+
+        /* Left Sidebar */
+        .sidebar {
+            width: 300px;
+            background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            color: white;
+            padding: 0;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="10" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+            background-size: 50px 50px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .sidebar-header {
+            padding: 30px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            background: rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.6rem;
+            margin-bottom: 5px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .sidebar-header .subtitle {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .patient-selector {
+            margin-bottom: 20px;
+        }
+
+        .patient-selector select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.95);
+            color: #1e3a8a;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .patient-selector select:hover {
+            background: white;
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .patient-selector select:focus {
+            outline: none;
+            background: white;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96,165,250,0.2);
+        }
+
+        .categories {
+            padding: 0 10px;
+        }
+
+        .category-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            margin: 8px 0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            background: rgba(255,255,255,0.05);
+            color: white;
+            width: 100%;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(10px);
+        }
+
+        .category-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+            border-radius: 12px 0 0 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .category-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .category-item.active {
+            background: rgba(255,255,255,0.25);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        
+        .category-item.active::before {
+            opacity: 1;
+        }
+
+        .category-item .icon {
+            margin-right: 12px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .category-item .text {
+            flex: 1;
+        }
+
+        .category-item .status {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .content-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            padding: 25px 35px;
+            border-bottom: 2px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        .content-header h2 {
+            color: #1e293b;
+            font-size: 2rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .content-header .subtitle {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .content-body {
+            flex: 1;
+            padding: 35px;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #7f8c8d;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e1e8ed;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .summary-content {
+            background: white;
+            border-radius: 16px;
+            padding: 35px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            line-height: 1.7;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        .summary-content:hover {
+            box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+
+        .summary-content h3 {
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 12px;
+            letter-spacing: -0.3px;
+        }
+
+        .summary-content p {
+            margin-bottom: 15px;
+            color: #34495e;
+        }
+
+        .summary-content ul, .summary-content ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .summary-content li {
+            margin-bottom: 8px;
+            color: #34495e;
+        }
+
+        .patient-info {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .patient-info h4 {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .patient-info .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .patient-info .info-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .patient-info .info-label {
+            font-weight: 600;
+        }
+
+        .error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        /* Generative AI Chat Styles */
+        .generative-ai-chat {
+            height: 100%;
+            max-height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .chat-header h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.5em;
+        }
+
+        .chat-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: white;
+            border-bottom: 1px solid #e9ecef;
+            min-height: 0;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: #e3f2fd;
+            color: #1565c0;
+            margin-left: auto;
+            border: 1px solid #bbdefb;
+        }
+
+        .message.agent {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+        }
+
+        .message.agent .observations-list {
+            background: #ffffff;
+            border: 1px solid #e3f2fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .message.agent .observations-list ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .message.agent .observations-list li {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .message.agent .observations-list li:last-child {
+            border-bottom: none;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: #f8f9fa;
+            flex-shrink: 0;
+        }
+
+        .quick-questions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .quick-question-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .quick-question-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-wrapper input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .chat-input-wrapper button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .chat-input-wrapper button:hover {
+            background: #5a6fd8;
+        }
+
+        .follow-up-options-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .follow-up-option-btn {
+            padding: 10px 15px;
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: left;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-weight: 500;
+        }
+
+        .follow-up-option-btn:hover {
+            background: #d4edda;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-color: #a5d6a7;
+        }
+
+        .chart-container {
+            margin-top: 10px;
+        }
+
+        .chart-wrapper {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .chart-wrapper canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 60px 20px;
+        }
+
+        .empty-state .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+            }
+            
+            .main-content {
+                height: 60vh;
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>Generative AI Dashboard</h1>
+                <div class="subtitle">FHIR LLM User Agent</div>
+                <button class="chat-toggle-btn" onclick="toggleChatPanel()" style="margin-top: 15px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                    💬 Open AI Chat
+                </button>
+                <button class="chat-toggle-btn" onclick="indexAllPatients()" style="margin-top: 10px; background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                    🔄 Index All Patients
+                </button>
+                <div class="patient-selector" style="margin-top: 20px;">
+                    <div style="position: relative;">
+                        <input type="text" id="patientSearch" placeholder="Search patients by ID or name..." style="width: 100%; padding: 8px 30px 8px 8px; border: none; border-radius: 6px; margin-bottom: 8px; background: rgba(255,255,255,0.9); color: #333; font-size: 12px; box-sizing: border-box;">
+                        <button type="button" id="clearSearch" style="position: absolute; right: 8px; top: 8px; background: none; border: none; color: #666; cursor: pointer; font-size: 14px; padding: 0;">✕</button>
+                    </div>
+                    <select id="patientSelect">
+                        <option value="">Select a patient...</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="categories">
+                <button class="category-item" data-category="patient_summary">
+                    <span class="icon">📋</span>
+                    <span class="text">Patient Summary</span>
+                    <span class="status" id="status-patient_summary">-</span>
+                </button>
+                
+                <button class="category-item" data-category="demographics">
+                    <span class="icon">👤</span>
+                    <span class="text">Demographics</span>
+                    <span class="status" id="status-demographics">-</span>
+                </button>
+                
+                <button class="category-item" data-category="conditions">
+                    <span class="icon">🩺</span>
+                    <span class="text">Conditions</span>
+                    <span class="status" id="status-conditions">-</span>
+                </button>
+                
+                <button class="category-item" data-category="observations">
+                    <span class="icon">📊</span>
+                    <span class="text">Observations</span>
+                    <span class="status" id="status-observations">-</span>
+                </button>
+                
+                <button class="category-item" data-category="notes">
+                    <span class="icon">📝</span>
+                    <span class="text">Notes</span>
+                    <span class="status" id="status-notes">-</span>
+                </button>
+                
+                <button class="category-item" data-category="care_plans">
+                    <span class="icon">🎯</span>
+                    <span class="text">Care Plans</span>
+                    <span class="status" id="status-care_plans">-</span>
+                </button>
+                
+                <button class="category-item" data-category="generative_ai">
+                    <span class="icon">🤖</span>
+                    <span class="text">Generative AI</span>
+                    <span class="status" id="status-generative_ai">-</span>
+                </button>
+                
+                <button class="category-item" data-category="encounters" disabled>
+                    <span class="icon">🏥</span>
+                    <span class="text">Encounters</span>
+                    <span class="status">Coming Soon</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div class="content-header">
+                <h2 id="contentTitle">Welcome to Clinical Dashboard</h2>
+                <div class="subtitle" id="contentSubtitle">Select a patient to begin generating clinical summaries</div>
+            </div>
+            
+            <div class="content-body" id="contentBody">
+                <div class="empty-state">
+                    <div class="icon">👋</div>
+                    <h3>Welcome to the Clinical Dashboard</h3>
+                    <p>Select a patient from the dropdown to generate comprehensive clinical summaries.</p>
+                    <p>All summaries will be generated automatically and cached for quick access.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Chat Panel -->
+        <div class="chat-panel" id="chatPanel">
+            <div class="chat-panel-header">
+                <h3>🤖 Generative AI</h3>
+                <button class="chat-toggle-btn" onclick="toggleChatPanel()">✕</button>
+            </div>
+            <div class="chat-content">
+                <div class="chat-messages-container" id="chatMessagesContainer">
+                    <div class="chat-message agent">
+                        <strong>🤖 User Agent:</strong> Hello! I'm your clinical data assistant. I can help you analyze patient observations, identify trends, and answer questions about medical conditions. What would you like to know?
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chatInput" placeholder="Ask about patient data..." />
+                        <button onclick="sendChatMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let currentPatientId = null;
+        let cachedSummaries = {};
+        let isGenerating = false;
+        let allPatients = [];
+
+        // Initialize the dashboard
+        window.onload = async function() {
+            await loadPatients();
+            setupEventListeners();
+        };
+
+        function setupEventListeners() {
+            // Patient selection
+            document.getElementById('patientSelect').addEventListener('change', handlePatientChange);
+            
+            // Patient search
+            const searchInput = document.getElementById('patientSearch');
+            if (searchInput) {
+                searchInput.addEventListener('input', handlePatientSearch);
+            }
+            
+            // Clear search button
+            const clearButton = document.getElementById('clearSearch');
+            if (clearButton) {
+                clearButton.addEventListener('click', clearSearch);
+            }
+            
+            // Category selection
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.addEventListener('click', handleCategoryClick);
+            });
+        }
+
+        async function loadPatients() {
+            try {
+                const response = await fetch(`${API_BASE}/patients`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                allPatients = await response.json();
+                
+                const select = document.getElementById('patientSelect');
+                select.innerHTML = '<option value="">Select a patient...</option>';
+                
+                // Show loading indicator
+                const loadingOption = document.createElement('option');
+                loadingOption.value = "";
+                loadingOption.textContent = `Loading ${allPatients.length} patients...`;
+                select.appendChild(loadingOption);
+                
+                // Batch process patients for better performance
+                const batchSize = 100;
+                for (let i = 0; i < allPatients.length; i += batchSize) {
+                    const batch = allPatients.slice(i, i + batchSize);
+                    
+                    batch.forEach(patient => {
+                        const option = document.createElement('option');
+                        option.value = patient.patientId;
+                        option.textContent = `${patient.patientId} - ${patient.displayName}`;
+                        select.appendChild(option);
+                    });
+                    
+                    // Update loading text
+                    loadingOption.textContent = `Loaded ${Math.min(i + batchSize, allPatients.length)} of ${allPatients.length} patients...`;
+                    
+                    // Allow UI to update
+                    await new Promise(resolve => setTimeout(resolve, 1));
+                }
+                
+                // Remove loading option
+                select.removeChild(loadingOption);
+                
+                // Update placeholder
+                const placeholder = select.querySelector('option[value=""]');
+                if (placeholder) {
+                    placeholder.textContent = `Select from ${allPatients.length} patients...`;
+                }
+                
+            } catch (error) {
+                showError(`Failed to load patients: ${error.message}`);
+            }
+        }
+
+        function handlePatientSearch(event) {
+            const searchTerm = event.target.value.toLowerCase().trim();
+            const select = document.getElementById('patientSelect');
+            const options = select.querySelectorAll('option');
+            
+            // Clear current selection if searching
+            if (searchTerm) {
+                select.value = '';
+            }
+            
+            let exactMatches = 0;
+            let partialMatches = 0;
+            
+            options.forEach(option => {
+                if (option.value === '') {
+                    // Keep the placeholder option visible
+                    option.style.display = 'block';
+                } else {
+                    const text = option.textContent.toLowerCase();
+                    const patientId = option.value.toLowerCase();
+                    
+                    // Check for exact patient ID match first
+                    if (patientId === searchTerm) {
+                        option.style.display = 'block';
+                        exactMatches++;
+                        option.style.fontWeight = 'bold'; // Highlight exact matches
+                        option.style.backgroundColor = '#e8f4fd';
+                    }
+                    // Check if patient ID starts with search term
+                    else if (patientId.startsWith(searchTerm)) {
+                        option.style.display = 'block';
+                        partialMatches++;
+                        option.style.fontWeight = 'normal';
+                        option.style.backgroundColor = '#f0f8ff';
+                    }
+                    // Check if name contains search term
+                    else if (text.includes(searchTerm)) {
+                        option.style.display = 'block';
+                        partialMatches++;
+                        option.style.fontWeight = 'normal';
+                        option.style.backgroundColor = '';
+                    } else {
+                        option.style.display = 'none';
+                        option.style.fontWeight = 'normal';
+                        option.style.backgroundColor = '';
+                    }
+                }
+            });
+            
+            const totalMatches = exactMatches + partialMatches;
+            
+            // Auto-select if exactly one match
+            if (searchTerm && exactMatches === 1) {
+                const exactMatch = Array.from(options).find(opt => 
+                    opt.value && opt.value.toLowerCase() === searchTerm
+                );
+                if (exactMatch) {
+                    select.value = exactMatch.value;
+                    // Trigger change event to load patient
+                    const changeEvent = new Event('change', { bubbles: true });
+                    select.dispatchEvent(changeEvent);
+                    return;
+                }
+            }
+            
+            // Update placeholder text based on search results
+            const placeholder = select.querySelector('option[value=""]');
+            if (placeholder) {
+                if (searchTerm) {
+                    if (exactMatches > 0) {
+                        placeholder.textContent = `⬇ ${exactMatches} exact match${exactMatches > 1 ? 'es' : ''} - select below ⬇`;
+                    } else if (totalMatches > 0) {
+                        placeholder.textContent = `⬇ ${totalMatches} patient${totalMatches > 1 ? 's' : ''} - select below ⬇`;
+                    } else {
+                        placeholder.textContent = 'No patients found';
+                    }
+                } else {
+                    placeholder.textContent = `Select from ${allPatients.length} patients...`;
+                }
+            }
+            
+            // Auto-expand dropdown to show filtered results
+            if (searchTerm && totalMatches > 0 && totalMatches <= 10) {
+                select.size = Math.min(totalMatches + 1, 10); // Show multiple options
+                select.style.position = 'relative';
+                select.style.height = 'auto';
+            } else if (searchTerm && totalMatches > 10) {
+                select.size = 10; // Show up to 10 options
+                select.style.position = 'relative';
+                select.style.height = 'auto';
+            } else {
+                select.size = 1; // Back to normal dropdown
+                select.style.position = '';
+                select.style.height = '';
+            }
+        }
+
+        function clearSearch() {
+            const searchInput = document.getElementById('patientSearch');
+            const select = document.getElementById('patientSelect');
+            const options = select.querySelectorAll('option');
+            
+            searchInput.value = '';
+            
+            // Show all options
+            options.forEach(option => {
+                option.style.display = 'block';
+                option.style.fontWeight = 'normal';
+                option.style.backgroundColor = '';
+            });
+            
+            // Reset placeholder
+            const placeholder = select.querySelector('option[value=""]');
+            if (placeholder) {
+                placeholder.textContent = `Select from ${allPatients.length} patients...`;
+            }
+            
+            // Reset select to normal dropdown mode
+            select.size = 1;
+            select.style.position = '';
+            select.style.height = '';
+        }
+
+        async function handlePatientChange(event) {
+            const patientId = event.target.value;
+            
+            // Clear search when patient is selected
+            if (patientId) {
+                document.getElementById('patientSearch').value = '';
+                // Show all options again
+                const select = document.getElementById('patientSelect');
+                const options = select.querySelectorAll('option');
+                options.forEach(option => {
+                    option.style.display = 'block';
+                    option.style.fontWeight = 'normal';
+                    option.style.backgroundColor = '';
+                });
+                // Reset select to normal dropdown mode
+                select.size = 1;
+                select.style.position = '';
+                select.style.height = '';
+            }
+            
+            if (!patientId) {
+                resetDashboard();
+                return;
+            }
+
+            currentPatientId = patientId;
+            
+            // Get patient name from select option
+            const selectElement = document.getElementById('patientSelect');
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            const patientName = selectedOption.text.split(' - ')[1]; // Extract name after "ID - "
+            
+            // Update UI to show loading
+            updateContentHeader(patientName, patientId, "Generating all summaries...");
+            showLoading();
+            resetCategoryStates();
+            
+            try {
+                // Generate all summaries at once
+                await generateAllSummaries(patientId);
+            } catch (error) {
+                showError(`Failed to generate summaries: ${error.message}`);
+            }
+        }
+
+        async function generateAllSummaries(patientId) {
+            isGenerating = true;
+            
+            try {
+                const response = await fetch(`${API_BASE}/patients/${patientId}/all_summaries`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                cachedSummaries = data.summaries;
+                
+                // Update category states (no checkmarks needed)
+                Object.keys(cachedSummaries).forEach(category => {
+                    updateCategoryStatus(category, '');
+                });
+                
+                // Show the first category by default
+                showCategory('patient_summary');
+                
+                updateContentHeader(patientName, patientId, "All summaries generated successfully");
+                
+            } catch (error) {
+                throw error;
+            } finally {
+                isGenerating = false;
+            }
+        }
+
+        function handleCategoryClick(event) {
+            const category = event.currentTarget.dataset.category;
+            
+            if (category === 'encounters') {
+                return; // Disabled for now
+            }
+            
+            if (!currentPatientId) {
+                showError('Please select a patient first.');
+                return;
+            }
+            
+            showCategory(category);
+        }
+
+        function showCategory(category) {
+            // Update active category
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            
+            // Special handling for Generative AI category
+            if (category === 'generative_ai') {
+                showGenerativeAIChat();
+                return;
+            }
+            
+            // Show the summary content
+            if (cachedSummaries[category]) {
+                displaySummary(category, cachedSummaries[category]);
+            } else {
+                showError(`No summary available for ${category}`);
+            }
+        }
+
+        function displaySummary(category, summaryText) {
+            const contentBody = document.getElementById('contentBody');
+            const categoryNames = {
+                'patient_summary': 'Patient Summary',
+                'demographics': 'Patient Demographics',
+                'conditions': 'Medical Conditions',
+                'observations': 'Clinical Observations',
+                'notes': 'Clinical Notes',
+                'encounters': 'Encounters',
+                'care_plans': 'Care Plans',
+                'generative_ai': 'Generative AI Chat'
+            };
+            
+            // Create container with empty text
+            contentBody.innerHTML = `
+                <div class="summary-content">
+                    <h3>${categoryNames[category] || category}</h3>
+                    <div class="summary-text" id="typingText"></div>
+                </div>
+            `;
+            
+            // Typing animation
+            const typingElement = document.getElementById('typingText');
+            const formattedText = formatSummaryText(summaryText);
+            let charIndex = 0;
+            const typingSpeed = 5; // milliseconds per character (adjust for faster/slower)
+            
+            // Convert HTML to plain text for character-by-character typing
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = formattedText;
+            const plainText = summaryText; // Use original text for typing
+            
+            function typeCharacter() {
+                if (charIndex < plainText.length) {
+                    // Get current text up to charIndex
+                    const currentText = plainText.substring(0, charIndex + 1);
+                    // Format and display
+                    typingElement.innerHTML = formatSummaryText(currentText);
+                    charIndex++;
+                    setTimeout(typeCharacter, typingSpeed);
+                }
+            }
+            
+            // Start typing animation
+            typeCharacter();
+        }
+
+        function formatSummaryText(text) {
+            // Convert markdown-like formatting to HTML
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>')
+                .replace(/^## (.*$)/gm, '<h4>$1</h4>')
+                .replace(/^# (.*$)/gm, '<h3>$1</h3>');
+        }
+
+        function updateContentHeader(patientName, patientId, subtitle) {
+            document.getElementById('contentTitle').textContent = `Patient Name: ${patientName}`;
+            document.getElementById('contentSubtitle').innerHTML = `Patient ID: ${patientId}<br>${subtitle}`;
+        }
+
+        function showLoading() {
+            const contentBody = document.getElementById('contentBody');
+            contentBody.innerHTML = `
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <h3>Generating Clinical Summaries</h3>
+                    <p>This may take 30-60 seconds for all categories...</p>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const contentBody = document.getElementById('contentBody');
+            contentBody.innerHTML = `
+                <div class="error-message">
+                    <h4>Error</h4>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        function showGenerativeAIChat() {
+            const contentBody = document.getElementById('contentBody');
+            contentBody.innerHTML = `
+                <div class="generative-ai-chat">
+                    <div class="chat-header">
+                        <h3>Generative AI Assistant</h3>
+                        <p>Ask questions about patient data, observations, trends and summaries.</p>
+                    </div>
+                    
+                    <div class="chat-messages" id="aiChatMessages">
+                        <div class="message agent">
+                            <strong>🤖 User Agent:</strong> Hello! I'm your clinical data assistant. I can help you analyze patient observations, identify trends, answer questions about medical conditions, and provide insights. What would you like to know about this patient?
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <div class="quick-questions">
+                            <button class="quick-question-btn" onclick="askQuickQuestion('What are the abnormal values for this patient?')">Show Abnormal Values</button>
+                            <button class="quick-question-btn" onclick="askQuickQuestion('What are the trends in vital signs?')">Analyze Vital Signs Trends</button>
+                            <button class="quick-question-btn" onclick="askQuickQuestion('What are the latest lab results?')">Latest Lab Results</button>
+                            <button class="quick-question-btn" onclick="askQuickQuestion('Generate visualizations for glucose levels')">Generate Charts</button>
+                        </div>
+                        
+                        <div class="chat-input-wrapper">
+                            <input type="text" id="aiChatInput" placeholder="Ask about patient data, observations, trends..." />
+                            <button id="aiChatSendBtn" onclick="sendAIMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners
+            document.getElementById('aiChatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendAIMessage();
+                }
+            });
+            
+            // Update status
+            updateCategoryStatus('generative_ai', '✅');
+        }
+
+        function askQuickQuestion(question) {
+            document.getElementById('aiChatInput').value = question;
+            sendAIMessage();
+        }
+
+        function addAIMessage(sender, text) {
+            const messagesContainer = document.getElementById('aiChatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            // Convert line breaks to HTML and preserve formatting
+            const formattedText = text.replace(/\n/g, '<br>');
+            messageDiv.innerHTML = `<strong>${sender === 'user' ? '👤 You' : '🤖 User Agent'}:</strong> ${formattedText}`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function sendAIMessage() {
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addAIMessage('user', message);
+            input.value = '';
+            
+            // Show loading
+            addAIMessage('agent', 'Analyzing your question...');
+            
+            try {
+                // Call the actual chat agent API
+                const response = await fetch(`${API_BASE}/chat-agent/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        patient_id: currentPatientId,
+                        query: message
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Remove loading message
+                const messages = document.getElementById('aiChatMessages');
+                messages.removeChild(messages.lastChild);
+                
+                // Add AI response
+                addAIMessage('agent', data.response);
+                
+                // Add follow-up options if available
+                if (data.follow_up_options && data.follow_up_options.length > 0) {
+                    addFollowUpOptions(data.follow_up_options);
+                }
+                
+            } catch (error) {
+                // Remove loading message
+                const messages = document.getElementById('aiChatMessages');
+                messages.removeChild(messages.lastChild);
+                
+                // Add error message
+                addAIMessage('agent', `Sorry, I encountered an error: ${error.message}. Please try again.`);
+            }
+        }
+
+        function addFollowUpOptions(options) {
+            const messagesContainer = document.getElementById('aiChatMessages');
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'message agent follow-up-options';
+            optionsDiv.innerHTML = '<strong>🤖 User Agent:</strong> <em>Choose an option below:</em>';
+            
+            const optionsList = document.createElement('div');
+            optionsList.className = 'follow-up-options-list';
+            
+            options.forEach(option => {
+                const optionBtn = document.createElement('button');
+                optionBtn.className = 'follow-up-option-btn';
+                optionBtn.textContent = option.text;
+                optionBtn.onclick = () => handleFollowUpOption(option);
+                optionsList.appendChild(optionBtn);
+            });
+            
+            optionsDiv.appendChild(optionsList);
+            messagesContainer.appendChild(optionsDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function handleFollowUpOption(option) {
+            // Add user message showing the selected option
+            addAIMessage('user', option.text);
+            
+            // Show loading
+            addAIMessage('agent', 'Processing your request...');
+            
+            try {
+                if (option.type === 'visualization') {
+                    // Handle visualization requests
+                    await handleVisualizationRequest(option);
+                } else if (option.type === 'analysis') {
+                    // Handle analysis requests
+                    await handleAnalysisRequest(option);
+                } else {
+                    // Handle other requests as regular chat queries
+                    const response = await fetch(`${API_BASE}/chat-agent/query`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            patient_id: currentPatientId,
+                            query: option.text
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Remove loading message
+                    const messages = document.getElementById('aiChatMessages');
+                    messages.removeChild(messages.lastChild);
+                    
+                    // Add AI response
+                    addAIMessage('agent', data.response);
+                    
+                    // Add follow-up options if available
+                    if (data.follow_up_options && data.follow_up_options.length > 0) {
+                        addFollowUpOptions(data.follow_up_options);
+                    }
+                }
+                
+            } catch (error) {
+                // Remove loading message
+                const messages = document.getElementById('aiChatMessages');
+                messages.removeChild(messages.lastChild);
+                
+                // Add error message
+                addAIMessage('agent', `Sorry, I encountered an error: ${error.message}. Please try again.`);
+            }
+        }
+
+        async function handleVisualizationRequest(option) {
+            try {
+                // Determine chart type based on option text
+                let chartType = 'vitals_dashboard';
+                if (option.text.includes('glucose')) {
+                    chartType = 'glucose_trend';
+                } else if (option.text.includes('blood pressure') || option.text.includes('BP')) {
+                    chartType = 'blood_pressure_trend';
+                } else if (option.text.includes('heart rate')) {
+                    chartType = 'heart_rate_trend';
+                } else if (option.text.includes('abnormal')) {
+                    chartType = 'abnormal_values';
+                } else if (option.text.includes('all observations') || option.text.includes('comprehensive')) {
+                    chartType = 'all_observations';
+                }
+                
+                // Call visualization API
+                const response = await fetch(`${API_BASE}/chat-agent/visualize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        patient_id: currentPatientId,
+                        chart_type: chartType
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Remove loading message
+                const messages = document.getElementById('aiChatMessages');
+                messages.removeChild(messages.lastChild);
+                
+                if (data.success) {
+                    // Add success message with chart summary
+                    let successMessage = `Chart generated successfully! The visualization is being displayed below.`;
+                    if (data.chart_data && data.chart_data.summary) {
+                        successMessage += `\n\n📊 Chart Summary: ${data.chart_data.summary}`;
+                    }
+                    addAIMessage('agent', successMessage);
+                    
+                    // Display the chart
+                    displayChart(data.chart_data);
+                } else {
+                    addAIMessage('agent', `Sorry, I couldn't generate the chart: ${data.error}`);
+                }
+                
+            } catch (error) {
+                // Remove loading message
+                const messages = document.getElementById('aiChatMessages');
+                messages.removeChild(messages.lastChild);
+                
+                addAIMessage('agent', `Sorry, I encountered an error generating the chart: ${error.message}`);
+            }
+        }
+
+        async function handleAnalysisRequest(option) {
+            // For now, treat analysis requests as regular chat queries
+            const response = await fetch(`${API_BASE}/chat-agent/query`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    patient_id: currentPatientId,
+                    query: option.text
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Remove loading message
+            const messages = document.getElementById('aiChatMessages');
+            messages.removeChild(messages.lastChild);
+            
+            // Add AI response
+            addAIMessage('agent', data.response);
+            
+            // Add follow-up options if available
+            if (data.follow_up_options && data.follow_up_options.length > 0) {
+                addFollowUpOptions(data.follow_up_options);
+            }
+        }
+
+        function displayChart(chartData) {
+            // Create a chart container
+            const messagesContainer = document.getElementById('aiChatMessages');
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'message agent chart-container';
+            
+            const chartId = `chart-${Date.now()}`;
+            chartDiv.innerHTML = `
+                <div class="chart-wrapper">
+                    <canvas id="${chartId}" width="400" height="200"></canvas>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(chartDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Create Chart.js chart
+            const canvas = chartDiv.querySelector('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Ensure chartData has proper structure
+            if (!chartData.data || !chartData.options) {
+                console.error('Invalid chart data structure:', chartData);
+                chartDiv.innerHTML = `
+                    <div class="chart-wrapper">
+                        <p style="text-align: center; color: #666; padding: 20px;">
+                            Unable to generate chart. Data structure is invalid.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Configure chart options
+            const config = {
+                type: 'line',
+                data: chartData.data,
+                options: {
+                    ...chartData.options,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        ...chartData.options.plugins,
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        ...chartData.options.scales,
+                        x: {
+                            ...chartData.options.scales.x,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        y: {
+                            ...chartData.options.scales.y,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    }
+                }
+            };
+            
+            // Create the chart
+            try {
+                new Chart(ctx, config);
+            } catch (error) {
+                console.error('Chart creation failed:', error);
+                chartDiv.innerHTML = `
+                    <div class="chart-wrapper">
+                        <p style="text-align: center; color: #666; padding: 20px;">
+                            Chart generation failed: ${error.message}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+        function generateAIResponse(question) {
+            // This is a placeholder - replace with actual RAG + ElasticSearch integration
+            const lowerQuestion = question.toLowerCase();
+            
+            if (lowerQuestion.includes('abnormal')) {
+                return `I found several abnormal values in this patient's data:
+
+🚨 **Abnormal Values Detected:**
+• **Glucose**: 155.0 mg/dL (Normal: 70-140 mg/dL) - Moderate elevation
+• **Systolic Blood Pressure**: 129.0 mmHg (Normal: <130 mmHg) - Borderline high
+• **Diastolic Blood Pressure**: 86.0 mmHg (Normal: <80 mmHg) - Mild elevation
+
+These values suggest potential concerns with glucose metabolism and blood pressure management. Would you like me to generate visualizations showing the trends for any of these parameters?`;
+            } else if (lowerQuestion.includes('trend') || lowerQuestion.includes('vital')) {
+                return `**Vital Signs Trend Analysis:**
+
+📈 **Heart Rate**: Stable at 98 bpm (normal range: 60-100 bpm)
+📈 **Blood Pressure**: Showing increasing trend - Systolic: 103→129 mmHg, Diastolic: 64→86 mmHg
+📈 **Respiratory Rate**: Decreasing trend - 42→18 breaths/min (improving)
+📈 **Temperature**: Stable at 36.5°C (normal)
+
+**Key Insight**: Blood pressure shows a concerning upward trend that requires monitoring. Would you like me to create a detailed chart showing these trends over time?`;
+            } else if (lowerQuestion.includes('lab') || lowerQuestion.includes('result')) {
+                return `**Latest Laboratory Results:**
+
+🧪 **Glucose**: 155.0 mg/dL (High - requires attention)
+🧪 **Creatinine**: 0.9 mg/dL (Normal)
+🧪 **Protein**: 6.4 g/dL (Normal)
+🧪 **Albumin**: 3.8 g/dL (Normal)
+🧪 **Hemoglobin**: 13.5 g/dL (Normal)
+
+**Summary**: Most lab values are within normal ranges except for elevated glucose levels. This suggests potential prediabetes or diabetes that needs further evaluation.`;
+            } else if (lowerQuestion.includes('chart') || lowerQuestion.includes('visualization')) {
+                return `I can generate several types of visualizations for this patient:
+
+📊 **Available Charts:**
+• Glucose trend over time
+• Blood pressure monitoring chart
+• Vital signs dashboard
+• Lab results comparison
+• Abnormal values heatmap
+
+Which specific visualization would you like me to create? I can show trends, comparisons, or focused analysis on any parameter.`;
+            } else {
+                return `I understand you're asking about: "${question}"
+
+Based on the patient's data, I can help you with:
+• Detailed analysis of specific observations
+• Trend analysis and pattern recognition
+• Comparison with normal ranges
+• Generation of clinical visualizations
+• Identification of concerning values
+
+Could you be more specific about what aspect you'd like me to analyze?`;
+            }
+        }
+
+        function updateCategoryStatus(category, status) {
+            const statusElement = document.getElementById(`status-${category}`);
+            if (statusElement) {
+                statusElement.textContent = status;
+            }
+        }
+
+        function resetCategoryStates() {
+            const categories = ['patient_summary', 'demographics', 'conditions', 'observations', 'notes', 'care_plans', 'generative_ai'];
+            categories.forEach(category => {
+                updateCategoryStatus(category, '⏳');
+            });
+        }
+
+        function resetDashboard() {
+            currentPatientId = null;
+            cachedSummaries = {};
+            
+            document.getElementById('contentTitle').textContent = 'Welcome to Generative AI Dashboard';
+            document.getElementById('contentSubtitle').textContent = 'Select a patient to begin generating clinical summaries';
+            
+            document.getElementById('contentBody').innerHTML = `
+                <div class="empty-state">
+                    <div class="icon">👋</div>
+                    <h3>Welcome to the Generative AI Dashboard</h3>
+                    <p>Select a patient from the dropdown to generate comprehensive clinical summaries.</p>
+                    <p>All summaries will be generated automatically and cached for quick access.</p>
+                </div>
+            `;
+            
+            document.querySelectorAll('.category-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            resetCategoryStates();
+        }
+
+        // Chat Panel Functions
+        async function indexAllPatients() {
+            try {
+                // Show loading message
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '🔄 Indexing...';
+                button.disabled = true;
+                
+                const response = await fetch(`${API_BASE}/chat-agent/index-all-patients`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ Successfully indexed ${result.indexed_count} out of ${result.total_patients} patients!\n\n${result.message}`);
+                } else {
+                    alert(`❌ Failed to index patients: ${result.error}`);
+                }
+                
+            } catch (error) {
+                console.error('Error indexing patients:', error);
+                alert(`❌ Error indexing patients: ${error.message}`);
+            } finally {
+                // Reset button
+                button.textContent = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function toggleChatPanel() {
+            const chatPanel = document.getElementById('chatPanel');
+            const toggleBtn = document.querySelector('.chat-toggle-btn');
+            
+            if (chatPanel.classList.contains('expanded')) {
+                chatPanel.classList.remove('expanded');
+                toggleBtn.textContent = '💬 Open AI Chat';
+            } else {
+                chatPanel.classList.add('expanded');
+                toggleBtn.textContent = '✕';
+            }
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addChatMessage('user', message);
+            input.value = '';
+            
+            // Show loading
+            addChatMessage('agent', 'Analyzing your question...');
+            
+            // Simulate AI response (replace with actual API call)
+            setTimeout(() => {
+                // Remove loading message
+                const messagesContainer = document.getElementById('chatMessagesContainer');
+                messagesContainer.removeChild(messagesContainer.lastChild);
+                
+                // Add AI response
+                generateChatResponse(message).then(response => {
+                    addChatMessage('agent', response);
+                });
+            }, 1500);
+        }
+
+        function addChatMessage(sender, text) {
+            const messagesContainer = document.getElementById('chatMessagesContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}`;
+            // Convert line breaks to HTML and preserve formatting
+            const formattedText = text.replace(/\n/g, '<br>');
+            messageDiv.innerHTML = `<strong>${sender === 'user' ? '👤 You' : '🤖 User Agent'}:</strong> ${formattedText}`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function generateChatResponse(question) {
+            try {
+                // Call the backend for general medical help
+                const response = await fetch(`${API_BASE}/general-medical-help`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question: question
+                    }),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result.response || "I'm sorry, I couldn't process that request. Please try again.";
+                
+            } catch (error) {
+                console.error('Error calling general medical help API:', error);
+                return "I'm sorry, I'm having trouble connecting to the medical help service. Please try again later.";
+            }
+        }
+
+        // Add event listener for Enter key in chat input
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatInput = document.getElementById('chatInput');
+            if (chatInput) {
+                chatInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendChatMessage();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

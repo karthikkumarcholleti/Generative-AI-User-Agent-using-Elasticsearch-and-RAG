@@ -1,0 +1,402 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                FHIR LLM GENERATIVE AI DASHBOARD - CHEAT SHEET                 ║
+║              (Complete Setup Guide with ElasticSearch & All Services)         ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 📋 PREREQUISITES & SYSTEM REQUIREMENTS                                        │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Required Software:
+✅ Python 3.13+ with virtual environment
+✅ ElasticSearch 8.x (for AI chat features)
+✅ Git (for code management)
+✅ Web browser (Chrome, Firefox, Safari, Edge)
+
+System Requirements:
+- RAM: 8GB minimum (16GB recommended for ElasticSearch + LLM)
+- Storage: 10GB free space
+- Network: Internet connection for model downloads
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ ✅ CASE 1: ELASTICSEARCH ALREADY INSTALLED (YOUR CASE)                       │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+STEP 1: Kill All Running Terminals/Processes
+1. Kill existing FHIR processes:
+   pkill -f "uvicorn" && pkill -f "python server.py"
+
+2. Wait for ports to be free:
+   sleep 3
+
+STEP 2: Start ElasticSearch
+1. Find your ElasticSearch:
+   find / -name "elasticsearch" -type f 2>/dev/null | grep bin/elasticsearch
+
+2. Check if running:
+   curl -k -u elastic:P@ssw0rd https://localhost:9200
+
+3. If not running, start it:
+   cd /path/to/your/elasticsearch
+   ./bin/elasticsearch -d
+   sleep 10
+
+4. Verify connection:
+   curl -k -u elastic:P@ssw0rd https://localhost:9200
+
+STEP 3: Start FHIR Application
+1. Navigate to project and activate environment:
+   cd /home/kchollet/LLM_UA/FHIR_LLM_UA
+   source venv/bin/activate
+
+2. Start backend server:
+   cd backend
+   python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+
+3. Start frontend server:
+   cd ../frontend
+   python server.py &
+
+4. Open browser:
+   xdg-open http://localhost:5173
+
+5. Index patient data:
+   - Open browser to http://localhost:5173
+   - Click "🔄 Index All Patients" button in sidebar
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🐘 CASE 2: ELASTICSEARCH NOT INSTALLED (FRESH INSTALLATION)                  │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+STEP 1: Download and Install ElasticSearch
+1. Download ElasticSearch:
+   wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.14.0-linux-x86_64.tar.gz
+
+2. Extract:
+   tar -xzf elasticsearch-8.14.0-linux-x86_64.tar.gz
+   cd elasticsearch-8.14.0/
+
+3. Generate SSL certificate:
+   ./bin/elasticsearch-certutil cert -out config/elastic-certificates.p12 -pass ""
+
+4. Configure security (edit config/elasticsearch.yml):
+   nano config/elasticsearch.yml
+   # Add these lines:
+   xpack.security.enabled: true
+   xpack.security.transport.ssl.enabled: true
+   xpack.security.transport.ssl.keystore.path: elastic-certificates.p12
+   xpack.security.transport.ssl.keystore.password: ""
+   xpack.security.transport.ssl.verification_mode: certificate
+
+5. Start ElasticSearch:
+   ./bin/elasticsearch -d
+
+6. Set password:
+   ./bin/elasticsearch-reset-password -u elastic -i
+   # Enter: P@ssw0rd
+
+7. Verify it's working:
+   curl -k -u elastic:P@ssw0rd https://localhost:9200
+
+STEP 2: Start FHIR Application
+1. Kill existing processes:
+   pkill -f "uvicorn" && pkill -f "python server.py"
+
+2. Start application:
+   cd /home/kchollet/LLM_UA/FHIR_LLM_UA
+   source venv/bin/activate
+   cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+   cd ../frontend && python server.py &
+   xdg-open http://localhost:5173
+
+3. Index patient data:
+   - Open browser to http://localhost:5173
+   - Click "🔄 Index All Patients" button
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🚀 SIMPLE STARTUP (RECOMMENDED)                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+# ONE COMMAND TO START EVERYTHING:
+pkill -f "uvicorn" && pkill -f "python server.py" && sleep 3 && cd /home/kchollet/LLM_UA/FHIR_LLM_UA && source venv/bin/activate && cd backend && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 & cd ../frontend && python server.py & sleep 5 && xdg-open http://localhost:5173 &
+
+# If you get "ElasticSearch not connected" errors, start ElasticSearch first:
+# cd /path/to/your/elasticsearch && ./bin/elasticsearch -d && sleep 10
+
+# IMPORTANT: After browser opens, click "🔄 Index All Patients" button in sidebar
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🛑 ONE-COMMAND SHUTDOWN                                                       │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+pkill -f "uvicorn" && pkill -f "python server.py" && echo "All servers stopped"
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 📝 STEP-BY-STEP STARTUP (IF YOU PREFER MANUAL STEPS)                         │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+1. Kill any existing processes:
+   pkill -f "uvicorn" && pkill -f "python server.py"
+
+2. Navigate to project and activate environment:
+   cd /home/kchollet/LLM_UA/FHIR_LLM_UA
+   source venv/bin/activate
+
+3. Start backend server:
+   cd backend
+   python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+
+4. Start frontend server:
+   cd ../frontend
+   python server.py &
+
+5. Open browser:
+   xdg-open http://localhost:5173
+
+6. If you see "ElasticSearch not connected" errors:
+   - Start ElasticSearch: cd /path/to/your/elasticsearch && ./bin/elasticsearch -d
+   - Wait 10 seconds, then refresh the page
+
+7. Click "🔄 Index All Patients" button in the sidebar (first time only)
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 📝 STEP-BY-STEP SHUTDOWN                                                      │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+1. Close browser (Alt + F4 or click X)
+2. Stop backend: pkill -f "uvicorn"
+3. Stop frontend: pkill -f "python server.py"
+4. Verify shutdown: ps aux | grep -E "uvicorn|server.py" | grep -v grep
+5. Deactivate venv: deactivate (optional)
+6. Exit terminal: exit (optional)
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🌐 IMPORTANT URLS                                                             │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Dashboard:              http://localhost:5173
+Backend API:            http://localhost:8000
+API Documentation:      http://localhost:8000/docs
+Health Check:           http://localhost:8000/health
+General Medical Help:   http://localhost:8000/general-medical-help
+Chat Agent Status:      http://localhost:8000/chat-agent/status
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 NEW UI FEATURES TO TEST                                                    │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+1. PATIENT NAME DISPLAY:
+   - Select any patient (e.g., patient 740)
+   - Should show: "Patient Name: FN2454 LN2454" (clean, no ID)
+   - Patient ID shown separately below
+
+2. OPENAI CHAT (Right Panel):
+   - Click "💬 Open AI Chat" button in sidebar
+   - Ask general medical questions:
+     * "What is normal glucose range?"
+     * "What does creatinine mean?"
+     * "Normal blood pressure range?"
+   - Get concise 2-sentence answers from "User Agent"
+
+3. GENERATIVE AI ASSISTANT (Main Category):
+   - Click "Generative AI" in left sidebar
+   - Ask patient-specific questions:
+     * "Is the glucose level high or normal?"
+     * "Show me abnormal values"
+     * "Generate visualizations for glucose levels"
+   - Get detailed patient analysis with visualizations
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🔧 TROUBLESHOOTING                                                            │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Problem: "Address already in use" (Port 8000, 5173, or 9200)
+Solution:
+  pkill -f "uvicorn" && pkill -f "python server.py" && pkill -f "elasticsearch"
+  sleep 3
+  netstat -tlnp | grep -E "(8000|5173|9200)" || echo "Ports are free"
+  [Then restart as normal]
+
+Problem: "Unable to connect" in browser
+Solution:
+  curl -s http://localhost:5173 | head -c 50
+  [If fails, restart frontend:]
+  cd /home/kchollet/LLM_UA/FHIR_LLM_UA/frontend
+  python server.py &
+
+Problem: Backend not responding
+Solution:
+  curl -s http://localhost:8000/health
+  [If fails, restart backend:]
+  cd /home/kchollet/LLM_UA/FHIR_LLM_UA/backend
+  source ../venv/bin/activate
+  python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+
+Problem: ElasticSearch connection failed
+Solution:
+  # Check if ElasticSearch is running:
+  curl -k -u elastic:P@ssw0rd https://localhost:9200
+  # If fails, start ElasticSearch:
+  cd /path/to/elasticsearch-8.14.0
+  ./bin/elasticsearch -d
+  sleep 10
+  # Verify connection:
+  curl -k -u elastic:P@ssw0rd https://localhost:9200
+
+Problem: Chat agent shows "ElasticSearch not connected"
+Solution:
+  # Check ElasticSearch status:
+  curl http://localhost:8000/chat-agent/status
+  # If ElasticSearch is down, restart it:
+  cd /path/to/elasticsearch-8.14.0
+  ./bin/elasticsearch -d
+  # Wait and re-index data:
+  curl -X POST http://localhost:8000/chat-agent/index-all-patients
+
+Problem: "No data available" in chat agent
+Solution:
+  # Check if data is indexed:
+  curl http://localhost:8000/chat-agent/status
+  # If not indexed, click "🔄 Index All Patients" button in UI
+  # Or use API:
+  curl -X POST http://localhost:8000/chat-agent/index-all-patients
+
+Problem: Check what's running
+Solution:
+  ps aux | grep -E "uvicorn|server.py|elasticsearch" | grep -v grep
+  netstat -tlnp | grep -E "(8000|5173|9200)"
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ ✅ VERIFICATION COMMANDS                                                      │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Check ElasticSearch:      curl -k -u elastic:P@ssw0rd https://localhost:9200
+Check Backend Health:     curl http://localhost:8000/health
+Check Frontend:           curl http://localhost:5173 | head -c 50
+List Patients:            curl http://localhost:8000/patients
+Test General Medical Help: curl -X POST http://localhost:8000/general-medical-help -H "Content-Type: application/json" -d '{"question": "What is normal glucose range?"}'
+Check Chat Agent Status:  curl http://localhost:8000/chat-agent/status
+Check Patient Context:    curl http://localhost:8000/chat-agent/patient/740/context
+Index All Patients:       curl -X POST http://localhost:8000/chat-agent/index-all-patients
+View Running Processes:   ps aux | grep -E "uvicorn|server.py|elasticsearch" | grep -v grep
+Check Port Usage:         netstat -tlnp | grep -E "(8000|5173|9200)"
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🎨 UI CHANGES SUMMARY                                                         │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+✅ Patient Name Display: Clean format without ID
+✅ AI Assistant → User Agent: Updated throughout interface
+✅ Generative AI Dashboard: Simplified title
+✅ Chat Description: Shortened and focused
+✅ OpenAI Chat: Now for general medical help only (2 sentences max)
+✅ Generative AI Assistant: Patient-specific analysis with RAG + ElasticSearch
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 💡 PRO TIPS                                                                   │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Tip 1: Keep this cheat sheet open for quick reference
+Tip 2: Bookmark http://localhost:5173 in your browser
+Tip 3: Use Ctrl + ` in Cursor to quickly open terminal
+Tip 4: Use "up arrow" in terminal to repeat last command
+Tip 5: Test both chat interfaces - they serve different purposes
+Tip 6: Use the "🔄 Index All Patients" button if data seems outdated
+Tip 7: Check server logs in terminal for debugging
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🚨 COMMON ISSUES & SOLUTIONS                                                  │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Issue: "No data available" in chat agent
+Solution: Click "🔄 Index All Patients" button in sidebar
+
+Issue: General medical help not working
+Solution: Check if backend is running: curl http://localhost:8000/health
+
+Issue: Charts not displaying
+Solution: Check browser console for errors, refresh page
+
+Issue: Patient data not loading
+Solution: Verify ElasticSearch is connected: curl http://localhost:8000/chat-agent/status
+
+Issue: ElasticSearch connection timeout
+Solution: 
+  1. Check if ElasticSearch is running: ps aux | grep elasticsearch
+  2. Start ElasticSearch: cd /path/to/elasticsearch-8.14.0 && ./bin/elasticsearch -d
+  3. Wait 10 seconds and verify: curl -k -u elastic:P@ssw0rd https://localhost:9200
+
+Issue: Chat agent returns "ElasticSearch not available"
+Solution:
+  1. Check ElasticSearch status: curl http://localhost:8000/chat-agent/status
+  2. If ElasticSearch is down, restart it
+  3. Re-index patient data: curl -X POST http://localhost:8000/chat-agent/index-all-patients
+
+Issue: SSL certificate errors with ElasticSearch
+Solution:
+  1. Use -k flag with curl: curl -k -u elastic:P@ssw0rd https://localhost:9200
+  2. Or disable SSL verification in browser (development only)
+
+Issue: Memory issues with ElasticSearch
+Solution:
+  1. Increase system memory or close other applications
+  2. Adjust ElasticSearch heap size in config/jvm.options
+  3. Consider running ElasticSearch on a separate machine
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 📚 MORE DOCUMENTATION                                                         │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+QUICK_START.md              - Simple commands only
+STARTUP_SHUTDOWN_GUIDE.md   - Complete detailed guide
+FIXES_APPLIED.md            - Recent fixes and changes
+DASHBOARD_README.md         - Full dashboard documentation
+LATEST_UPDATES.md           - Latest feature updates
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🎨 LATEST UI FIXES (December 2024)                                           │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+✅ Patient Name Display Fixed:
+   - Before: "Patient Name: 740 - FN2454 LN2454"
+   - After:  "Patient Name: FN2454 LN2454"
+   - Patient ID: Shows separately as "Patient ID: 740"
+
+✅ Dashboard Title Cleaned:
+   - Before: "🤖 Generative AI Dashboard"
+   - After:  "Generative AI Dashboard"
+
+✅ Chat Interface Updates:
+   - "🤖 AI Assistant:" → "🤖 User Agent:"
+   - Chat title: "Generative AI Assistant"
+   - Description: "Ask questions about patient data, observations, trends and summaries"
+
+✅ General Medical Help:
+   - "Open AI Chat" button now provides general medical help only
+   - Answers medical terms, normal ranges, etc. (2 sentences max)
+   - Does NOT access patient-specific data
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│ 🎯 QUICK TEST SCENARIOS                                                       │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Test 1 - General Medical Help:
+1. Click "💬 Open AI Chat" in sidebar
+2. Ask: "What is normal blood pressure?"
+3. Should get 2-sentence answer from User Agent
+
+Test 2 - Patient Analysis:
+1. Select patient 740 from dropdown
+2. Click "Generative AI" in sidebar
+3. Ask: "Is the glucose level high or normal?"
+4. Should get patient-specific analysis
+
+Test 3 - Visualizations:
+1. In Generative AI Assistant
+2. Ask: "Generate visualizations for glucose levels"
+3. Should show interactive charts
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                        SAVE THIS FILE FOR REFERENCE!                          ║
+║              Updated: December 2024 - Complete Setup with ElasticSearch       ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
