@@ -82,10 +82,17 @@ export interface ChartPayload {
       backgroundColor?: string;
       borderWidth?: number;
       tension?: number;
+      unit?: string;
     }>;
   };
   options: Record<string, unknown>;
   summary?: string;
+  referenceLines?: Array<{
+    y: number;
+    label: string;
+    color: string;
+    dash?: string;
+  }>;
 }
 
 export interface RagStatus {

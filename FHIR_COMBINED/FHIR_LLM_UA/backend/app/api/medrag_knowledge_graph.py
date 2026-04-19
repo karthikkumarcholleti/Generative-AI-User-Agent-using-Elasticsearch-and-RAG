@@ -694,16 +694,20 @@ class KnowledgeGraphService:
         patient_condition_keys: set = set()
         patient_values: Dict[str, str] = {}  # display → value
 
+        patient_units: Dict[str, str] = {}  # display → unit
+
         for item in retrieved_data:
             meta = item.get("metadata", {})
             display = (meta.get("display") or "").lower()
             value = str(meta.get("value") or "")
+            unit = str(meta.get("unit") or "")
             content = (item.get("content") or "").lower()
 
             if item.get("data_type") == "observations":
                 patient_obs_keys.add(display)
                 if display:
                     patient_values[display] = value
+                    patient_units[display] = unit
                 # Also add individual words for partial matching
                 for word in display.split():
                     if len(word) > 3:
@@ -732,13 +736,36 @@ class KnowledgeGraphService:
             for obs in key_obs:
                 obs_lower = obs.lower()
                 if any(obs_lower in pk or pk in obs_lower for pk in patient_obs_keys):
-                    # Find value if available
+                    # Find value and unit if available
                     val = ""
+                    unit_str = ""
                     for pk, pv in patient_values.items():
                         if obs_lower in pk or pk in obs_lower:
                             val = pv
+                            unit_str = patient_units.get(pk, "")
                             break
-                    found_obs.append(f"{obs}: {val}" if val else obs)
+                    if val:
+                        # Suppress generic "unit" placeholder from hospital data
+                        real_unit = unit_str if (unit_str and unit_str.lower() not in ("unit", "units", "")) else ""
+                        # Sanity check: skip implausible values (likely bad DB data)
+                        # e.g. cholesterol=1.0, creatinine=0.001 — clearly wrong
+                        try:
+                            numeric_val = float(val)
+                            _implausible = (
+                                ("cholesterol" in obs_lower and numeric_val < 10) or
+                                ("creatinine" in obs_lower and numeric_val < 0.1) or
+                                ("glucose" in obs_lower and numeric_val < 1) or
+                                ("hemoglobin" in obs_lower and "a1c" not in obs_lower and numeric_val < 1)
+                            )
+                        except (ValueError, TypeError):
+                            _implausible = False
+                        if _implausible:
+                            # Don't add as found — treat as missing so KG won't anchor on it
+                            missing_obs.append(obs)
+                            continue
+                        found_obs.append(f"{obs}: {val} {real_unit}".strip() if real_unit else f"{obs}: {val}")
+                    else:
+                        found_obs.append(obs)
                 else:
                     missing_obs.append(obs)
 
@@ -840,8 +867,8 @@ class KnowledgeGraphService:
                     lines.append(f"    ✗ {feat}")
 
             if missing:
-                lines.append("  Data needed but not found in records:")
-                for obs in missing[:3]:
+                lines.append("  Diagnostic gaps per KG clinical guidelines (may exist in records but not retrieved):")
+                for obs in missing[:1]:
                     lines.append(f"    ? {obs}")
 
             lines.append("")
@@ -853,11 +880,41 @@ class KnowledgeGraphService:
             "1. Reason about which diagnosis best fits the patient evidence",
             "2. Highlight the most likely diagnosis with supporting evidence",
             "3. Mention alternative diagnoses that cannot be ruled out",
-            "4. Note any missing data that would help confirm/exclude diagnoses",
+            "4. For any '? diagnostic gap', mention it only if clinically critical — do NOT list it as absent from patient records",
             "=" * 70,
             ""
         ]
 
+        return "\n".join(lines)
+
+    def build_kg_summary(
+        self,
+        candidate_diseases: List[str],
+        matched_evidence: Dict[str, Dict[str, Any]]
+    ) -> str:
+        """
+        Compact KG context for NON-DDx queries (value lookups, specific tests).
+        Omits the full DDx structure and ALL '?' gap markers so the model
+        cannot anchor on missing items when answering a specific-value question.
+        Only surfaces: top candidate(s) + confirmed patient evidence.
+        """
+        if not candidate_diseases:
+            return ""
+
+        top = candidate_diseases[:2]
+        lines = [
+            "─" * 60,
+            "KG CLINICAL CONTEXT (reference only — do not use for DDx):",
+        ]
+        for disease in top:
+            evidence = matched_evidence.get(disease, {})
+            supporting = evidence.get("supporting_observations", [])
+            confidence = evidence.get("confidence", 0.0)
+            if supporting:
+                lines.append(f"  {disease} ({int(confidence*100)}% evidence match):")
+                for obs in supporting[:3]:
+                    lines.append(f"    • {obs}")
+        lines.append("─" * 60)
         return "\n".join(lines)
 
     # ─────────────────────────────────────────────────────────────────────────

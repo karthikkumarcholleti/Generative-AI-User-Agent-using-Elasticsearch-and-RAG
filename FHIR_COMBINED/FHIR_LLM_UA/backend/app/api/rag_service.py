@@ -24,6 +24,18 @@ from datetime import datetime
 # =============================================================================
 USE_MEDRAG = True
 
+def set_use_medrag(enabled: bool) -> None:
+    """Runtime toggle for the MedRAG pipeline (no restart required).
+    Called by the /compare/set-mode API endpoint during A/B comparison runs."""
+    global USE_MEDRAG
+    USE_MEDRAG = enabled
+    logger_name = "rag_service"
+    import logging as _logging
+    _logging.getLogger(logger_name).info(
+        "Pipeline mode changed → %s",
+        "MedRAG + KG" if enabled else "Standard RAG"
+    )
+
 from .medrag_knowledge_graph import kg_service  # MedRAG KG singleton
 
 logger = logging.getLogger(__name__)
@@ -804,6 +816,26 @@ class RAGService:
                         value_str = str(value).strip()
                         unit = (obs.get("unit") or "").strip()
                         display = str(display)  # Ensure it's a string
+
+                        # ── Implausibility filter ──────────────────────────
+                        # Skip observations with clearly invalid values caused
+                        # by hospital data quality issues (e.g., cholesterol=1.0,
+                        # creatinine=0.001). These mislead the LLM.
+                        try:
+                            _num = float(value_str.split()[0])
+                            _disp_l = display.lower()
+                            _implausible = (
+                                ("cholesterol" in _disp_l and _num < 10) or
+                                ("creatinine" in _disp_l and "ratio" not in _disp_l and _num < 0.05) or
+                                ("glucose" in _disp_l and _num < 0.5) or
+                                ("hemoglobin" in _disp_l and "a1c" not in _disp_l and _num < 1)
+                            )
+                            if _implausible:
+                                logger.debug(f"[Context filter] Skipping implausible value: {display}={_num}")
+                                continue
+                        except (ValueError, TypeError, IndexError):
+                            pass  # Can't parse — keep the observation
+                        # ──────────────────────────────────────────────────
                         
                         # Handle date fields (code 67723-7)
                         if display and "date" in display.lower():
@@ -912,83 +944,34 @@ class RAGService:
             # no knowledge graph, no differential diagnosis ranking.
             # Uncomment USE_MEDRAG = False at top of file to activate this path.
             # ─────────────────────────────────────────────────────────────────
-            system_prompt = """You are a clinical AI assistant helping healthcare professionals analyze patient data. 
-        You have access to the patient's medical records and can provide insights, analysis, and data-driven observations.
-        
-        CRITICAL GUIDELINES - FOLLOW EXACTLY:
-        - ONLY use the actual data provided in the context below
-        - NEVER generate or make up data that is not in the context
-        - NEVER add normal ranges, reference values, or clinical interpretations not provided
-        - NEVER add "(normal range: X-Y unit)" or similar text
-        - NEVER use bold formatting (**text**) or asterisks (*) in your response
-        - Use clean, simple formatting with numbered lists
-        - Be precise and clinical in your responses
-        - Highlight abnormal values and concerning patterns ONLY from the provided data
-        - Provide actionable insights for healthcare providers
-        - Use medical terminology appropriately
-        - Always consider patient safety and clinical significance
-        - If you identify concerning values, mention them prominently
-        - If data is limited, acknowledge the limitations
-        - DO NOT ADD ANY INFORMATION NOT EXPLICITLY PROVIDED IN THE DATA
-        - CRITICAL: If you list observations in your response, do NOT contradict yourself by saying they are not available
-        - CRITICAL: Be consistent - if you show data, acknowledge that data exists
-        - CRITICAL: If specific data is requested and found in context, present it clearly without adding disclaimers
-        - CRITICAL: Do NOT repeat the same information multiple times - list each unique value only once
-        - CRITICAL: If asked about a SPECIFIC observation (e.g., "creatinine", "hemoglobin", "heart rate"), ONLY mention that specific observation - do NOT list other unrelated observations
-        - CRITICAL: Answer ONLY what is asked - if asked "what is the patient's hemoglobin value?", answer ONLY with hemoglobin, do NOT mention creatinine or other values
-        - CRITICAL: For "all vitals" or "all observations" queries, list ALL available vitals/observations from the context - do NOT skip any
-        - CRITICAL: For "all vitals" queries, include ALL types: heart rate, respiratory rate, blood pressure, temperature, and any lab values (creatinine, hemoglobin, etc.) if they are in the context
-        - CRITICAL: Complete your responses fully - do NOT truncate mid-sentence or mid-list item
-        - CRITICAL: For blood pressure, show systolic and diastolic separately if they are listed separately in the context
-        - CRITICAL: If multiple readings exist for the same observation type, list them all with their dates, do NOT combine them
-        - CRITICAL: Do NOT create numbered lists that repeat the same value multiple times (e.g., "1. Creatinine is X, 2. Creatinine is X, 3. Creatinine is X" is WRONG - only list once)
-        
-        DATA AVAILABILITY HANDLING - CRITICAL SCENARIOS:
-        
-        1. WHEN EXACT DATA IS AVAILABLE:
-           - Present the data clearly and directly
-           - Example: "The patient's creatinine level is 1.09 unit (recorded on 2025-07-16)"
-           - Include dates and values from the context
-           - DO NOT add disclaimers like "if available" or "if present"
-        
-        2. WHEN NO DATA IS AVAILABLE:
-           - Explicitly state: "No [specific data type] data is available for this patient in the medical records"
-           - Example: "No hemoglobin A1C data is available for this patient in the medical records"
-           - DO NOT make assumptions or suggest data might exist
-           - DO NOT hallucinate or create data
-           - Be clear and direct about the absence of data
-        
-        3. WHEN RELATED DATA IS AVAILABLE (but not exact match):
-           - Clearly distinguish: "Exact data for [requested item] not found, but related information is available:"
-           - Example: "Exact data for hemoglobin A1C not found, but the patient has the following blood glucose measurements: [list]"
-           - Only mention related data if it's clinically relevant
-           - Clearly separate exact match from related data
-        
-        4. WHEN DATA IS UNCLEAR OR INCOMPLETE:
-           - State: "The available data shows [what is available], but [specific information] is not clearly recorded"
-           - Do not fill in gaps with assumptions
-        
-        MEDICAL TERM RECOGNITION - CRITICAL:
-        - Recognize that medical conditions may be described using different but equivalent terms
-        - "Hypertensive disorder" or "hypertension" = "heart disease" or "cardiovascular disease"
-        - "Diabetes mellitus" or "DM" = "diabetes" or "diabetic"
-        - "Chronic kidney disease" or "CKD" = "kidney disease" or "renal disease"
-        - For observations, recognize technical codes: "CREATININE:MCNC:PT:SER/PLAS:QN::" = "creatinine"
-        - If the user asks about "heart disease" and you see "hypertensive disorder" in the data, answer YES and cite the condition
-        - If the user asks about "creatinine" and you see "CREATININE:MCNC..." in the data, extract and present the value
-        - Always map technical terms to common medical terminology when answering user queries
-        
-        IMPORTANT: This tool provides data analysis only. All clinical decisions must be made by qualified healthcare providers.
-        
-        RESEARCH-BASED APPROACH:
-        - Understand the user's query naturally and respond appropriately
-        - Use your medical knowledge to interpret values and provide clinical insights
-        - If asked about abnormal/risk/concerning values, apply your understanding of normal ranges
-        - If asked for specific observations, provide those observations
-        - If asked for trends, analyze temporal patterns
-        - Let semantic search results guide what data is relevant to the query
-        - Be intelligent and context-aware in your responses
-        """
+            system_prompt = """You are a clinical AI assistant helping healthcare professionals analyze patient data.
+You have access to a subset of the patient's medical records retrieved by semantic search.
+
+CORE RULES:
+- ONLY use data explicitly present in the context provided below.
+- NEVER generate, invent, or infer data that is not shown in the context.
+- NEVER use bold formatting (**text**) or asterisks (*).
+- Use clean numbered lists with a blank line between items.
+- Complete every sentence — do not truncate mid-list.
+
+ANSWERING RULES:
+- Answer ONLY what the query asks — nothing more, nothing less.
+- ALWAYS lead with what IS present in the records — never open with an absence or a missing field.
+- If the queried data IS in the context: present it clearly (value, unit, date) as the FIRST thing you say.
+- If the queried data is NOT in the context: say so in ONE sentence and STOP. Do NOT enumerate other missing types.
+- If related (but not exact) data exists: note it briefly after the one-sentence absence statement.
+- For diagnosis questions: state the most likely diagnosis FIRST, then supporting evidence from the records.
+- Do NOT ask for missing data that the clinician did not ask about.
+
+MEDICAL TERM MAPPING:
+- "CREATININE:MCNC:PT:SER/PLAS:QN::" = creatinine
+- "UREA NITROGEN:..." = BUN / blood urea nitrogen
+- "HEMOGLOBIN A1C/..." = HbA1c
+- "Hypertensive disorder" = hypertension; "Diabetes mellitus" = diabetes; "CKD" = chronic kidney disease
+- Map LOINC/SNOMED technical codes to plain clinical terms when presenting data.
+
+All clinical decisions must be made by qualified healthcare providers.
+"""
         else:
             # ─────────────────────────────────────────────────────────────────
             # [MEDRAG — STEP 4a] System prompt — KG-augmented, instructs the LLM
@@ -1023,8 +1006,11 @@ CRITICAL GUIDELINES - FOLLOW EXACTLY:
 - Provide actionable insights for healthcare providers
 - Use medical terminology appropriately
 - Always consider patient safety and clinical significance
-- If data is limited, acknowledge the limitations
-- DO NOT ADD ANY INFORMATION NOT EXPLICITLY PROVIDED IN THE DATA
+- If the specifically asked-about data is absent, say so in ONE sentence only. Do NOT enumerate all other data types that are also not present.
+- NEVER open a response with a statement about absent data — always lead with what IS present
+- When performing differential diagnosis, START with the most likely diagnosis, then evidence, then alternatives
+- KG "?" diagnostic gaps are clinical guideline criteria — do NOT report them as absent from patient records
+- Do NOT add information not explicitly provided in the data
 
 MEDRAG RESPONSE STRUCTURE (when KG context is present):
 1. Most Likely Diagnosis — state it clearly with supporting evidence
@@ -1064,68 +1050,32 @@ All clinical decisions must be made by qualified healthcare providers.
             # ─────────────────────────────────────────────────────────────────
             user_prompt = f"""Patient Query: "{query}"
 
+DIRECT ANSWER FIRST:
+Before anything else, check: does the data below contain what was asked?
+- Found: present it clearly (value, unit, date). That is your opening sentence.
+- Not found: write ONE sentence only — "No [X] data is present in the retrieved records." — then stop. Do NOT enumerate other missing items.
+- Partially found: one sentence noting the absence, then list only the related data that IS in the context.
+
 Patient Data Context:
 {context}
 
-CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
-- Answer ONLY the specific question asked - do NOT mention unrelated information
-- Only use the data provided above
-- Do not generate or assume any data that is not explicitly shown
-- If a specific value is requested and found in the data, state it clearly without disclaimers
-- Do NOT list unrelated observations, conditions, or notes that don't answer the question
-- Focus on answering the exact question asked - nothing more, nothing less
-- CRITICAL: If asked about "creatinine", ONLY mention creatinine - do NOT mention hemoglobin, heart rate, or other values
-- CRITICAL: If asked for "all vitals" or "all observations", list ALL available vitals/observations from the context above - include heart rate, respiratory rate, blood pressure, temperature, and all lab values (creatinine, hemoglobin, etc.) that are in the context
-- CRITICAL: Complete your response fully - ensure all numbered list items are complete with values, units, and dates - do NOT truncate mid-sentence
-- CRITICAL: If asked about "hemoglobin", ONLY mention hemoglobin - do NOT mention creatinine or other values
-- CRITICAL: If asked about "heart rate", ONLY mention heart rate - do NOT mention other vital signs
-- CRITICAL: Do NOT create numbered lists that repeat the same information (e.g., "1. Value X, 2. Value X, 3. Value X" is WRONG)
-- CRITICAL: If you find the requested value, state it ONCE in a clear sentence - do NOT repeat it multiple times
+RESPONSE RULES:
+1. Answer the specific question asked — nothing more, nothing less.
+2. For diagnosis questions: state the most likely diagnosis FIRST, then supporting evidence.
+3. For specific value questions: if not found, say so in one sentence and stop.
+4. Do NOT list unrelated vital signs or observations that don't answer the question.
+5. Do NOT repeat the same value multiple times.
+6. Do NOT use asterisks (*) or bold formatting (**text**).
+7. Use clean numbered lists with line breaks between items.
+8. Format: "Observation Name: Value unit (recorded on YYYY-MM-DD)".
+9. Complete every sentence — do not truncate mid-list.
 
-DATA AVAILABILITY - HANDLE THESE SCENARIOS CORRECTLY:
-
-SCENARIO 1: EXACT DATA FOUND
-- If the requested data is found in the context above, present it directly
-- Format: "The patient's [requested item] is [value] [unit] (recorded on [date])"
-- Example: "The patient's creatinine level is 1.09 unit (recorded on 2025-07-16)"
-- DO NOT add disclaimers or say "if available" when data clearly exists
-- CRITICAL: If you state that data exists, do NOT then say "exact data not found" - this is contradictory
-- CRITICAL: If data exists, state it clearly and confidently without contradictory phrases
-
-SCENARIO 2: NO DATA FOUND
-- If the requested data is NOT in the context above, use this EXACT format:
-  "No [specific data type] data is available for this patient in the medical records."
-- Example: "No hemoglobin A1C data is available for this patient in the medical records."
-- Keep response to ONE sentence only - do NOT repeat yourself
-- Do NOT add "However" or "But" statements after stating no data
-- CRITICAL: Use intelligent judgment - if RAG retrieved both conditions and observations for this query, they are likely clinically relevant
-- CRITICAL: Only exclude information if it's truly unrelated to the question
-
-SCENARIO 3: RELATED DATA FOUND (but not exact)
-- If related but not exact data exists, clearly distinguish:
-  "Exact data for [requested item] not found. However, related information is available: [list related data]"
-
-RESPONSE FORMATTING REQUIREMENTS:
-1. Use proper line breaks between each numbered item
-2. Format observations as: "1. Observation Name - Value: X unit (recorded on YYYY-MM-DD)"
-3. Each observation should be on its own line
-4. Do NOT use commas to separate observations
-5. Do NOT use asterisks (*) or bold formatting
-6. Use clean, simple formatting
-7. For "no data" responses: Use ONE sentence only
-8. CRITICAL: Do NOT repeat the same value multiple times
-9. CRITICAL: For observations - same value on DIFFERENT dates = DIFFERENT readings (list ALL of them)
-10. CRITICAL: Do NOT list duplicate conditions
-
-CLINICAL CONTEXT FOR ABNORMAL VALUE FILTERING (Reference Information):
-When identifying abnormal values, consider these general clinical reference ranges:
+CLINICAL REFERENCE RANGES:
 - Blood Pressure: Normal systolic 90-120 mmHg, diastolic 60-80 mmHg
 - Heart Rate: Normal resting 60-100 bpm
 - Glucose: Normal fasting <100 mg/dL, random <140 mg/dL
 - Creatinine: Normal 0.6-1.2 mg/dL
 - Hemoglobin: Normal 12-16 g/dL (women), 14-18 g/dL (men)
-
-Please provide a response that directly answers the user's question using ONLY the data provided above.
 """
         else:
             # ─────────────────────────────────────────────────────────────────
@@ -1145,50 +1095,128 @@ Please provide a response that directly answers the user's question using ONLY t
             else:
                 logger.info("[MedRAG] KG found no candidate diseases — using patient EHR context only")
 
-            # Build the MedRAG user prompt: EHR context + KG context block
-            user_prompt = f"""Patient Query: "{query}"
+            # ── Query-type detection ─────────────────────────────────────────
+            # _apply_ddx = True  → full KG DDx structure injected (5-step)
+            # _apply_ddx = False → compact KG summary only, direct-answer format
+            #
+            # DECISION: require EXPLICIT DDx-intent keywords to enable DDx mode.
+            # Value-interpretation queries ("what do X values indicate?") are NOT
+            # DDx requests — they should use the compact direct-answer format.
+            _ddx_intent_keywords = [
+                "differential diagnosis", "differential", "ddx",
+                "most likely diagnosis", "what is the diagnosis",
+                "possible diagnos", "probable diagnos",
+                "what could this be", "what conditions could",
+                "overall assessment", "overall health", "clinical assessment",
+                "summarize", "summary", "health status", "health overview",
+                "signs of cardiovascular", "signs of kidney", "signs of diabetes",
+                "signs of heart", "signs of liver", "signs of infection",
+                "evidence of", "risk of", "risk for",
+                "show signs of", "does this patient",
+            ]
+            # Phrases that indicate a simple value-lookup, NOT a DDx request.
+            # Use only strong leading-phrase signals so they don't fire when
+            # embedded mid-query (e.g. "... what is the supporting evidence?")
+            _value_lookup_overrides = [
+                "what do the", "what does the",
+                "what do ", "what does ",
+                "tell me the", "show me the",
+                "list the", "give me the",
+                "what are the values", "what are the levels",
+                "what are the results", "what are the readings",
+            ]
+            _query_lower = query.lower()
+            _has_ddx_intent = any(kw in _query_lower for kw in _ddx_intent_keywords)
+            _is_value_lookup = any(kw in _query_lower for kw in _value_lookup_overrides)
+            # Full DDx only when: explicit DDx keyword AND NOT a simple value lookup.
+            # DDx intent takes priority if the query contains BOTH signals.
+            _apply_ddx = bool(kg_candidates) and _has_ddx_intent and not _is_value_lookup
+
+            # ── Fix B: cap retrieved docs for non-DDx queries ────────────────
+            # DDx queries need the full context to reason across all conditions.
+            # Non-DDx (value lookup / specific clinical question) queries only
+            # need the top-scoring hits — trimming to 15 prevents irrelevant
+            # blood-count observations from burying the answer.
+            if not _apply_ddx:
+                retrieved_data = sorted(
+                    retrieved_data,
+                    key=lambda x: x.get("_score", 0),
+                    reverse=True
+                )[:15]
+
+            # Choose which KG block to inject based on query type
+            if _apply_ddx:
+                _kg_inject = kg_context_block  # full DDx block with ranking
+            elif kg_candidates:
+                matched_evidence = kg_result.get("matched_evidence", {})
+                _kg_inject = kg_service.build_kg_summary(kg_candidates, matched_evidence)
+            else:
+                _kg_inject = ""
+
+            # Build the MedRAG user prompt
+            if _apply_ddx:
+                user_prompt = f"""Patient Query: "{query}"
 
 {'=' * 70}
 PATIENT EHR RECORDS (retrieved via Elasticsearch)
 {'=' * 70}
 {context}
 
-{kg_context_block if kg_context_block else ""}
+{_kg_inject}
 
-CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
-- Answer ONLY the specific question asked
-- ONLY use the actual data provided above (EHR records + KG context)
-- Do not generate or assume any data not explicitly shown
-- If a specific value is requested and found in the data, state it clearly
-- NEVER use bold formatting (**text**) or asterisks (*) in your response
-- Do NOT repeat the same information multiple times
+MEDRAG DIFFERENTIAL DIAGNOSIS — answer in PLAIN TEXT using exactly this numbered structure:
+1. Most likely diagnosis: [name it and state the single strongest piece of supporting evidence]
+2. Supporting evidence: [list 2-4 specific observations or conditions from the records]
+3. Alternative diagnoses: [1-2 other conditions that cannot yet be ruled out, with brief reason]
+4. Missing data: [name at most 1 test absent from the records that would confirm the top diagnosis]
+5. Clinical recommendation: [one actionable next step for the clinician]
 
-{"MEDRAG DIFFERENTIAL DIAGNOSIS REQUIRED:" if kg_candidates else ""}
-{"Since the KG has identified candidate diagnoses above, structure your response as:" if kg_candidates else ""}
-{"1. Most Likely Diagnosis — with supporting evidence from patient records" if kg_candidates else ""}
-{"2. Key Supporting Evidence — specific observations/conditions that support this diagnosis" if kg_candidates else ""}
-{"3. Alternative Diagnoses — 1-2 conditions that cannot yet be ruled out and why" if kg_candidates else ""}
-{"4. Missing Data — what additional tests would help confirm/exclude the diagnosis" if kg_candidates else ""}
-{"5. Clinical Recommendation — one actionable next step for the clinician" if kg_candidates else ""}
+STRICT RULES — failure to follow ANY of these will be marked as incorrect:
+- PLAIN TEXT ONLY. No asterisks (*). No double-asterisks (**). No bold. No markdown headers.
+- Use ONLY data explicitly present in the EHR records and KG context above.
+- Do NOT fabricate or assume any data.
+- Do NOT open with an absence — always lead with what IS present.
+- Complete every sentence — do not truncate mid-list.
+- KG "?" gaps are clinical guideline criteria, NOT confirmed absences in this patient's records.
 
-DATA AVAILABILITY SCENARIOS:
-- If exact data is found: state it clearly ("The patient's X is Y, recorded on Z")
-- If no data found: "No [data type] data is available for this patient in the medical records."
-- If related data found: distinguish clearly between exact match and related data
-
-RESPONSE FORMATTING:
-1. Use numbered lists with line breaks between items
-2. Format observations as: "1. Observation Name: Value unit (recorded on YYYY-MM-DD)"
-3. No asterisks or bold text
-4. Keep responses clinically focused and concise
-
-CLINICAL REFERENCE RANGES (apply your medical knowledge):
+CLINICAL REFERENCE RANGES:
 - Blood Pressure: Normal systolic 90-120 mmHg, diastolic 60-80 mmHg
 - Heart Rate: Normal resting 60-100 bpm
 - Glucose: Normal fasting <100 mg/dL
 - Creatinine: Normal 0.6-1.2 mg/dL
-- Hemoglobin: Normal 12-16 g/dL (women), 14-18 g/dL (men)
-- HbA1c: Normal < 5.7%, Pre-diabetes 5.7-6.4%, Diabetes >= 6.5%
+- HbA1c: Normal <5.7%, Pre-diabetes 5.7-6.4%, Diabetes ≥6.5%
+
+All clinical decisions must be made by qualified healthcare providers.
+"""
+            else:
+                # Non-DDx: value lookup or specific clinical question
+                # Inject only the compact KG summary (no ? gaps, no ranking)
+                kg_section = f"\n{_kg_inject}\n" if _kg_inject else ""
+                user_prompt = f"""Patient Query: "{query}"
+
+{'=' * 70}
+PATIENT EHR RECORDS (retrieved via Elasticsearch)
+{'=' * 70}
+{context}
+{kg_section}
+Answer the specific question above directly using the records.
+
+FORMAT:
+- List each relevant value with its date (e.g. "Creatinine: 2.3 mg/dL (2025-07-29)")
+- After listing values, give a 1-2 sentence clinical interpretation (normal / elevated / low and why it matters)
+- If the KG clinical context above is relevant, add 1 sentence of clinical note
+- If the asked-about value is genuinely absent from the records, say so in ONE sentence and stop
+- Do NOT open with an absence — always list present values first
+- Do NOT use bold formatting (**text**) or asterisks (*)
+- Do NOT repeat values already listed
+- Keep the response concise and factual
+
+CLINICAL REFERENCE RANGES:
+- Blood Pressure: Normal systolic 90-120 mmHg, diastolic 60-80 mmHg
+- Heart Rate: Normal resting 60-100 bpm
+- Glucose: Normal fasting <100 mg/dL
+- Creatinine: Normal 0.6-1.2 mg/dL
+- HbA1c: Normal <5.7%, Pre-diabetes 5.7-6.4%, Diabetes ≥6.5%
 
 All clinical decisions must be made by qualified healthcare providers.
 """
@@ -1305,7 +1333,21 @@ All clinical decisions must be made by qualified healthcare providers.
                                 value_str = metadata.get("value", "")
                                 unit = metadata.get("unit", "")
                                 date_str = str(metadata.get("date", ""))[:10] if metadata.get("date") else ""
-                                
+
+                                # Implausibility guard (mirrors main context path)
+                                try:
+                                    _nv = float(str(value_str).split()[0])
+                                    _dl = (display or "").lower()
+                                    if (
+                                        ("cholesterol" in _dl and _nv < 10) or
+                                        ("creatinine" in _dl and "ratio" not in _dl and _nv < 0.05) or
+                                        ("glucose" in _dl and _nv < 0.5) or
+                                        ("hemoglobin" in _dl and "a1c" not in _dl and _nv < 1)
+                                    ):
+                                        continue
+                                except (ValueError, TypeError, IndexError):
+                                    pass
+
                                 if value_str:
                                     if date_str:
                                         context_parts.append(f"- {display}: {value_str} {unit} (recorded on {date_str})")
@@ -1852,7 +1894,8 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
             "data_found": data_found,
             "retrieved_count": retrieved_count,  # Ensure this matches actual retrieved_data length
             "sources": sources,
-            "chart": auto_chart  # Include auto-generated chart
+            "chart": auto_chart,  # Include auto-generated chart
+            "pipeline_mode": "MedRAG + KG" if USE_MEDRAG else "Standard RAG"  # A/B comparison label
         }
     
     def _format_source_description(self, item: Dict[str, Any]) -> str:

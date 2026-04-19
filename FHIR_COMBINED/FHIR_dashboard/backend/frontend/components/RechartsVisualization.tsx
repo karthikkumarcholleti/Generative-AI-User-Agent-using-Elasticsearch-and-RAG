@@ -13,7 +13,9 @@ import {
   AreaChart,
   Area,
   ReferenceLine,
+  ReferenceArea,
   Brush,
+  Label,
 } from 'recharts';
 import { motion } from 'framer-motion';
 import PremiumChartCard from './PremiumChartCard';
@@ -68,11 +70,17 @@ export default function RechartsVisualization({ chart, title }: RechartsVisualiz
 
     // Create array of objects where each object represents a data point
     // { label: 'Date', dataset1: value1, dataset2: value2, ... }
+    const encounterContext = (chartData as any).encounterContext || [];
     return labels.map((label, index) => {
       const dataPoint: Record<string, any> = {
         name: label,
         timestamp: label, // Keep original for date formatting
       };
+
+      // Attach encounter context if available
+      if (encounterContext[index]) {
+        dataPoint._encounter = encounterContext[index];
+      }
 
       datasets.forEach((dataset, datasetIndex) => {
         const value = dataset.data[index];
@@ -160,6 +168,63 @@ export default function RechartsVisualization({ chart, title }: RechartsVisualiz
     });
   };
   
+  // Custom tooltip with encounter context (Gap 2)
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const encounter = payload[0]?.payload?._encounter;
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        border: '1px solid #E2E8F0',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        padding: '12px',
+        maxWidth: 320,
+      }}>
+        <p style={{ fontWeight: 600, color: '#1E293B', marginBottom: 6, fontSize: 13 }}>
+          📅 {formatLabel(label)}
+        </p>
+        {payload.map((entry: any, i: number) => {
+          if (entry.value === null || entry.value === undefined) return null;
+          const ds = datasets.find(d => d.label === entry.name);
+          const unit = (ds as any)?.unit || '';
+          const formatted = typeof entry.value === 'number'
+            ? entry.value.toFixed(2).replace(/\.?0+$/, '')
+            : String(entry.value);
+          return (
+            <p key={i} style={{ color: entry.color || '#475569', fontSize: 12, margin: '4px 0' }}>
+              {entry.name}: <strong>{formatted}{unit ? ` ${unit}` : ''}</strong>
+            </p>
+          );
+        })}
+        {encounter && (
+          <div style={{
+            marginTop: 8,
+            paddingTop: 6,
+            borderTop: '1px solid #E2E8F0',
+            fontSize: 11,
+            color: '#64748B',
+          }}>
+            <span style={{ fontWeight: 600 }}>🏥 {encounter.encounter}</span>
+            {encounter.type && <span> ({encounter.type})</span>}
+            {encounter.reason && (
+              <p style={{ margin: '2px 0 0', color: '#94A3B8', fontSize: 10 }}>
+                {encounter.reason}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // Get reference lines from chart payload (clinical normal/critical ranges)
+  const referenceLines = (chart as any).referenceLines || [];
+  
+  // Dual y-axis support (Gap 3+4: disease progression panels)
+  const dualYAxis = (chart as any).dualYAxis as { left: { label: string; color: string }; right: { label: string; color: string } } | undefined;
+  const hasDualYAxis = !!dualYAxis;
+
   // Handle empty data
   if (!rechartsData || rechartsData.length === 0) {
     return (
@@ -350,7 +415,7 @@ export default function RechartsVisualization({ chart, title }: RechartsVisualiz
               })}
             </BarChart>
           ) : (
-            <LineChart data={rechartsData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+            <LineChart data={rechartsData} margin={{ top: 20, right: hasDualYAxis ? 80 : 30, left: 20, bottom: 80 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis
                 dataKey="name"
@@ -360,30 +425,53 @@ export default function RechartsVisualization({ chart, title }: RechartsVisualiz
                 height={60}
                 tick={{ fontSize: 10, fill: '#64748B' }}
               />
+              {/* Primary (left) Y-axis */}
               <YAxis
+                yAxisId="left"
                 tick={{ fontSize: 12, fill: '#475569' }}
+                label={hasDualYAxis ? { value: dualYAxis!.left.label, angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#475569' } } : undefined}
               />
+              {/* Secondary (right) Y-axis — only when dualYAxis is set */}
+              {hasDualYAxis && (
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fontSize: 12, fill: '#475569' }}
+                  label={{ value: dualYAxis!.right.label, angle: 90, position: 'insideRight', style: { fontSize: 11, fill: '#475569' } }}
+                />
+              )}
+              {/* Clinical reference range lines (normal + critical boundaries) */}
+              {referenceLines.map((ref: any, idx: number) => (
+                <ReferenceLine
+                  key={`ref-${idx}`}
+                  y={ref.y}
+                  yAxisId="left"
+                  stroke={ref.color || '#22c55e'}
+                  strokeDasharray={ref.dash || '5 5'}
+                  strokeWidth={1.5}
+                >
+                  <Label
+                    value={ref.label}
+                    position="right"
+                    fill={ref.color || '#22c55e'}
+                    fontSize={10}
+                    fontWeight={500}
+                  />
+                </ReferenceLine>
+              ))}
+              {/* Normal range shaded area (if we have both low and high normal lines) */}
+              {referenceLines.filter((r: any) => r.label?.includes('Normal')).length >= 2 && (
+                <ReferenceArea
+                  y1={referenceLines.find((r: any) => r.label?.includes('Low Normal'))?.y}
+                  y2={referenceLines.find((r: any) => r.label?.includes('High Normal'))?.y}
+                  yAxisId="left"
+                  fill="#22c55e"
+                  fillOpacity={0.06}
+                  strokeOpacity={0}
+                />
+              )}
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  padding: '12px'
-                }}
-                labelStyle={{ 
-                  fontWeight: 600, 
-                  color: '#1E293B',
-                  marginBottom: '8px',
-                  fontSize: '13px'
-                }}
-                itemStyle={{ 
-                  color: '#475569',
-                  fontSize: '12px',
-                  padding: '4px 0'
-                }}
-                labelFormatter={(label) => `📅 ${formatLabel(label)}`}
-                formatter={formatTooltipValue}
+                content={<CustomTooltip />}
                 cursor={{ stroke: '#0EA5E9', strokeWidth: 1, strokeDasharray: '3 3' }}
               />
               <Legend
@@ -429,6 +517,7 @@ export default function RechartsVisualization({ chart, title }: RechartsVisualiz
                     strokeWidth={3}
                     dot={{ fill: color, r: 4, strokeWidth: 2, stroke: '#fff' }}
                     activeDot={{ r: 6, stroke: color, strokeWidth: 2, fill: '#fff' }}
+                    yAxisId={(dataset as any).yAxisID || 'left'}
                     isAnimationActive
                     animationDuration={800}
                     animationBegin={index * 100}

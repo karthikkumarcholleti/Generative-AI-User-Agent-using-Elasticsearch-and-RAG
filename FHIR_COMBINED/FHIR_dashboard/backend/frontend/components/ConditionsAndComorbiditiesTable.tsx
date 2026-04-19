@@ -70,7 +70,7 @@ const ConditionsAndComorbiditiesTable: React.FC<Props> = ({
   if (process.env.NODE_ENV !== 'production') {
     console.log('ConditionsAndComorbiditiesTable data', {
       categories: groupedConditions?.length ?? 0,
-      conditionCount: groupedConditions?.reduce((acc, group) => acc + group.conditions.length, 0) ?? 0,
+      conditionCount: groupedConditions?.reduce((acc, group) => acc + (group.conditions?.length ?? 0), 0) ?? 0,
       conditionStats
     });
   }

@@ -77,28 +77,22 @@ LOINC_CODE_MAPPINGS: Dict[str, Dict[str, str]] = {
         "keywords": ["bilirubin", "liver function"]
     },
     "2085-9": {
-        "name": "Cholesterol Total",
-        "display": "Cholesterol [Mass/volume] in Serum or Plasma",
+        "name": "HDL Cholesterol",
+        "display": "Cholesterol in HDL [Mass/volume] in Serum or Plasma",
         "category": "laboratory",
-        "keywords": ["cholesterol", "lipid"]
-    },
-    "2571-8": {
-        "name": "Triglycerides",
-        "display": "Triglyceride [Mass/volume] in Serum or Plasma",
-        "category": "laboratory",
-        "keywords": ["triglyceride", "lipid"]
+        "keywords": ["hdl", "hdl cholesterol", "high density lipoprotein", "good cholesterol"]
     },
     "2089-1": {
         "name": "HDL Cholesterol",
         "display": "Cholesterol in HDL [Mass/volume] in Serum or Plasma",
         "category": "laboratory",
-        "keywords": ["hdl", "high density lipoprotein", "good cholesterol"]
+        "keywords": ["hdl", "hdl cholesterol", "high density lipoprotein", "good cholesterol"]
     },
     "2089-2": {
         "name": "LDL Cholesterol",
         "display": "Cholesterol in LDL [Mass/volume] in Serum or Plasma",
         "category": "laboratory",
-        "keywords": ["ldl", "low density lipoprotein", "bad cholesterol"]
+        "keywords": ["ldl", "ldl cholesterol", "low density lipoprotein", "bad cholesterol"]
     },
     "33914-3": {
         "name": "GFR",
@@ -200,6 +194,246 @@ LOINC_CODE_MAPPINGS: Dict[str, Dict[str, str]] = {
         "category": "laboratory",
         "keywords": ["alt", "sgpt", "alanine aminotransferase", "liver function"]
     },
+
+    # ── Critical codes commonly present in hospital LOINC data ──────────────
+
+    # HbA1c — glycated hemoglobin (key diabetes marker)
+    "4548-4": {
+        "name": "HbA1c",
+        "display": "Hemoglobin A1c/Hemoglobin.total in Blood",
+        "category": "laboratory",
+        "keywords": ["hba1c", "hemoglobin a1c", "a1c", "glycated hemoglobin",
+                     "glycohemoglobin", "diabetes", "blood sugar control"]
+    },
+    # Total Cholesterol
+    "2093-3": {
+        "name": "Cholesterol Total",
+        "display": "Cholesterol [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["cholesterol", "total cholesterol", "lipid panel", "lipid"]
+    },
+    # LDL Cholesterol
+    "2089-1": {
+        "name": "LDL Cholesterol",
+        "display": "Cholesterol in LDL [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["ldl", "ldl cholesterol", "low density lipoprotein", "bad cholesterol", "lipid"]
+    },
+    # Estimated Average Glucose (from HbA1c)
+    "27353-2": {
+        "name": "Estimated Average Glucose",
+        "display": "Glucose mean value in Blood estimated from Hemoglobin A1c",
+        "category": "laboratory",
+        "keywords": ["estimated average glucose", "eag", "average glucose", "hba1c derived", "diabetes"]
+    },
+    # CRP — C-Reactive Protein
+    "1988-5": {
+        "name": "C-Reactive Protein",
+        "display": "C reactive protein [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["crp", "c reactive protein", "c-reactive protein", "inflammation", "inflammatory marker"]
+    },
+    # TSH — Thyroid Stimulating Hormone
+    "11579-0": {
+        "name": "TSH",
+        "display": "Thyrotropin [Units/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["tsh", "thyroid stimulating hormone", "thyrotropin", "thyroid function"]
+    },
+    # Free T4 — Thyroxine
+    "3024-7": {
+        "name": "Free T4",
+        "display": "Thyroxine (T4) free [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["free t4", "t4 free", "thyroxine", "ft4", "thyroid function"]
+    },
+    # Calcium
+    "17861-6": {
+        "name": "Calcium",
+        "display": "Calcium [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["calcium", "ca", "electrolyte", "serum calcium"]
+    },
+    # Magnesium
+    "19123-9": {
+        "name": "Magnesium",
+        "display": "Magnesium [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["magnesium", "mg", "electrolyte"]
+    },
+    # Phosphate
+    "2777-1": {
+        "name": "Phosphate",
+        "display": "Phosphate [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["phosphate", "phosphorus", "phos", "electrolyte"]
+    },
+    # Sodium (serum) — 2951-2 is the correct LOINC for serum sodium
+    "2951-2": {
+        "name": "Sodium",
+        "display": "Sodium [Moles/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["sodium", "na", "electrolyte", "serum sodium"]
+    },
+    # Alkaline Phosphatase
+    "6768-6": {
+        "name": "Alkaline Phosphatase",
+        "display": "Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["alk phos", "alp", "alkaline phosphatase", "liver function"]
+    },
+    # BNP / proBNP — heart failure marker
+    "33762-6": {
+        "name": "NT-proBNP",
+        "display": "Natriuretic peptide B prohormone [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["bnp", "proBNP", "nt-probnp", "natriuretic peptide",
+                     "heart failure", "cardiac marker"]
+    },
+    # Troponin I
+    "10839-9": {
+        "name": "Troponin I",
+        "display": "Troponin I.cardiac [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["troponin", "troponin i", "cardiac troponin", "myocardial infarction", "acs", "heart attack"]
+    },
+    # Creatine Kinase
+    "2157-6": {
+        "name": "Creatine Kinase",
+        "display": "Creatine kinase [Enzymatic activity/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["creatine kinase", "ck", "cpk", "cardiac enzyme", "muscle enzyme"]
+    },
+    # Lactate
+    "2524-7": {
+        "name": "Lactate",
+        "display": "Lactate [Moles/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["lactate", "lactic acid", "sepsis marker"]
+    },
+    # Vitamin B12 / Cobalamins
+    "2132-9": {
+        "name": "Vitamin B12",
+        "display": "Cobalamins [Mass/volume] in Serum",
+        "category": "laboratory",
+        "keywords": ["vitamin b12", "cobalamin", "b12", "cyanocobalamin"]
+    },
+    # Folate
+    "2284-8": {
+        "name": "Folate",
+        "display": "Folate [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["folate", "folic acid", "vitamin b9", "b9"]
+    },
+    # Urine Protein/Creatinine ratio
+    "2890-2": {
+        "name": "Urine Protein/Creatinine Ratio",
+        "display": "Protein/Creatinine [Mass ratio] in Urine",
+        "category": "laboratory",
+        "keywords": ["protein creatinine ratio", "pcr", "urine protein", "proteinuria", "kidney function"]
+    },
+    # Vitamin D
+    "62290-2": {
+        "name": "25-OH Vitamin D",
+        "display": "25-hydroxyvitamin D3 [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["vitamin d", "25-oh vitamin d", "25-hydroxyvitamin d", "vit d"]
+    },
+    # Ammonia
+    "1839-0": {
+        "name": "Ammonia",
+        "display": "Ammonia [Moles/volume] in Blood",
+        "category": "laboratory",
+        "keywords": ["ammonia", "liver failure", "hepatic encephalopathy"]
+    },
+    # Oxygen Saturation (calculated)
+    "59408-5": {
+        "name": "Oxygen Saturation",
+        "display": "Oxygen saturation in Arterial blood by Pulse oximetry",
+        "category": "vital_signs",
+        "keywords": ["oxygen saturation", "spo2", "o2 sat", "saturation", "pulse ox"]
+    },
+    # BMI
+    "39156-5": {
+        "name": "BMI",
+        "display": "Body mass index (BMI) [Ratio]",
+        "category": "vital_signs",
+        "keywords": ["bmi", "body mass index", "obesity", "weight"]
+    },
+    # Body Weight
+    "29463-7": {
+        "name": "Body Weight",
+        "display": "Body weight",
+        "category": "vital_signs",
+        "keywords": ["weight", "body weight", "kg", "pounds"]
+    },
+    # Body Height
+    "8302-2": {
+        "name": "Body Height",
+        "display": "Body height",
+        "category": "vital_signs",
+        "keywords": ["height", "body height", "stature"]
+    },
+    # Pain Severity
+    "72514-3": {
+        "name": "Pain Score",
+        "display": "Pain severity - 0-10 verbal numeric rating [Score]",
+        "category": "vital_signs",
+        "keywords": ["pain", "pain score", "pain severity", "numeric pain rating"]
+    },
+}
+
+# ── LOINC display-name → human alias mapping ─────────────────────────────────
+# Handles the case where hospital data stores raw LOINC names (e.g.,
+# "HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL:MFR:PT:BLD:QN::") as display values.
+# These substrings are matched against the display field to inject aliases.
+LOINC_DISPLAY_ALIASES: Dict[str, List[str]] = {
+    "HEMOGLOBIN A1C":        ["hba1c", "hemoglobin a1c", "a1c", "glycated hemoglobin", "diabetes marker"],
+    "GLYCATED HEMOGLOBIN":   ["hba1c", "hemoglobin a1c", "a1c", "glycated hemoglobin"],
+    "UREA NITROGEN":         ["bun", "blood urea nitrogen", "urea nitrogen", "kidney function"],
+    "CREATININE":            ["creatinine", "kidney function", "renal function"],
+    "GLUCOSE":               ["glucose", "blood sugar", "blood glucose", "diabetes"],
+    "CHOLESTEROL.IN HDL":    ["hdl", "hdl cholesterol", "high density lipoprotein"],
+    "CHOLESTEROL.IN LDL":    ["ldl", "ldl cholesterol", "low density lipoprotein"],
+    "CHOLESTEROL":           ["cholesterol", "total cholesterol", "lipid"],
+    "TRIGLYCERIDE":          ["triglycerides", "triglyceride", "lipid"],
+    "C REACTIVE PROTEIN":    ["crp", "c-reactive protein", "inflammation"],
+    "THYROTROPIN":           ["tsh", "thyroid stimulating hormone", "thyroid"],
+    "THYROXINE.FREE":        ["free t4", "ft4", "thyroxine", "thyroid"],
+    "TROPONIN":              ["troponin", "cardiac enzyme", "heart attack", "myocardial"],
+    "NATRIURETIC PEPTIDE.B": ["bnp", "nt-probnp", "heart failure", "cardiac"],
+    "LACTATE DEHYDROGENASE": ["ldh", "lactate dehydrogenase", "liver"],
+    "ALANINE AMINOTRANSFER": ["alt", "sgpt", "liver function"],
+    "ASPARTATE AMINOTRANSFER": ["ast", "sgot", "liver function"],
+    "ALKALINE PHOSPHATASE":  ["alp", "alk phos", "liver function"],
+    "BILIRUBIN":             ["bilirubin", "liver function", "jaundice"],
+    "ALBUMIN":               ["albumin", "protein", "liver function", "nutrition"],
+    "SODIUM":                ["sodium", "na", "electrolyte"],
+    "POTASSIUM":             ["potassium", "k", "electrolyte"],
+    "CHLORIDE":              ["chloride", "cl", "electrolyte"],
+    "CALCIUM":               ["calcium", "ca", "electrolyte"],
+    "MAGNESIUM":             ["magnesium", "mg", "electrolyte"],
+    "PHOSPHATE":             ["phosphate", "phosphorus", "electrolyte"],
+    "BICARBONATE":           ["bicarbonate", "hco3", "electrolyte", "acid base"],
+    "COAGULATION":           ["coagulation", "clotting", "pt", "inr"],
+    "HEMOGLOBIN":            ["hemoglobin", "hgb", "hb", "blood count"],
+    "HEMATOCRIT":            ["hematocrit", "hct", "blood count"],
+    "LEUKOCYTES":            ["white blood cell", "wbc", "leukocyte", "blood count"],
+    "ERYTHROCYTES":          ["red blood cell", "rbc", "erythrocyte", "blood count"],
+    "PLATELET":              ["platelet", "plt", "thrombocyte", "blood count"],
+    "OXYGEN":               ["oxygen", "o2", "saturation", "respiratory"],
+    "CREATINE KINASE":       ["ck", "cpk", "creatine kinase", "muscle enzyme"],
+    "LACTATE":               ["lactate", "lactic acid", "sepsis"],
+    "CORTISOL":              ["cortisol", "stress hormone", "adrenal"],
+    "COBALAMINS":            ["vitamin b12", "b12", "cobalamin"],
+    "FOLATE":                ["folate", "folic acid", "vitamin b9"],
+    "PROTEIN/CREATININE":    ["protein creatinine ratio", "pcr", "proteinuria"],
+    "AMMONIA":               ["ammonia", "hepatic"],
+    "BLOOD PRESSURE":        ["blood pressure", "bp", "hypertension"],
+    "HEART RATE":            ["heart rate", "pulse", "hr"],
+    "BODY MASS INDEX":       ["bmi", "obesity", "weight"],
+    "BODY WEIGHT":           ["weight", "bmi"],
+    "BODY HEIGHT":           ["height", "stature"],
 }
 
 def get_observation_name_from_code(code: Optional[str]) -> Optional[str]:
@@ -266,6 +500,24 @@ def get_observation_keywords_from_code(code: Optional[str]) -> List[str]:
     
     return []
 
+def _get_display_aliases(display: str) -> List[str]:
+    """
+    Match a raw LOINC display name (e.g., 'HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL:...')
+    against LOINC_DISPLAY_ALIASES and return any matching human-readable aliases.
+    This is crucial for BM25 searchability of hospital LOINC-coded display names.
+    """
+    if not display:
+        return []
+    display_upper = display.upper()
+    found: List[str] = []
+    for pattern, aliases in LOINC_DISPLAY_ALIASES.items():
+        if pattern in display_upper:
+            for a in aliases:
+                if a not in found:
+                    found.append(a)
+    return found
+
+
 def enhance_observation_content(observation: Dict[str, any]) -> str:
     """
     Enhance observation content with code-based information when display is NULL.
@@ -304,7 +556,11 @@ def enhance_observation_content(observation: Dict[str, any]) -> str:
         keywords = []
         if code:
             keywords = get_observation_keywords_from_code(code)
-        keyword_text = f" {' '.join(keywords)}" if keywords else ""
+        # Also get aliases by matching the raw display name against known LOINC patterns
+        # This handles hospital data where display = "HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL:MFR:PT:BLD:QN::"
+        display_aliases = _get_display_aliases(display)
+        all_keywords = list(dict.fromkeys(keywords + display_aliases))  # deduplicated
+        keyword_text = f" {' '.join(all_keywords)}" if all_keywords else ""
         # Include semantic context: observation type, value, and keywords
         return f"Observation: {display} - Value: {value_str}{keyword_text}. Clinical observation measurement laboratory test."
     

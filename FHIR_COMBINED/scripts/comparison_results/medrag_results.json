@@ -1,0 +1,128 @@
+{
+  "Q1_differential": {
+    "query": "What is the most likely diagnosis and what alternatives should be considered?",
+    "response": "1. Most Likely Diagnosis: Essential Hypertension\n\n2. Key Supporting Evidence:\n   1. Observation Name: Systolic Blood Pressure: 149.0 mmHg (recorded on 2025-07-30)\n   2. Observation Name: Diastolic Blood Pressure: 96.0 mmHg (recorded on 2025-07-30)\n   3. Observation Name: Diastolic Blood Pressure: 88.0 mmHg (recorded on 2025-07-30)\n\n3. Alternative Diagnoses:\n   1. Secondary Hypertension: Although the patient's blood pressure is elevated, there is no identifiable secondary cause mentioned in the records, such as renal artery stenosis or pheochromocytoma. Further investigation is needed to rule out secondary causes.\n   2. Congestive Heart Failure: The patient's respiratory rate is elevated at 18.0 breaths per minute, which could be indicative of heart failure. However, there is no data available on the patient's BNP or NT-proBNP levels, which are crucial for diagnosing heart failure.\n\n4. Missing Data:\n   1. Creatinine levels to assess renal function and potential secondary causes of hypertension\n   2. Potassium levels to rule out hyperaldosteronism as a cause of hypertension\n   3. BNP or NT-proBNP levels to assess for heart failure\n\n5. Clinical Recommendation:\n   Order a creatinine test to assess the patient's renal function and consider further investigation for secondary causes of hypertension.",
+    "retrieved_count": 13,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have creatinine data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have potassium data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have cortisol data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create blood pressure monitoring chart",
+        "type": "visualization",
+        "action": "create_bp_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q2_metabolic": {
+    "query": "What do the patient's glucose and blood sugar values indicate about their metabolic status?",
+    "response": "1. Most Likely Diagnosis: Essential Hypertension\n\n2. Key Supporting Evidence:\n   1. Observation Name: Systolic Blood Pressure: 149.0 mmHg (recorded on 2025-07-30)\n   2. Observation Name: Diastolic Blood Pressure: 96.0 mmHg (recorded on 2025-07-30)\n   3. Observation Name: Diastolic Blood Pressure: 88.0 mmHg (recorded on 2025-07-30)\n\n3. Alternative Diagnoses:\n   1. Secondary Hypertension: Although the patient's blood pressure is elevated, there is no identifiable secondary cause mentioned in the records, making this diagnosis less likely.\n   2. Congestive Heart Failure: The patient's respiratory rate is elevated, but there is no evidence of reduced ejection fraction, bilateral leg edema, or crackles on lung auscultation, which are key distinguishing features of this diagnosis.\n\n4. Missing Data:\n   1. Creatinine: No creatinine data is available for this patient in the medical records.\n   2. Potassium: No potassium data is available for this patient in the medical records.\n\n5. Clinical Recommendation:\n   1. Order a creatinine test to assess the patient's renal function and rule out secondary causes of hypertension.\n   2. Consider ordering a potassium test to evaluate for potential electrolyte imbalances.\n   3. Monitor the patient's blood pressure and adjust treatment as necessary to manage their hypertension.",
+    "retrieved_count": 13,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have creatinine data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have potassium data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have cortisol data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create blood pressure monitoring chart",
+        "type": "visualization",
+        "action": "create_bp_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q3_cardiovascular": {
+    "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+    "response": "1. Most Likely Diagnosis: Essential Hypertension\n\n2. Key Supporting Evidence:\n   1. Observation Name: Systolic Blood Pressure: 149.0 mmHg (recorded on 2025-07-30)\n   2. Observation Name: Diastolic Blood Pressure: 96.0 mmHg (recorded on 2025-07-30)\n   3. Observation Name: Diastolic Blood Pressure: 88.0 mmHg (recorded on 2025-07-30)\n\n3. Alternative Diagnoses:\n   1. Secondary Hypertension: Although the patient's blood pressure is elevated, there is no identifiable secondary cause mentioned in the records, such as renal artery stenosis or pheochromocytoma.\n   2. Congestive Heart Failure: The patient's respiratory rate is elevated at 18.0, but there is no clear evidence of heart failure, such as reduced ejection fraction or bilateral leg edema.\n\n4. Missing Data:\n   1. Creatinine levels to assess renal function and potential secondary causes of hypertension.\n   2. Potassium levels to rule out hyperaldosteronism as a cause of hypertension.\n\n5. Clinical Recommendation:\n   Order a creatinine test to assess the patient's renal function and consider further evaluation for secondary causes of hypertension.",
+    "retrieved_count": 13,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have creatinine data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have potassium data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have cortisol data for this patient? (needed to evaluate Secondary Hypertension)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create blood pressure monitoring chart",
+        "type": "visualization",
+        "action": "create_bp_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  }
+}

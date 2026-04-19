@@ -63,42 +63,146 @@ class IntelligentVisualizationService:
         return observations
     
     def _identify_observation_type(self, display: str, code: str) -> Optional[str]:
-        """Identify observation type from display name and code"""
+        """Identify observation type from display name and code.
+        Covers all clinical categories: vitals, metabolic, renal, hematology,
+        electrolytes, liver, respiratory, anthropometric, and generic labs.
+        """
         if not display and not code:
             return None
-        
-        # Check for specific observation types
+
+        # ── Vitals ──────────────────────────────────────────────────────────
+        if "heart rate" in display or "pulse" in display or "8867-4" in code:
+            return "heart rate"
+        if "blood pressure" in display or "systolic" in display or "diastolic" in display or "8480-6" in code or "8462-4" in code:
+            return "blood pressure"
+        if ("temperature" in display or "body temp" in display) and "8310-5" in code or (
+            ("temperature" in display or "body temp" in display) and "8310" in code
+        ):
+            return "temperature"
+        if "temperature" in display or "body temp" in display:
+            return "temperature"
+        if "respiratory rate" in display or "9279-1" in code:
+            return "respiratory rate"
+        if "oxygen saturation" in display or "spo2" in display or "o2 sat" in display or "2708-6" in code or "59408-5" in code:
+            return "oxygen saturation"
+        if "bmi" in display or "body mass index" in display or "39156-5" in code:
+            return "bmi"
+        if "body weight" in display or ("weight" in display and "birth" not in display) or "29463-7" in code:
+            return "weight"
+        if "body height" in display or ("height" in display and "birth" not in display) or "8302-2" in code:
+            return "height"
+
+        # ── Metabolic / Lipids ───────────────────────────────────────────────
+        if "glucose" in display or "blood sugar" in display or "2339-0" in code or "1558-6" in code:
+            return "glucose"
+        if "a1c" in display or "hba1c" in display or "hemoglobin a1c" in display or "4548-4" in code or "17856-6" in code:
+            return "a1c"
+        if "ldl" in display or "low density lipoprotein" in display or "2089-1" in code or "13457-7" in code:
+            return "ldl"
+        if "hdl" in display or "high density lipoprotein" in display or "2085-9" in code:
+            return "hdl"
+        if "triglyceride" in display or "2571-8" in code:
+            return "triglycerides"
+        if "cholesterol" in display or "2093-3" in code or "total cholesterol" in display:
+            return "cholesterol"
+
+        # ── Renal ────────────────────────────────────────────────────────────
         if "creatinine" in display or "2160-0" in code or "33914-3" in code:
             return "creatinine"
-        elif ("hemoglobin" in display and "a1c" not in display and "hba1c" not in display) or "718-7" in code:
+        if "glomerular filtration" in display or "gfr" in display or "33914-3" in code or "48642-3" in code or "48643-1" in code:
+            return "gfr"
+        if "urea nitrogen" in display or " bun" in display or display.startswith("bun") or "3094-0" in code or "6299-2" in code:
+            return "bun"
+        if "urine" in display or "urinalysis" in display:
+            return "urinalysis"
+
+        # ── Hematology ───────────────────────────────────────────────────────
+        if ("hemoglobin" in display and "a1c" not in display and "hba1c" not in display) or "718-7" in code:
             return "hemoglobin"
-        elif "a1c" in display or "hba1c" in display or "hemoglobin a1c" in display or "4548-4" in code:
-            return "a1c"
-        elif "heart rate" in display or "pulse" in display or "hr" in display or "8867-4" in code:
-            return "heart rate"
-        elif "glucose" in display or "blood sugar" in display or "2339-0" in code:
-            return "glucose"
-        elif "blood pressure" in display or "systolic" in display or "diastolic" in display or "8480-6" in code or "8462-4" in code:
-            return "blood pressure"
-        elif "temperature" in display or "temp" in display or "8310-5" in code:
-            return "temperature"
-        elif "respiratory rate" in display or "9279-1" in code:
-            return "respiratory rate"
-        elif "oxygen saturation" in display or "spo2" in display or "2708-6" in code:
-            return "oxygen saturation"
-        elif "bmi" in display or "body mass index" in display or "39156-5" in code:
-            return "bmi"
-        elif "weight" in display or "29463-7" in code:
-            return "weight"
-        
-        # Generic: extract main keyword from display
+        if "hematocrit" in display or "20570-8" in code or "4544-3" in code:
+            return "hematocrit"
+        if "platelet" in display or "32623-1" in code or "777-3" in code:
+            return "platelets"
+        if "wbc" in display or "white blood cell" in display or "leukocyte" in display or "6690-2" in code:
+            return "wbc"
+        if "rbc" in display or "red blood cell" in display or "erythrocyte" in display or "789-8" in code:
+            return "rbc"
+        if "neutrophil" in display or "751-8" in code:
+            return "neutrophils"
+        if "lymphocyte" in display or "731-0" in code:
+            return "lymphocytes"
+        if "monocyte" in display or "742-7" in code:
+            return "monocytes"
+        if "eosinophil" in display or "711-2" in code:
+            return "eosinophils"
+        if "mcv" in display or "mean corpuscular volume" in display or "787-2" in code:
+            return "mcv"
+        if "mch" in display or "mean corpuscular hemoglobin" in display or "785-6" in code:
+            return "mch"
+        if "rdw" in display or "red cell distribution width" in display or "788-0" in code:
+            return "rdw"
+
+        # ── Electrolytes ─────────────────────────────────────────────────────
+        if "sodium" in display or " na " in display or display == "na" or "2951-2" in code or "2947-0" in code:
+            return "sodium"
+        if "potassium" in display or " k " in display or display == "k" or "2823-3" in code:
+            return "potassium"
+        if "calcium" in display or "17861-6" in code or "49765-1" in code:
+            return "calcium"
+        if "magnesium" in display or "2601-3" in code or "19123-9" in code:
+            return "magnesium"
+        if "chloride" in display or "2075-0" in code:
+            return "chloride"
+        if "bicarbonate" in display or "hco3" in display or "carbon dioxide" in display or "1963-8" in code or "2028-9" in code:
+            return "bicarbonate"
+        if "phosphorus" in display or "phosphate" in display or "2777-1" in code:
+            return "phosphorus"
+        if "anion gap" in display or "33037-3" in code:
+            return "anion gap"
+
+        # ── Liver Function ───────────────────────────────────────────────────
+        if "alanine aminotransferase" in display or " alt" in display or display.startswith("alt") or "sgpt" in display or "1742-6" in code:
+            return "alt"
+        if "aspartate aminotransferase" in display or " ast" in display or display.startswith("ast") or "sgot" in display or "1920-8" in code:
+            return "ast"
+        if "alkaline phosphatase" in display or " alp" in display or display.startswith("alp") or "6768-6" in code:
+            return "alp"
+        if "bilirubin" in display or "1975-2" in code or "1968-7" in code or "14631-6" in code:
+            return "bilirubin"
+        if "albumin" in display or "1751-7" in code:
+            return "albumin"
+        if "prothrombin" in display or " pt " in display or "inr" in display or "6301-6" in code or "34714-6" in code:
+            return "inr"
+        if "total protein" in display or "protein" in display and "urine" not in display or "2885-2" in code:
+            return "total protein"
+
+        # ── Cardiac markers ──────────────────────────────────────────────────
+        if "troponin" in display or "6598-7" in code or "10839-9" in code:
+            return "troponin"
+        if "bnp" in display or "b-type natriuretic" in display or "42637-9" in code:
+            return "bnp"
+
+        # ── Thyroid ──────────────────────────────────────────────────────────
+        if "tsh" in display or "thyroid stimulating" in display or "3016-3" in code:
+            return "tsh"
+        if " t4" in display or "thyroxine" in display or "3026-2" in code:
+            return "t4"
+
+        # ── Generic fallback: extract main keyword from display ───────────────
         if display:
-            # Try to extract meaningful keyword
-            words = display.split()
+            # Strip LOINC suffix noise (e.g. ":MCNC:PT:SER:QN:")
+            import re as _re
+            clean = _re.sub(r':[A-Z/]+$', '', display).strip()
+            clean = _re.sub(r'\s*\([^)]*\)', '', clean).strip()
+            words = clean.split()
+            skip = {"the", "a", "an", "of", "in", "on", "at", "for", "with", "by",
+                    "observation", "value", "recorded", "date", "result", "level",
+                    "serum", "plasma", "blood", "urine", "test", "total", "panel"}
             for word in words:
-                if len(word) > 3 and word not in ["observation", "value", "recorded", "date"]:
-                    return word.lower()
-        
+                w = word.lower().rstrip(".,;:")
+                if len(w) > 3 and w not in skip:
+                    return w
+
         return None
     
     def filter_observations_by_answer_relevance(self, observations: Dict[str, List[Dict[str, Any]]], answer_text: str) -> Dict[str, List[Dict[str, Any]]]:
@@ -120,17 +224,60 @@ class IntelligentVisualizationService:
             
             # Check if any related terms are mentioned
             related_terms = {
-                "creatinine": ["creatinine", "kidney", "renal"],
-                "hemoglobin": ["hemoglobin", "hgb", "hb"],
-                "a1c": ["a1c", "hba1c", "hemoglobin a1c", "glycated"],
-                "heart rate": ["heart rate", "pulse", "hr", "heartbeat"],
-                "glucose": ["glucose", "blood sugar", "sugar", "diabetes", "diabetic"],
-                "blood pressure": ["blood pressure", "bp", "systolic", "diastolic", "hypertension"],
-                "temperature": ["temperature", "temp", "fever"],
-                "respiratory rate": ["respiratory", "breathing", "respiration"],
-                "oxygen saturation": ["oxygen", "saturation", "spo2"],
-                "bmi": ["bmi", "body mass", "weight"],
-                "weight": ["weight", "kg", "pounds"]
+                # Vitals
+                "heart rate":         ["heart rate", "pulse", "hr", "heartbeat", "tachycardia", "bradycardia"],
+                "blood pressure":     ["blood pressure", "bp", "systolic", "diastolic", "hypertension", "hypotension"],
+                "temperature":        ["temperature", "temp", "fever", "febrile", "hypothermia"],
+                "respiratory rate":   ["respiratory", "breathing", "respiration", "tachypnea"],
+                "oxygen saturation":  ["oxygen", "saturation", "spo2", "hypoxia"],
+                "bmi":                ["bmi", "body mass", "obesity", "obese", "overweight"],
+                "weight":             ["weight", "kg", "pounds", "lbs"],
+                "height":             ["height", "cm", "inches", "stature"],
+                # Metabolic
+                "glucose":            ["glucose", "blood sugar", "sugar", "diabetes", "diabetic", "hyperglycemia", "hypoglycemia"],
+                "a1c":                ["a1c", "hba1c", "hemoglobin a1c", "glycated", "glycosylated", "diabetes control"],
+                "cholesterol":        ["cholesterol", "total cholesterol", "lipid", "dyslipidemia"],
+                "ldl":                ["ldl", "low density", "bad cholesterol"],
+                "hdl":                ["hdl", "high density", "good cholesterol"],
+                "triglycerides":      ["triglyceride", "triglycerides", "lipid", "hypertriglyceridemia"],
+                # Renal
+                "creatinine":         ["creatinine", "kidney", "renal", "ckd", "nephropathy"],
+                "gfr":                ["gfr", "glomerular filtration", "kidney function", "renal function", "ckd stage"],
+                "bun":                ["bun", "urea nitrogen", "urea", "azotemia", "uremia"],
+                "urinalysis":         ["urine", "urinalysis", "proteinuria", "hematuria"],
+                # Hematology
+                "hemoglobin":         ["hemoglobin", "hgb", "hb", "anemia", "polycythemia"],
+                "hematocrit":         ["hematocrit", "hct", "packed cell volume"],
+                "platelets":          ["platelet", "thrombocytopenia", "thrombocytosis", "bleeding"],
+                "wbc":                ["wbc", "white blood cell", "leukocyte", "leukocytosis", "leukopenia", "infection"],
+                "rbc":                ["rbc", "red blood cell", "erythrocyte", "anemia"],
+                "neutrophils":        ["neutrophil", "neutrophilia", "neutropenia", "infection"],
+                "lymphocytes":        ["lymphocyte", "lymphocytosis", "lymphopenia"],
+                "mcv":                ["mcv", "mean corpuscular", "macrocytic", "microcytic"],
+                "rdw":                ["rdw", "red cell distribution"],
+                # Electrolytes
+                "sodium":             ["sodium", "na", "hyponatremia", "hypernatremia"],
+                "potassium":          ["potassium", "k", "hypokalemia", "hyperkalemia"],
+                "calcium":            ["calcium", "hypocalcemia", "hypercalcemia"],
+                "magnesium":          ["magnesium", "hypomagnesemia"],
+                "chloride":           ["chloride", "cl"],
+                "bicarbonate":        ["bicarbonate", "hco3", "carbon dioxide", "acidosis", "alkalosis"],
+                "phosphorus":         ["phosphorus", "phosphate", "hyperphosphatemia"],
+                "anion gap":          ["anion gap", "metabolic acidosis"],
+                # Liver
+                "alt":                ["alt", "alanine aminotransferase", "sgpt", "liver", "hepatitis"],
+                "ast":                ["ast", "aspartate aminotransferase", "sgot", "liver"],
+                "alp":                ["alp", "alkaline phosphatase", "cholestasis"],
+                "bilirubin":          ["bilirubin", "jaundice", "icterus", "liver"],
+                "albumin":            ["albumin", "hypoalbuminemia", "liver function", "nutrition"],
+                "inr":                ["inr", "prothrombin", "coagulation", "pt", "anticoagulation"],
+                "total protein":      ["total protein", "protein"],
+                # Cardiac
+                "troponin":           ["troponin", "myocardial infarction", "heart attack", "acs", "mi"],
+                "bnp":                ["bnp", "heart failure", "natriuretic"],
+                # Thyroid
+                "tsh":                ["tsh", "thyroid", "hypothyroidism", "hyperthyroidism"],
+                "t4":                 ["t4", "thyroxine", "thyroid"],
             }
             
             terms = related_terms.get(obs_type, [obs_type])
@@ -174,23 +321,26 @@ class IntelligentVisualizationService:
             # Return immediately - abnormal_values chart doesn't need retrieved_data, it queries DB directly
             return True, ["abnormal_values"]
         
-        # PHASE 2: Only generate charts for observation queries
-        # Check if query is about observations
+        # RAG-driven approach: Scan retrieved_data for numeric observations FIRST
+        # (moved up so we can use the count to decide whether any intent type warrants a chart)
+        numeric_observations = self.scan_retrieved_data_for_numeric_observations(retrieved_data)
+
+        # PHASE 2: Generate charts for observation queries AND for any intent where
+        # numeric observations are present in the retrieved data (labs, electrolytes, etc.)
         is_observation_query = (
-            intent_type == "observations" or 
+            intent_type == "observations" or
             specific_observation != "none" or
             intent_type == "grouped_visualization" or
-            intent_type == "visualization"
+            intent_type == "visualization" or
+            # Trigger for ANY intent when the data actually contains numeric observations
+            bool(numeric_observations)
         )
         
         if not is_observation_query:
             logger.info(f"RAG-driven chart generation: Query is not about observations (intent: {intent_type}, specific_obs: {specific_observation}). Skipping chart generation.")
             return False, None
         
-        # RAG-driven approach: Scan retrieved_data for numeric observations
-        # Step 1: Scan retrieved_data for numeric observations
-        numeric_observations = self.scan_retrieved_data_for_numeric_observations(retrieved_data)
-        
+        # numeric_observations already computed above; just check it's non-empty
         if not numeric_observations:
             # No numeric observations found - don't generate charts (PHASE 2: no empty charts)
             logger.info("RAG-driven chart generation: No numeric observations found in retrieved_data. Skipping chart generation to avoid empty charts.")
@@ -240,12 +390,47 @@ class IntelligentVisualizationService:
         
         # Note: Analysis intent with abnormal keywords is already handled in PRIORITY 0 above
         
-        # Prioritize explicit query requests
+        # Prioritize explicit query requests — extended to all clinical lab categories
         specific_observation_keywords = {
-            "creatinine": "creatinine", "hemoglobin": "hemoglobin", "a1c": "a1c",
-            "heart rate": "heart rate", "glucose": "glucose", "blood pressure": "blood pressure",
+            # Vitals
+            "heart rate": "heart rate", "pulse": "heart rate", "hr ": "heart rate",
+            "blood pressure": "blood pressure", "systolic": "blood pressure", "diastolic": "blood pressure",
             "temperature": "temperature", "respiratory rate": "respiratory rate",
-            "oxygen saturation": "oxygen saturation", "bmi": "bmi", "weight": "weight"
+            "oxygen saturation": "oxygen saturation", "spo2": "oxygen saturation",
+            "bmi": "bmi", "weight": "weight", "height": "height",
+            # Metabolic / Lipids
+            "glucose": "glucose", "blood sugar": "glucose",
+            "a1c": "a1c", "hba1c": "a1c", "hemoglobin a1c": "a1c",
+            "cholesterol": "cholesterol", "total cholesterol": "cholesterol",
+            "ldl": "ldl", "hdl": "hdl",
+            "triglyceride": "triglycerides", "triglycerides": "triglycerides",
+            # Renal
+            "creatinine": "creatinine",
+            "gfr": "gfr", "glomerular filtration": "gfr",
+            "bun": "bun", "urea nitrogen": "bun",
+            # Hematology
+            "hemoglobin": "hemoglobin", "hgb": "hemoglobin",
+            "hematocrit": "hematocrit", "hct": "hematocrit",
+            "platelet": "platelets", "platelets": "platelets",
+            "wbc": "wbc", "white blood cell": "wbc",
+            "rbc": "rbc", "red blood cell": "rbc",
+            "neutrophil": "neutrophils", "lymphocyte": "lymphocytes",
+            "mcv": "mcv", "rdw": "rdw",
+            # Electrolytes
+            "sodium": "sodium", "potassium": "potassium",
+            "calcium": "calcium", "magnesium": "magnesium",
+            "chloride": "chloride", "bicarbonate": "bicarbonate",
+            "phosphorus": "phosphorus", "anion gap": "anion gap",
+            # Liver
+            "alt": "alt", "alanine aminotransferase": "alt",
+            "ast": "ast", "aspartate aminotransferase": "ast",
+            "alkaline phosphatase": "alp", "alp": "alp",
+            "bilirubin": "bilirubin",
+            "albumin": "albumin",
+            "inr": "inr", "prothrombin": "inr",
+            # Cardiac / Thyroid
+            "troponin": "troponin", "bnp": "bnp",
+            "tsh": "tsh", "thyroxine": "t4", "t4": "t4",
         }
         
         for keyword, obs_type in specific_observation_keywords.items():
@@ -256,6 +441,15 @@ class IntelligentVisualizationService:
                     chart_types.append(f"observation_trend:{obs_type}")
         
         # If no specific query match, but visualization keywords are present, or it's a general observation query
+        if not chart_types:
+            # GAP 3+4: Check disease progression panels FIRST (before generic categorized)
+            from app.api.visualization_service import _CONDITION_TO_PANEL
+            for condition_kw, panel_key in _CONDITION_TO_PANEL.items():
+                if condition_kw in query_lower:
+                    logger.info(f"Disease panel match: '{condition_kw}' → combined_progression:{panel_key}")
+                    chart_types.append(f"combined_progression:{panel_key}")
+                    break
+
         if not chart_types:
             visualization_keywords = ["show", "display", "chart", "graph", "plot", "visual", "visualization", "trend", "pattern", "over time", "history", "timeline", "compare", "abnormal", "high", "low", "elevated", "concerning", "out of range"]
             
@@ -277,30 +471,89 @@ class IntelligentVisualizationService:
                     else:
                         chart_types.append(f"observation_trend:{obs_type}")
             
-            # If still no chart types, and it's a condition query that might imply observations (e.g., "is diabetic?")
+            # If still no chart types, and it's a condition query that might imply observations
             intent_type_check = intent.get("type") or intent.get("intent_type", "")
-            if not chart_types and intent_type_check == "conditions":
-                # Check for conditions that imply specific observations (e.g., diabetes -> glucose, A1C)
+            if not chart_types and intent_type_check in ("conditions", "general", "analysis", "observations"):
+                # Comprehensive condition → lab mapping for disease progression tracking
                 condition_to_obs_map = {
-                    "diabetes": ["glucose", "a1c"],
-                    "diabetic": ["glucose", "a1c"],
-                    "hypertension": ["blood pressure"],
-                    "high blood pressure": ["blood pressure"],
-                    "kidney disease": ["creatinine"],
-                    "heart disease": ["heart rate", "blood pressure"],
+                    # Metabolic / Endocrine
+                    "diabetes":         ["glucose", "a1c"],
+                    "diabetic":         ["glucose", "a1c"],
+                    "hyperglycemia":    ["glucose", "a1c"],
+                    "insulin":          ["glucose", "a1c"],
+                    # Cardiovascular
+                    "hypertension":         ["blood pressure"],
+                    "high blood pressure":  ["blood pressure"],
+                    "heart failure":        ["bnp", "troponin", "sodium", "potassium"],
+                    "coronary":             ["troponin", "cholesterol", "ldl"],
+                    "myocardial":           ["troponin", "bnp"],
+                    "atrial fibrillation":  ["heart rate", "inr"],
+                    "cholesterol":          ["cholesterol", "ldl", "hdl", "triglycerides"],
+                    "dyslipidemia":         ["cholesterol", "ldl", "hdl", "triglycerides"],
+                    "lipid":                ["cholesterol", "ldl", "hdl", "triglycerides"],
+                    # Renal
+                    "kidney disease":   ["creatinine", "gfr", "bun"],
+                    "ckd":              ["creatinine", "gfr", "bun"],
+                    "renal":            ["creatinine", "gfr", "bun"],
+                    "nephropathy":      ["creatinine", "gfr", "bun"],
+                    "dialysis":         ["creatinine", "bun", "potassium", "phosphorus"],
+                    # Liver
+                    "liver":            ["alt", "ast", "bilirubin", "albumin", "alp"],
+                    "hepatitis":        ["alt", "ast", "bilirubin"],
+                    "cirrhosis":        ["alt", "ast", "albumin", "bilirubin", "inr"],
+                    "jaundice":         ["bilirubin", "alt", "ast"],
+                    # Hematology / Oncology
+                    "anemia":           ["hemoglobin", "hematocrit", "rbc", "mcv"],
+                    "bleeding":         ["platelets", "inr", "hemoglobin"],
+                    "leukemia":         ["wbc", "platelets", "hemoglobin"],
+                    "lymphoma":         ["wbc", "lymphocytes"],
+                    "infection":        ["wbc", "neutrophils"],
+                    "sepsis":           ["wbc", "neutrophils", "lactate"],
+                    # Electrolytes / Metabolic
+                    "electrolyte":      ["sodium", "potassium", "calcium", "magnesium", "chloride", "bicarbonate"],
+                    "hyponatremia":     ["sodium"],
+                    "hyperkalemia":     ["potassium"],
+                    "hypokalemia":      ["potassium"],
+                    "hypocalcemia":     ["calcium"],
+                    "acidosis":         ["bicarbonate", "anion gap"],
+                    "alkalosis":        ["bicarbonate"],
+                    # Thyroid
+                    "thyroid":          ["tsh", "t4"],
+                    "hypothyroid":      ["tsh", "t4"],
+                    "hyperthyroid":     ["tsh", "t4"],
+                    # Respiratory
+                    "copd":             ["oxygen saturation", "respiratory rate"],
+                    "asthma":           ["oxygen saturation", "respiratory rate"],
+                    "pneumonia":        ["oxygen saturation", "wbc", "respiratory rate"],
+                    # Nutrition / Anthropometric
+                    "obesity":          ["bmi", "weight", "glucose", "cholesterol"],
+                    "malnutrition":     ["albumin", "weight", "total protein"],
+                    "heart disease":    ["heart rate", "blood pressure"],
                 }
                 
-                for condition_keyword, implied_obs_types in condition_to_obs_map.items():
-                    if condition_keyword in query_lower:
-                        for obs_type in implied_obs_types:
-                            if obs_type in numeric_observations:
-                                if obs_type in ["heart rate", "glucose", "blood pressure"]:
-                                    chart_types.append(f"{obs_type.replace(' ', '_')}_trend")
-                                else:
-                                    chart_types.append(f"observation_trend:{obs_type}")
-                        # Break after finding relevant charts for one condition keyword
-                        if chart_types:
-                            break
+                # GAP 3+4: Prefer combined disease progression panels (dual y-axis)
+                # Import panel lookup from visualization_service
+                from app.api.visualization_service import _CONDITION_TO_PANEL
+                for condition_keyword_panel in _CONDITION_TO_PANEL:
+                    if condition_keyword_panel in query_lower:
+                        panel_key = _CONDITION_TO_PANEL[condition_keyword_panel]
+                        logger.info(f"Condition '{condition_keyword_panel}' matched → combined_progression:{panel_key}")
+                        chart_types.append(f"combined_progression:{panel_key}")
+                        break
+
+                # Fallback: individual charts per condition if no panel matched
+                if not chart_types:
+                    for condition_keyword, implied_obs_types in condition_to_obs_map.items():
+                        if condition_keyword in query_lower:
+                            for obs_type in implied_obs_types:
+                                if obs_type in numeric_observations:
+                                    if obs_type in ["heart rate", "glucose", "blood pressure"]:
+                                        chart_types.append(f"{obs_type.replace(' ', '_')}_trend")
+                                    else:
+                                        chart_types.append(f"observation_trend:{obs_type}")
+                            # Break after finding relevant charts for one condition keyword
+                            if chart_types:
+                                break
         
         if chart_types:
             logger.info(f"RAG-driven chart generation: Determined {len(chart_types)} chart types: {chart_types}")

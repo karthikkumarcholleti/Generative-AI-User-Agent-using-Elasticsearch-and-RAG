@@ -9,6 +9,7 @@ import os
 
 from .elasticsearch_client import es_client
 from .rag_service import rag_service
+from . import rag_service as rag_service_module  # for runtime USE_MEDRAG toggle
 from .visualization_service import visualization_service
 from .observation_grouper import observation_grouper
 from .summary import clear_patient_session
@@ -73,6 +74,7 @@ class ChatResponse(BaseModel):
     session_id: Optional[str] = None
     sources: Optional[List[Dict[str, str]]] = []
     chart: Optional[Dict[str, Any]] = None  # Auto-generated chart data (single chart or categorized charts)
+    pipeline_mode: Optional[str] = None    # "MedRAG + KG" or "Standard RAG" — A/B comparison label
 
 class VisualizationRequest(BaseModel):
     patient_id: str
@@ -389,7 +391,8 @@ def process_chat_query(request: ChatQuery):
             retrieved_count=result["retrieved_count"],
             session_id=request.session_id,
             sources=result.get("sources", []),
-            chart=result.get("chart")  # Include auto-generated chart
+            chart=result.get("chart"),  # Include auto-generated chart
+            pipeline_mode=result.get("pipeline_mode")  # "MedRAG + KG" or "Standard RAG"
         )
         
     except HTTPException:
@@ -1250,3 +1253,58 @@ def get_gpu_memory():
         return get_gpu_memory_status()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get status: {str(e)}")
+
+
+# =============================================================================
+# A/B COMPARISON — Runtime RAG pipeline toggle (no restart required)
+# =============================================================================
+
+class CompareModeRequest(BaseModel):
+    use_medrag: bool
+
+class CompareModeResponse(BaseModel):
+    success: bool
+    use_medrag: bool
+    pipeline_mode: str
+    message: str
+
+@router.post("/compare/set-mode", response_model=CompareModeResponse)
+def set_compare_mode(request: CompareModeRequest):
+    """
+    Toggle the RAG pipeline between Standard RAG and MedRAG + KG at runtime.
+
+    Used by the A/B comparison script (scripts/compare_rag_vs_medrag.py) so
+    that the same patient queries can be evaluated under both pipelines in a
+    single backend session — no file edits, no restart required.
+
+    Body: { "use_medrag": true | false }
+
+    Returns the active pipeline label so the caller can log it alongside each
+    query response for the research paper comparison table.
+    """
+    try:
+        rag_service_module.set_use_medrag(request.use_medrag)
+        mode_label = "MedRAG + KG" if request.use_medrag else "Standard RAG"
+        logger.info(f"[compare/set-mode] Pipeline switched to: {mode_label}")
+        return {
+            "success": True,
+            "use_medrag": request.use_medrag,
+            "pipeline_mode": mode_label,
+            "message": f"Pipeline is now running in {mode_label} mode."
+        }
+    except Exception as e:
+        logger.error(f"[compare/set-mode] Failed to switch pipeline mode: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to switch pipeline mode: {str(e)}")
+
+
+@router.get("/compare/current-mode")
+def get_current_mode():
+    """
+    Return the currently active RAG pipeline mode.
+    Useful for the comparison script to verify the mode before running queries.
+    """
+    use_medrag = rag_service_module.USE_MEDRAG
+    return {
+        "use_medrag": use_medrag,
+        "pipeline_mode": "MedRAG + KG" if use_medrag else "Standard RAG"
+    }

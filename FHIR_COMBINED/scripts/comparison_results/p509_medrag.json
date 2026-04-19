@@ -1,0 +1,160 @@
+{
+  "Q1_differential": {
+    "query": "What is the most likely primary diagnosis and what alternatives should be considered?",
+    "response": "1. Most Likely Diagnosis \u2014 Type 2 Diabetes Mellitus\n2. Key Supporting Evidence:\n   1. Observation Name: IGM:MCNC:PT:SER:QN:: 924.0 (recorded on 2025-07-22)\n   2. Observation Name: BILIRUBIN.NON-GLUCURONIDATED:MCNC:PT:SER/PLAS:QN:: 0.5 (recorded on 2025-07-29)\n   These observations suggest the patient may have a condition related to elevated bilirubin levels and possibly anemia, which could be associated with Type 2 Diabetes Mellitus.\n\n3. Alternative Diagnoses:\n   1. Congestive Heart Failure\n   This diagnosis cannot be ruled out due to the lack of data on BNP, NT-proBNP, and heart rate, which are crucial for diagnosing CHF.\n   2. Chronic Kidney Disease (CKD)\n   CKD cannot be ruled out due to the absence of creatinine, eGFR, and proteinuria data, which are essential for diagnosing CKD.\n\n4. Missing Data:\n   1. glucose\n   2. hba1c\n   3. a1c\n   4. creatinine\n   5. gfr\n   6. bun\n   7. bnp\n   8. nt-probnp\n   9. heart rate\n   10. oxygen saturation\n   11. respiratory rate\n   12. fev1\n\n5. Clinical Recommendation:\n   Order a comprehensive metabolic panel (CMP) to check glucose, creatinine, and other electrolytes. Additionally, consider ordering a lipid profile to assess the patient's lipid levels.",
+    "retrieved_count": 23,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have glucose data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have hba1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have a1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q2_metabolic": {
+    "query": "What do the glucose values indicate about this patient's metabolic status?",
+    "response": "1. Most Likely Diagnosis: Type 2 Diabetes Mellitus\n\n2. Key Supporting Evidence:\n   1. Observation Name: Glucose, Value: 223.0 unit (recorded on 2025-07-30)\n   2. Observation Name: Glucose, Value: 198.0 unit (recorded on 2025-07-30)\n   3. Observation Name: Glucose, Value: 295.0 unit (recorded on 2025-07-30)\n   4. Observation Name: Glucose, Value: 105.0 unit (recorded on 2025-07-08)\n\n3. Alternative Diagnoses:\n   1. Type 1 Diabetes Mellitus: Although the patient's glucose levels are elevated, there is no evidence of autoimmune markers, low or absent C-peptide, or ketoacidosis, which are typical features of Type 1 Diabetes Mellitus.\n   2. Steroid-Induced Hyperglycemia: The patient's glucose levels are elevated, but there is no mention of corticosteroid medication, which is a key distinguishing feature of this condition.\n\n4. Missing Data:\n   1. HbA1c: No HbA1c data is available for this patient in the medical records.\n   2. Fasting glucose: No fasting glucose data is available for this patient in the medical records.\n   3. Cortisol: No cortisol data is available for this patient in the medical records.\n\n5. Clinical Recommendation:\n   One actionable next step for the clinician is to order an HbA1c test to confirm the diagnosis of Type 2 Diabetes Mellitus and to assess the patient's glycemic control.\n\n\ud83d\udcca I've automatically generated a observation trend:glucose chart below to help visualize this data. Auto-generated glucose trend chart based on your question about glucose levels.",
+    "retrieved_count": 54,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have hba1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have a1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have blood sugar data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create glucose trend chart",
+        "type": "visualization",
+        "action": "create_glucose_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q3_renal": {
+    "query": "What do the creatinine and BUN values tell us about this patient's kidney function?",
+    "response": "1. Most Likely Diagnosis: Type 2 Diabetes Mellitus\n\n2. Key Supporting Evidence:\n   1. Observation Name: Fasting Glucose\n   Value: 155.0 unit (recorded on 2025-07-28)\n   2. Observation Name: Glucose\n   Value: 182.0 unit (recorded on 2025-07-28)\n   3. Observation Name: Glucose\n   Value: 147.0 unit (recorded on 2025-07-29)\n\n3. Alternative Diagnoses:\n   1. Chronic Kidney Disease (CKD): The patient's creatinine level is elevated (2.3 unit, recorded on 2025-07-29), which could be a sign of CKD. However, the patient's eGFR is not explicitly mentioned in the records, making it difficult to confirm this diagnosis.\n   2. Acute Kidney Injury (AKI): The patient's creatinine level is also elevated (2.3 unit, recorded on 2025-07-29), which could be a sign of AKI. However, the duration of this elevation is not clear, and the patient's urine output is not mentioned in the records.\n\n4. Missing Data:\n   1. HbA1c: No HbA1c data is available for this patient in the medical records.\n   2. eGFR: No eGFR data is available for this patient in the medical records.\n   3. Urine Output: No urine output data is available for this patient in the medical records.\n\n5. Clinical Recommendation:\n   Order an HbA1c test to confirm the diagnosis of Type 2 Diabetes Mellitus and assess the patient's glycemic control. Additionally, consider ordering an eGFR test to evaluate the patient's kidney function and rule out CKD or AKI.\n\n\ud83d\udcca I've automatically generated a observation trend:creatinine chart below to help visualize this data. Auto-generated Creatinine trend chart based on your question about creatinine.",
+    "retrieved_count": 47,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have hba1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have a1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have blood sugar data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create glucose trend chart",
+        "type": "visualization",
+        "action": "create_glucose_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q4_cardiovascular": {
+    "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+    "response": "1. Most Likely Diagnosis \u2014 Essential Hypertension\nThe patient's blood pressure data is not explicitly available in the records, but the presence of a \"cholesterol: 1.0 unit\" measurement on 2025-07-20, which is likely a ratio of cholesterol to triglycerides, suggests an abnormal lipid profile. This, combined with the patient's age and the presence of other cardiovascular risk factors, makes Essential Hypertension a likely diagnosis.\n\n2. Key Supporting Evidence\n1. Observation Name: Cholesterol: 73.0 (recorded on 2025-07-14)\n2. Observation Name: Cholesterol/TRIGLYCERIDE: 1.0 (recorded on 2025-07-20)\n\n3. Alternative Diagnoses\n1. Type 2 Diabetes Mellitus\nThe patient's age and the presence of other cardiovascular risk factors make Type 2 Diabetes Mellitus a possible alternative diagnosis. However, the lack of glucose and HbA1c data in the records makes it difficult to confirm this diagnosis.\n\n2. Hypercholesterolemia\nThe patient's cholesterol measurement is elevated, suggesting Hypercholesterolemia. However, the lack of LDL and HDL data in the records makes it difficult to confirm this diagnosis.\n\n4. Missing Data\n1. Blood pressure data\n2. Glucose data\n3. HbA1c data\n4. LDL and HDL cholesterol data\n\n5. Clinical Recommendation\nOrder a blood pressure measurement and a fasting glucose test to help confirm or exclude the diagnosis of Essential Hypertension and Type 2 Diabetes Mellitus.",
+    "retrieved_count": 30,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have glucose data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have hba1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have a1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  }
+}

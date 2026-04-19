@@ -149,7 +149,56 @@ OBSERVATION_CATEGORIES: Dict[str, Dict[str, any]] = {
         "color": "bg-purple-50 border-purple-200 text-purple-800",
         "priority": "low"
     },
-    
+
+    # Cardiac Markers
+    "cardiac_markers": {
+        "keywords": [
+            "troponin", "troponin i", "troponin t",
+            "bnp", "b-type natriuretic", "nt-probnp", "proBNP",
+            "ck", "creatine kinase", "ck-mb",
+            "myoglobin", "d-dimer", "ldh", "lactate dehydrogenase"
+        ],
+        "display_name": "Cardiac Markers",
+        "color": "bg-red-50 border-red-300 text-red-900",
+        "priority": "high"
+    },
+
+    # Thyroid
+    "thyroid": {
+        "keywords": [
+            "tsh", "thyroid stimulating",
+            "t4", "thyroxine", "free t4",
+            "t3", "triiodothyronine", "free t3",
+            "thyroid"
+        ],
+        "display_name": "Thyroid",
+        "color": "bg-teal-50 border-teal-200 text-teal-800",
+        "priority": "medium"
+    },
+
+    # Coagulation
+    "coagulation": {
+        "keywords": [
+            "prothrombin", "pt", "inr", "international normalized ratio",
+            "aptt", "ptt", "partial thromboplastin",
+            "fibrinogen", "d-dimer", "anti-xa"
+        ],
+        "display_name": "Coagulation",
+        "color": "bg-rose-50 border-rose-200 text-rose-800",
+        "priority": "high"
+    },
+
+    # Diabetes / HbA1c
+    "diabetes_markers": {
+        "keywords": [
+            "hemoglobin a1c", "hba1c", "a1c", "glycated hemoglobin",
+            "c-peptide", "insulin", "fasting glucose"
+        ],
+        "display_name": "Diabetes Markers",
+        "color": "bg-amber-50 border-amber-200 text-amber-800",
+        "priority": "high"
+    },
+
     # Other (default category)
     "other": {
         "keywords": [],
@@ -163,11 +212,15 @@ OBSERVATION_CATEGORIES: Dict[str, Dict[str, any]] = {
 CATEGORY_PRECEDENCE = [
     "vital_signs",
     "cardiovascular",
+    "cardiac_markers",
     "metabolic",
+    "diabetes_markers",
     "renal",
     "hematology",
+    "coagulation",
     "electrolytes",
     "liver_function",
+    "thyroid",
     "respiratory",
     "anthropometric",
     "other"

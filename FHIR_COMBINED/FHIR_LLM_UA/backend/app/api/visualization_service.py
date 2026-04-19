@@ -8,12 +8,578 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# ── Comprehensive color palette for ALL clinical observation types ──────────────
+# Used by every chart generator so colors are consistent across the UI.
+OBSERVATION_COLOR_MAP: Dict[str, str] = {
+    # Vitals
+    "heart rate":        "#e74c3c",
+    "blood pressure":    "#c0392b",
+    "temperature":       "#e91e63",
+    "respiratory rate":  "#00bcd4",
+    "oxygen saturation": "#4caf50",
+    "bmi":               "#ff9800",
+    "weight":            "#795548",
+    "height":            "#607d8b",
+    # Metabolic / Lipids
+    "glucose":           "#f39c12",
+    "a1c":               "#e67e22",
+    "cholesterol":       "#d35400",
+    "ldl":               "#c0392b",
+    "hdl":               "#27ae60",
+    "triglycerides":     "#8e44ad",
+    # Renal
+    "creatinine":        "#e74c3c",
+    "gfr":               "#2ecc71",
+    "glomerular filtration": "#2ecc71",
+    "bun":               "#e67e22",
+    "urinalysis":        "#1abc9c",
+    # Hematology
+    "hemoglobin":        "#3498db",
+    "hematocrit":        "#2980b9",
+    "platelets":         "#9b59b6",
+    "wbc":               "#8e44ad",
+    "rbc":               "#d35400",
+    "neutrophils":       "#16a085",
+    "lymphocytes":       "#2ecc71",
+    "monocytes":         "#1abc9c",
+    "eosinophils":       "#f39c12",
+    "mcv":               "#34495e",
+    "mch":               "#7f8c8d",
+    "rdw":               "#95a5a6",
+    # Electrolytes
+    "sodium":            "#3498db",
+    "potassium":         "#e74c3c",
+    "calcium":           "#f39c12",
+    "magnesium":         "#2ecc71",
+    "chloride":          "#9b59b6",
+    "bicarbonate":       "#1abc9c",
+    "phosphorus":        "#e67e22",
+    "anion gap":         "#c0392b",
+    # Liver
+    "alt":               "#e67e22",
+    "ast":               "#d35400",
+    "alp":               "#f39c12",
+    "bilirubin":         "#f1c40f",
+    "albumin":           "#8e44ad",
+    "inr":               "#c0392b",
+    "total protein":     "#16a085",
+    # Cardiac / Thyroid
+    "troponin":          "#e74c3c",
+    "bnp":               "#c0392b",
+    "tsh":               "#2980b9",
+    "t4":                "#3498db",
+}
+
+def _get_obs_color(observation_name: str) -> str:
+    """Return chart color for an observation type, falling back to a neutral blue."""
+    return OBSERVATION_COLOR_MAP.get((observation_name or "").lower(), "#3498db")
+
+
+# ── Unit conversion rules ───────────────────────────────────────────────────────
+# Key   = observation type keyword (lowercase, matched against display name)
+# Value = dict of { source_unit_lower: (multiply_factor, canonical_unit) }
+#
+# RULE: all values for a given observation type are converted to the canonical unit
+# before plotting so mixed-unit records don't produce false visual spikes.
+#
+# Example: glucose=5.0 mmol/L  →  5.0 × 18.018 = 90.1 mg/dL  (prevents 5 vs 90 cliff)
+UNIT_CONVERSIONS: Dict[str, Dict[str, tuple]] = {
+    "glucose": {
+        "mmol/l":  (18.018, "mg/dL"),
+        "mmol/L":  (18.018, "mg/dL"),
+    },
+    "creatinine": {
+        "µmol/l":  (0.01131, "mg/dL"),
+        "umol/l":  (0.01131, "mg/dL"),
+        "µmol/L":  (0.01131, "mg/dL"),
+        "umol/L":  (0.01131, "mg/dL"),
+        "μmol/l":  (0.01131, "mg/dL"),
+        "μmol/L":  (0.01131, "mg/dL"),
+    },
+    "urea": {
+        "mmol/l":  (2.801,   "mg/dL"),
+        "mmol/L":  (2.801,   "mg/dL"),
+    },
+    "bun": {
+        "mmol/l":  (2.801,   "mg/dL"),
+        "mmol/L":  (2.801,   "mg/dL"),
+    },
+    "cholesterol": {
+        "mmol/l":  (38.67,  "mg/dL"),
+        "mmol/L":  (38.67,  "mg/dL"),
+    },
+    "ldl": {
+        "mmol/l":  (38.67,  "mg/dL"),
+        "mmol/L":  (38.67,  "mg/dL"),
+    },
+    "hdl": {
+        "mmol/l":  (38.67,  "mg/dL"),
+        "mmol/L":  (38.67,  "mg/dL"),
+    },
+    "triglycerides": {
+        "mmol/l":  (88.57,  "mg/dL"),
+        "mmol/L":  (88.57,  "mg/dL"),
+    },
+    "hemoglobin": {
+        "g/l":     (0.1,    "g/dL"),
+        "g/L":     (0.1,    "g/dL"),
+        "mmol/l":  (1.6113, "g/dL"),
+        "mmol/L":  (1.6113, "g/dL"),
+    },
+    "calcium": {
+        "mmol/l":  (4.008,  "mg/dL"),
+        "mmol/L":  (4.008,  "mg/dL"),
+    },
+    "sodium": {
+        "mmol/l":  (1.0,    "mEq/L"),   # mmol/L == mEq/L for Na
+        "mmol/L":  (1.0,    "mEq/L"),
+    },
+    "potassium": {
+        "mmol/l":  (1.0,    "mEq/L"),
+        "mmol/L":  (1.0,    "mEq/L"),
+    },
+    "bicarbonate": {
+        "mmol/l":  (1.0,    "mEq/L"),
+        "mmol/L":  (1.0,    "mEq/L"),
+    },
+}
+
+
+def normalize_units(data_points: List[Dict[str, Any]], observation_type: str) -> List[Dict[str, Any]]:
+    """Convert all data points to a single canonical unit for the given observation type.
+
+    If ALL points already share the same unit no conversion is done (fast path).
+    If mixed units are detected, each point whose unit matches a known conversion rule
+    is multiplied by the appropriate factor and its unit field is updated.  Points with
+    unrecognised units are left as-is so we never silently discard data.
+
+    The function logs a warning whenever a conversion is applied so it is visible in
+    the backend log.
+
+    Args:
+        data_points:      list of {"date", "value", "unit", "display"} dicts
+        observation_type: human-readable type name, e.g. "creatinine"
+
+    Returns:
+        The same list (mutated in-place) with values in canonical units.
+    """
+    if not data_points:
+        return data_points
+
+    obs_lower = (observation_type or "").lower()
+
+    # Find conversion rules for this observation type — try each key as a substring
+    conv_rules: Dict[str, tuple] = {}
+    for key, rules in UNIT_CONVERSIONS.items():
+        if key in obs_lower or obs_lower in key:
+            conv_rules = rules
+            break
+
+    if not conv_rules:
+        return data_points  # No rules defined for this type — nothing to do
+
+    # Fast path: all units identical → skip
+    units_present = {(dp.get("unit") or "").strip() for dp in data_points}
+    if len(units_present) <= 1:
+        return data_points
+
+    # Determine canonical unit (the target all conversions aim for)
+    # It's the "to" unit in any rule (they all share the same target by design)
+    canonical_unit = next(iter(conv_rules.values()))[1]
+
+    converted_count = 0
+    for dp in data_points:
+        raw_unit = (dp.get("unit") or "").strip()
+        raw_unit_lower = raw_unit.lower()
+
+        # Look up by lowercase but also try the exact string
+        rule = conv_rules.get(raw_unit_lower) or conv_rules.get(raw_unit)
+        if rule and raw_unit_lower != canonical_unit.lower():
+            factor, target_unit = rule
+            original_value = dp["value"]
+            dp["value"] = round(dp["value"] * factor, 4)
+            dp["unit"] = target_unit
+            dp["unit_converted"] = True          # flag so callers can annotate chart
+            converted_count += 1
+            logger.debug(
+                f"Unit conversion [{observation_type}]: "
+                f"{original_value} {raw_unit} → {dp['value']} {target_unit}"
+            )
+
+    if converted_count:
+        logger.warning(
+            f"normalize_units: converted {converted_count}/{len(data_points)} "
+            f"data points for '{observation_type}' to canonical unit '{canonical_unit}'"
+        )
+
+    return data_points
+
+
+# ── Clinical reference ranges (US-standard units) ───────────────────────────────
+# Used to add normal-range bands on charts so clinicians can instantly see
+# whether values are normal, borderline, or critical.
+#
+# Sources: standard adult reference ranges from clinical laboratory medicine.
+# Keys are lowercase observation type substrings that match against display names.
+# All values assume US-conventional units (the Synthea default).
+REFERENCE_RANGES: Dict[str, Dict[str, Any]] = {
+    # ── Vitals ──
+    "heart rate":          {"low": 60, "high": 100, "unit": "/min",    "critical_low": 40, "critical_high": 150},
+    "respiratory rate":    {"low": 12, "high": 20,  "unit": "/min",    "critical_low": 8,  "critical_high": 30},
+    "temperature":         {"low": 97.8, "high": 99.1, "unit": "°F",  "critical_low": 95.0, "critical_high": 104.0},
+    "oxygen saturation":   {"low": 95, "high": 100, "unit": "%",       "critical_low": 90},
+    "systolic":            {"low": 90, "high": 120, "unit": "mmHg",    "critical_low": 70, "critical_high": 180},
+    "diastolic":           {"low": 60, "high": 80,  "unit": "mmHg",    "critical_low": 40, "critical_high": 120},
+    "bmi":                 {"low": 18.5, "high": 24.9, "unit": "kg/m²"},
+    # ── Metabolic / Lipids ──
+    "glucose":             {"low": 70, "high": 100, "unit": "mg/dL",   "critical_low": 40, "critical_high": 400},
+    "a1c":                 {"low": 4.0, "high": 5.6, "unit": "%",      "critical_high": 9.0},
+    "hemoglobin a1c":      {"low": 4.0, "high": 5.6, "unit": "%",      "critical_high": 9.0},
+    "cholesterol":         {"low": 0,   "high": 200, "unit": "mg/dL",  "critical_high": 300},
+    "ldl":                 {"low": 0,   "high": 100, "unit": "mg/dL",  "critical_high": 190},
+    "hdl":                 {"low": 40,  "high": 60,  "unit": "mg/dL"},
+    "triglycerides":       {"low": 0,   "high": 150, "unit": "mg/dL",  "critical_high": 500},
+    # ── Renal ──
+    "creatinine":          {"low": 0.6, "high": 1.2, "unit": "mg/dL",  "critical_high": 4.0},
+    "glomerular filtration": {"low": 60, "high": 120, "unit": "mL/min","critical_low": 15},
+    "urea nitrogen":       {"low": 7,   "high": 25,  "unit": "mg/dL",  "critical_high": 100},
+    # ── Hematology ──
+    "hemoglobin":          {"low": 12.0, "high": 17.5, "unit": "g/dL", "critical_low": 7.0},
+    "hematocrit":          {"low": 36, "high": 51,  "unit": "%",       "critical_low": 20},
+    "platelets":           {"low": 150, "high": 400, "unit": "10*3/uL","critical_low": 50, "critical_high": 1000},
+    "leukocytes":          {"low": 4.5, "high": 11.0,"unit": "10*3/uL","critical_low": 2.0, "critical_high": 30.0},
+    "erythrocytes":        {"low": 4.0, "high": 5.9, "unit": "10*6/uL"},
+    "neutrophils/100":     {"low": 40,  "high": 70,  "unit": "%"},
+    "lymphocytes/100":     {"low": 20,  "high": 40,  "unit": "%"},
+    "monocytes/100":       {"low": 2,   "high": 8,   "unit": "%"},
+    "eosinophils/100":     {"low": 1,   "high": 4,   "unit": "%"},
+    "basophils/100":       {"low": 0,   "high": 1,   "unit": "%"},
+    "eosinophils:ncnc":    {"low": 0.1, "high": 0.5, "unit": "10*3/uL", "critical_high": 1.5},
+    "lymphocytes:ncnc":    {"low": 1.0, "high": 4.8, "unit": "10*3/uL", "critical_low": 0.5},
+    "mean corpuscular volume":  {"low": 80, "high": 100, "unit": "fL"},
+    "erythrocyte mean corpuscular hemoglobin:entmass": {"low": 27, "high": 33, "unit": "pg"},
+    "erythrocyte mean corpuscular hemoglobin concentration": {"low": 31.5, "high": 35.7, "unit": "g/dL"},
+    "erythrocyte distribution width": {"low": 11.5, "high": 14.5, "unit": "%"},
+    "erythrocytes.nucleated/100": {"low": 0, "high": 0, "unit": "/100 WBC", "critical_high": 1},
+    "metamyelocytes/100":  {"low": 0, "high": 0, "unit": "%", "critical_high": 1},
+    "platelet mean volume": {"low": 7.5, "high": 11.5, "unit": "fL"},
+    # ── Electrolytes ──
+    "sodium":              {"low": 136, "high": 145, "unit": "mEq/L",  "critical_low": 120, "critical_high": 160},
+    "potassium":           {"low": 3.5, "high": 5.0, "unit": "mEq/L",  "critical_low": 2.5, "critical_high": 6.5},
+    "calcium":             {"low": 8.5, "high": 10.5,"unit": "mg/dL",  "critical_low": 6.0, "critical_high": 13.0},
+    "magnesium":           {"low": 1.7, "high": 2.2, "unit": "mg/dL"},
+    "chloride":            {"low": 98,  "high": 106, "unit": "mEq/L"},
+    "carbon dioxide":      {"low": 23,  "high": 29,  "unit": "mEq/L"},
+    "phosphate":           {"low": 2.5, "high": 4.5, "unit": "mg/dL"},
+    "anion gap":           {"low": 8,   "high": 12,  "unit": "mEq/L"},
+    # ── Liver ──
+    "alanine aminotransferase":  {"low": 7, "high": 56, "unit": "U/L", "critical_high": 1000},
+    "aspartate aminotransferase":{"low": 10,"high": 40, "unit": "U/L", "critical_high": 1000},
+    "alkaline phosphatase":      {"low": 44,"high": 147,"unit": "U/L"},
+    "bilirubin":           {"low": 0.1, "high": 1.2, "unit": "mg/dL",  "critical_high": 12.0},
+    "bilirubin.non-glucuronidated": {"low": 0.2, "high": 0.8, "unit": "mg/dL", "critical_high": 5.0},
+    "albumin":             {"low": 3.5, "high": 5.5, "unit": "g/dL",   "critical_low": 2.0},
+    "protein":             {"low": 6.0, "high": 8.3, "unit": "g/dL"},
+    # ── Coagulation ──
+    "coagulation tissue factor induced.inr": {"low": 0.8, "high": 1.2, "unit": "INR"},
+    "coagulation tissue factor induced:time": {"low": 11.0, "high": 13.5, "unit": "seconds", "critical_high": 30.0},
+    "coagulation surface induced":  {"low": 25, "high": 35, "unit": "seconds", "critical_high": 120},
+    "fibrinogen":          {"low": 200, "high": 400, "unit": "mg/dL"},
+    "fibrin d-dimer":      {"low": 0,   "high": 0.5, "unit": "mg/L FEU", "critical_high": 4.0},
+    # ── Cardiac ──
+    "natriuretic peptide":  {"low": 0, "high": 100, "unit": "pg/mL", "critical_high": 400},
+    "troponin":             {"low": 0, "high": 0.04,"unit": "ng/mL", "critical_high": 0.4},
+    # ── Other ──
+    "c reactive protein":  {"low": 0, "high": 3.0, "unit": "mg/L",    "critical_high": 10.0},
+    "lactate":             {"low": 0.5,"high": 2.2, "unit": "mmol/L",  "critical_high": 4.0},
+    # ── Urine ──
+    "leukocytes:naric:pt:urine":   {"low": 0, "high": 5, "unit": "/HPF", "critical_high": 50},
+    "ph:scnc:pt:urine":            {"low": 4.5, "high": 8.0, "unit": "pH"},
+    "specific gravity:rden:pt:urine": {"low": 1.005, "high": 1.030, "unit": ""},
+    # ── Pancreatic ──
+    "triacylglycerol lipase":      {"low": 0, "high": 160, "unit": "U/L", "critical_high": 600},
+    # ── Therapeutic Drug Monitoring ──
+    "vancomycin":          {"low": 20, "high": 40, "unit": "µg/mL", "critical_high": 80},
+    # ── Ratios ──
+    "urea nitrogen/creatinine":    {"low": 10, "high": 20, "unit": "ratio", "critical_high": 40},
+}
+
+
+def get_reference_lines(observation_type: str) -> List[Dict[str, Any]]:
+    """Build a list of reference-line descriptors for the frontend (Recharts ReferenceLine).
+
+    Returns a list of dicts like:
+        {"y": 1.2, "label": "High Normal (1.2)", "color": "#22c55e", "dash": "5 5"}
+        {"y": 4.0, "label": "Critical (4.0)",    "color": "#ef4444", "dash": "3 3"}
+
+    The frontend maps these to <ReferenceLine> components.
+    """
+    obs_lower = (observation_type or "").lower()
+
+    # Find matching reference range — try substring match against display name
+    ref: Optional[Dict[str, Any]] = None
+    for key, ranges in REFERENCE_RANGES.items():
+        if key in obs_lower:
+            ref = ranges
+            break
+
+    if not ref:
+        return []
+
+    lines: List[Dict[str, Any]] = []
+    low = ref.get("low")
+    high = ref.get("high")
+    crit_low = ref.get("critical_low")
+    crit_high = ref.get("critical_high")
+    unit = ref.get("unit", "")
+
+    # Normal range boundaries (green dashed lines)
+    if low is not None and low > 0:
+        lines.append({
+            "y": low,
+            "label": f"Low Normal ({low} {unit})",
+            "color": "#22c55e",
+            "dash": "5 5",
+        })
+    if high is not None:
+        lines.append({
+            "y": high,
+            "label": f"High Normal ({high} {unit})",
+            "color": "#22c55e",
+            "dash": "5 5",
+        })
+
+    # Critical boundaries (red dashed lines)
+    if crit_low is not None:
+        lines.append({
+            "y": crit_low,
+            "label": f"Critical Low ({crit_low})",
+            "color": "#ef4444",
+            "dash": "3 3",
+        })
+    if crit_high is not None:
+        lines.append({
+            "y": crit_high,
+            "label": f"Critical High ({crit_high})",
+            "color": "#ef4444",
+            "dash": "3 3",
+        })
+
+    return lines
+
+
+# ---------------------------------------------------------------------------
+# Disease Progression Panels — maps condition keywords to grouped lab panels
+# with optional dual-y-axis configuration when value ranges differ greatly.
+# Each panel: { "title", "labs": [ {"name", "keywords", "yAxis", "color"} ] }
+# yAxis: "left" or "right"  (right axis used for high-range values)
+# ---------------------------------------------------------------------------
+DISEASE_PROGRESSION_PANELS: Dict[str, Dict[str, Any]] = {
+    "ckd": {
+        "title": "Kidney Disease Progression",
+        "labs": [
+            {"name": "Creatinine",      "keywords": ["creatinine"],                "yAxis": "left",  "color": "#e74c3c"},
+            {"name": "BUN",             "keywords": ["urea nitrogen", "bun"],      "yAxis": "right", "color": "#3498db"},
+            {"name": "Potassium",       "keywords": ["potassium"],                 "yAxis": "left",  "color": "#f39c12"},
+            {"name": "Calcium",         "keywords": ["calcium"],                   "yAxis": "right", "color": "#9b59b6"},
+        ],
+    },
+    "diabetes": {
+        "title": "Diabetes Management",
+        "labs": [
+            {"name": "Glucose",         "keywords": ["glucose"],                   "yAxis": "left",  "color": "#e74c3c"},
+            {"name": "Potassium",       "keywords": ["potassium"],                 "yAxis": "right", "color": "#3498db"},
+            {"name": "Creatinine",      "keywords": ["creatinine"],                "yAxis": "right", "color": "#f39c12"},
+        ],
+    },
+    "liver": {
+        "title": "Liver Function Panel",
+        "labs": [
+            {"name": "ALT",             "keywords": ["alanine aminotransferase"],  "yAxis": "left",  "color": "#e74c3c"},
+            {"name": "AST",             "keywords": ["aspartate aminotransferase"],"yAxis": "left",  "color": "#e67e22"},
+            {"name": "Bilirubin",       "keywords": ["bilirubin"],                 "yAxis": "right", "color": "#f39c12"},
+            {"name": "Albumin",         "keywords": ["albumin"],                   "yAxis": "right", "color": "#3498db"},
+            {"name": "ALP",             "keywords": ["alkaline phosphatase"],      "yAxis": "left",  "color": "#9b59b6"},
+        ],
+    },
+    "heart_failure": {
+        "title": "Heart Failure Monitoring",
+        "labs": [
+            {"name": "NT-proBNP",       "keywords": ["natriuretic peptide", "bnp"],"yAxis": "left",  "color": "#e74c3c"},
+            {"name": "Sodium",          "keywords": ["sodium"],                    "yAxis": "right", "color": "#3498db"},
+            {"name": "Potassium",       "keywords": ["potassium"],                 "yAxis": "right", "color": "#f39c12"},
+            {"name": "Creatinine",      "keywords": ["creatinine"],                "yAxis": "right", "color": "#9b59b6"},
+        ],
+    },
+    "anemia": {
+        "title": "Anemia Panel",
+        "labs": [
+            {"name": "Hemoglobin",      "keywords": ["hemoglobin"],                "yAxis": "left",  "color": "#e74c3c"},
+            {"name": "Hematocrit",      "keywords": ["hematocrit"],                "yAxis": "left",  "color": "#e67e22"},
+            {"name": "RBC",             "keywords": ["erythrocytes:ncnc"],         "yAxis": "right", "color": "#3498db"},
+            {"name": "MCV",             "keywords": ["mean corpuscular volume"],   "yAxis": "right", "color": "#9b59b6"},
+        ],
+    },
+    "lipid": {
+        "title": "Lipid Panel",
+        "labs": [
+            {"name": "Cholesterol",     "keywords": ["cholesterol"],               "yAxis": "left",  "color": "#e74c3c"},
+            {"name": "Triglycerides",   "keywords": ["triglyceride"],              "yAxis": "left",  "color": "#f39c12"},
+            {"name": "HDL",             "keywords": ["hdl"],                       "yAxis": "right", "color": "#2ecc71"},
+            {"name": "LDL",             "keywords": ["ldl"],                       "yAxis": "right", "color": "#3498db"},
+        ],
+    },
+    "electrolytes": {
+        "title": "Electrolyte Panel",
+        "labs": [
+            {"name": "Sodium",          "keywords": ["sodium"],                    "yAxis": "left",  "color": "#3498db"},
+            {"name": "Potassium",       "keywords": ["potassium"],                 "yAxis": "right", "color": "#f39c12"},
+            {"name": "Chloride",        "keywords": ["chloride"],                  "yAxis": "left",  "color": "#1abc9c"},
+            {"name": "CO₂",            "keywords": ["carbon dioxide"],            "yAxis": "right", "color": "#9b59b6"},
+            {"name": "Calcium",         "keywords": ["calcium"],                   "yAxis": "right", "color": "#e74c3c"},
+        ],
+    },
+    "coagulation": {
+        "title": "Coagulation Panel",
+        "labs": [
+            {"name": "PT",              "keywords": ["tissue factor induced:time"],"yAxis": "left",  "color": "#e74c3c"},
+            {"name": "aPTT",            "keywords": ["surface induced"],           "yAxis": "left",  "color": "#3498db"},
+            {"name": "INR",             "keywords": ["inr"],                       "yAxis": "right", "color": "#f39c12"},
+            {"name": "Fibrinogen",      "keywords": ["fibrinogen"],                "yAxis": "right", "color": "#9b59b6"},
+        ],
+    },
+    "sepsis": {
+        "title": "Sepsis Monitoring",
+        "labs": [
+            {"name": "WBC",             "keywords": ["leukocytes:ncnc"],           "yAxis": "left",  "color": "#e74c3c"},
+            {"name": "Lactate",         "keywords": ["lactate"],                   "yAxis": "right", "color": "#3498db"},
+            {"name": "CRP",             "keywords": ["c reactive protein"],        "yAxis": "right", "color": "#f39c12"},
+            {"name": "Platelets",       "keywords": ["platelets"],                 "yAxis": "left",  "color": "#9b59b6"},
+        ],
+    },
+}
+
+# Reverse lookup: condition keyword → panel key
+_CONDITION_TO_PANEL: Dict[str, str] = {}
+for _panel_key, _panel in DISEASE_PROGRESSION_PANELS.items():
+    _CONDITION_TO_PANEL[_panel_key] = _panel_key
+# Add aliases
+_CONDITION_TO_PANEL.update({
+    "kidney disease": "ckd", "kidney": "ckd", "renal": "ckd", "nephropathy": "ckd",
+    "diabetic": "diabetes", "hyperglycemia": "diabetes", "blood sugar": "diabetes",
+    "hepatitis": "liver", "cirrhosis": "liver", "jaundice": "liver",
+    "heart failure": "heart_failure", "chf": "heart_failure", "cardiac": "heart_failure",
+    "anemic": "anemia", "iron deficiency": "anemia",
+    "cholesterol": "lipid", "dyslipidemia": "lipid",
+    "electrolyte": "electrolytes", "hyponatremia": "electrolytes", "hyperkalemia": "electrolytes",
+    "coag": "coagulation", "bleeding": "coagulation", "clotting": "coagulation",
+    "septic": "sepsis", "infection": "sepsis",
+})
+
+
 class VisualizationService:
     """Service for generating chart data and visualizations"""
     
     def __init__(self):
         self.es_client = es_client
-    
+        self._encounter_cache: Dict[str, List[Dict[str, Any]]] = {}  # patient_id → encounters
+
+    # ------------------------------------------------------------------
+    # Gap 2: Encounter context for chart tooltips
+    # ------------------------------------------------------------------
+    def _get_patient_encounters(self, patient_id: str) -> List[Dict[str, Any]]:
+        """Fetch and cache encounter data for a patient from ES."""
+        if patient_id in self._encounter_cache:
+            return self._encounter_cache[patient_id]
+
+        encounters: List[Dict[str, Any]] = []
+        if not self.es_client.is_connected():
+            return encounters
+
+        try:
+            result = self.es_client.es.search(
+                index="patient_data",
+                body={
+                    "size": 200,
+                    "query": {
+                        "bool": {
+                            "must": [
+                                {"term": {"patient_id": str(patient_id)}},
+                                {"term": {"data_type": "encounters"}},
+                            ]
+                        }
+                    },
+                    "_source": ["metadata", "content"],
+                },
+            )
+            for hit in result.get("hits", {}).get("hits", []):
+                meta = hit["_source"].get("metadata", {})
+                enc_date = meta.get("date")
+                encounters.append({
+                    "date": enc_date,
+                    "class": meta.get("class_display") or meta.get("class_code") or "",
+                    "reason": meta.get("admission_reason") or "",
+                    "type": meta.get("type_display") or meta.get("type_code") or "",
+                })
+            # Sort by date (None dates last)
+            encounters.sort(key=lambda e: e["date"] or "9999")
+        except Exception as exc:
+            logger.warning(f"Failed to fetch encounters for {patient_id}: {exc}")
+
+        self._encounter_cache[patient_id] = encounters
+        return encounters
+
+    def _match_encounter_context(self, patient_id: str, date_labels: List[str]) -> List[Optional[Dict[str, str]]]:
+        """For each observation date, find the closest encounter and return context.
+
+        Returns a list (same length as date_labels) of dicts like:
+            {"encounter": "ambulatory", "reason": "..."} or None
+        """
+        encounters = self._get_patient_encounters(patient_id)
+        if not encounters:
+            return [None] * len(date_labels)
+
+        from datetime import datetime
+
+        def _parse(d: Optional[str]) -> Optional[datetime]:
+            if not d:
+                return None
+            try:
+                return datetime.fromisoformat(d.replace("Z", "+00:00").split("+")[0])
+            except Exception:
+                return None
+
+        enc_dates = [(_parse(e["date"]), e) for e in encounters]
+        enc_dates = [(d, e) for d, e in enc_dates if d is not None]
+
+        results: List[Optional[Dict[str, str]]] = []
+        for label in date_labels:
+            obs_dt = _parse(label)
+            if obs_dt is None or not enc_dates:
+                results.append(None)
+                continue
+
+            # Find closest encounter within ±1 day
+            best_enc = None
+            best_delta = float("inf")
+            for ed, enc in enc_dates:
+                delta = abs((obs_dt - ed).total_seconds())
+                if delta < best_delta:
+                    best_delta = delta
+                    best_enc = enc
+            # Only match if within 1 day (86400 seconds)
+            if best_enc and best_delta <= 86400:
+                ctx: Dict[str, str] = {"encounter": best_enc["class"]}
+                if best_enc["reason"]:
+                    ctx["reason"] = best_enc["reason"][:120]
+                if best_enc["type"]:
+                    ctx["type"] = best_enc["type"]
+                results.append(ctx)
+            else:
+                results.append(None)
+
+        return results
+
     def extract_observation_data(self, patient_id: str, observation_type: str) -> List[Dict[str, Any]]:
         """Extract observation data for a specific type"""
         if not self.es_client.is_connected():
@@ -343,7 +909,8 @@ class VisualizationService:
                         "display": metadata.get("display", "")
                     })
             
-            return data_points
+            # Normalize to canonical unit before returning (fixes mmol/L vs mg/dL mixing)
+            return normalize_units(data_points, observation_type)
             
         except Exception as e:
             logger.error(f"Failed to extract observation data: {e}")
@@ -523,7 +1090,8 @@ class VisualizationService:
         
         logger.info(f"Extracted {len(data_points)} data points for {observation_type} from {observation_count} observations in retrieved_data")
         
-        return data_points
+        # Normalize to canonical unit before returning (fixes mmol/L vs mg/dL mixing)
+        return normalize_units(data_points, observation_type)
     
     def generate_chart_data_from_retrieved(self, patient_id: str, chart_type: str, retrieved_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate chart data from RAG retrieved_data (same source as the answer)
@@ -555,6 +1123,9 @@ class VisualizationService:
             if chart_type and chart_type.startswith("observation_trend:"):
                 observation_name = chart_type.split(":", 1)[1]
                 chart_data = self._generate_observation_trend_chart_from_retrieved(patient_id, observation_name, retrieved_data)
+            elif chart_type and chart_type.startswith("combined_progression:"):
+                panel_key = chart_type.split(":", 1)[1]
+                chart_data = self._generate_combined_disease_chart_from_retrieved(patient_id, panel_key, retrieved_data)
             elif chart_type == "glucose_trend":
                 chart_data = self._generate_glucose_chart_from_retrieved(patient_id, retrieved_data)
             elif chart_type == "blood_pressure_trend":
@@ -632,30 +1203,8 @@ class VisualizationService:
             observation_name_safe = observation_name or "Unknown"
             clean_display = observation_name_safe.title() if isinstance(observation_name_safe, str) else "Unknown"
         
-        # Determine chart color based on observation type
-        color_map = {
-            "creatinine": "#e74c3c",
-            "hemoglobin": "#3498db",
-            "gfr": "#2ecc71",
-            "glomerular filtration": "#2ecc71",
-            "cholesterol": "#f39c12",
-            "sodium": "#9b59b6",
-            "potassium": "#1abc9c",
-            "calcium": "#34495e",
-            "bun": "#e67e22",
-            "albumin": "#8e44ad",
-            "bilirubin": "#f1c40f",
-            "temperature": "#e91e63",
-            "respiratory": "#00bcd4",
-            "oxygen": "#4caf50",
-            "saturation": "#4caf50",
-            "bmi": "#ff9800",
-            "weight": "#795548",
-            "height": "#607d8b"
-        }
-        
-        observation_name_safe = (observation_name or "").lower() if observation_name else ""
-        chart_color = color_map.get(observation_name_safe, "#3498db")
+        # Determine chart color using the module-level comprehensive color map
+        chart_color = _get_obs_color(observation_name)
         
         # Convert hex to rgba for background
         r = int(chart_color[1:3], 16)
@@ -747,8 +1296,162 @@ class VisualizationService:
             chart_data["data"]["labels"].append(point["date"])
             chart_data["data"]["datasets"][0]["data"].append(point["value"])
         
+        # Add clinical reference range lines for the frontend
+        ref_lines = get_reference_lines(observation_name)
+        if not ref_lines:
+            # Also try with the display name from data (LOINC full name)
+            ref_lines = get_reference_lines(display_name_safe)
+        if ref_lines:
+            chart_data["referenceLines"] = ref_lines
+        
+        # Gap 2: Encounter context for tooltips
+        enc_ctx = self._match_encounter_context(patient_id, chart_data["data"]["labels"])
+        if any(e is not None for e in enc_ctx):
+            chart_data["encounterContext"] = enc_ctx
+        
         return chart_data
-    
+
+    # ------------------------------------------------------------------
+    # Gap 3+4: Combined Disease Progression Chart (dual y-axis support)
+    # ------------------------------------------------------------------
+    def _generate_combined_disease_chart_from_retrieved(
+        self, patient_id: str, panel_key: str, retrieved_data: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Generate a multi-series combined chart for disease progression.
+
+        Uses DISEASE_PROGRESSION_PANELS to determine which labs to plot,
+        and emits a ``dualYAxis`` payload so the frontend can render two
+        independent Y-axes when value scales differ (e.g. creatinine 0-4
+        vs BUN 10-100).
+        """
+        panel = DISEASE_PROGRESSION_PANELS.get(panel_key)
+        if not panel:
+            return {"type": "combined_progression", "patient_id": patient_id,
+                    "data": {"labels": [], "datasets": []},
+                    "error": f"Unknown panel: {panel_key}"}
+
+        all_dates: set = set()
+        lab_series: List[Dict[str, Any]] = []  # {name, yAxis, color, points:[{date,value}]}
+
+        for lab_def in panel["labs"]:
+            # Gather data for this lab from retrieved_data
+            points: List[Dict[str, Any]] = []
+            for kw in lab_def["keywords"]:
+                extracted = self.extract_observation_data_from_retrieved(retrieved_data, kw)
+                for pt in extracted:
+                    points.append(pt)
+            # De-duplicate by date (keep last)
+            seen: Dict[str, float] = {}
+            for pt in sorted(points, key=lambda p: p.get("date", "")):
+                if pt.get("date") and pt.get("value") is not None:
+                    seen[pt["date"]] = pt["value"]
+            if seen:
+                all_dates.update(seen.keys())
+                lab_series.append({
+                    "name": lab_def["name"],
+                    "yAxis": lab_def["yAxis"],
+                    "color": lab_def["color"],
+                    "points": seen,
+                })
+
+        # Always try direct ES for labs not found in retrieved data
+        found_lab_names = {s["name"] for s in lab_series}
+        for lab_def in panel["labs"]:
+            if lab_def["name"] in found_lab_names:
+                continue  # already have data from retrieved
+            for kw in lab_def["keywords"]:
+                extracted = self.extract_observation_data(patient_id, kw)
+                seen_fb: Dict[str, float] = {}
+                for pt in sorted(extracted, key=lambda p: p.get("date", "")):
+                    if pt.get("date") and pt.get("value") is not None:
+                        seen_fb[pt["date"]] = pt["value"]
+                if seen_fb:
+                    all_dates.update(seen_fb.keys())
+                    lab_series.append({
+                        "name": lab_def["name"],
+                        "yAxis": lab_def["yAxis"],
+                        "color": lab_def["color"],
+                        "points": seen_fb,
+                    })
+                    break  # got data for this lab
+
+        if not lab_series:
+            return {"type": "combined_progression", "patient_id": patient_id,
+                    "data": {"labels": [], "datasets": []},
+                    "error": "No data found for any lab in panel"}
+
+        sorted_dates = sorted(all_dates)
+
+        # Determine if dual y-axis is actually needed
+        left_vals = [v for s in lab_series if s["yAxis"] == "left" for v in s["points"].values()]
+        right_vals = [v for s in lab_series if s["yAxis"] == "right" for v in s["points"].values()]
+        has_dual = bool(left_vals) and bool(right_vals)
+
+        # Build datasets
+        datasets = []
+        for s in lab_series:
+            data_arr = [s["points"].get(d) for d in sorted_dates]
+            datasets.append({
+                "label": s["name"],
+                "data": data_arr,
+                "borderColor": s["color"],
+                "backgroundColor": s["color"] + "1A",  # 10% opacity
+                "tension": 0.4,
+                "borderWidth": 2,
+                "pointRadius": 4,
+                "pointHoverRadius": 6,
+                "fill": False,
+                "yAxisID": s["yAxis"] if has_dual else "left",
+            })
+
+        # Build dual axis config for the frontend
+        dual_y_axis = None
+        if has_dual:
+            left_labels = [s["name"] for s in lab_series if s["yAxis"] == "left"]
+            right_labels = [s["name"] for s in lab_series if s["yAxis"] == "right"]
+            dual_y_axis = {
+                "left": {"label": " / ".join(left_labels), "color": "#475569"},
+                "right": {"label": " / ".join(right_labels), "color": "#475569"},
+            }
+
+        chart_data: Dict[str, Any] = {
+            "type": "line",
+            "patient_id": patient_id,
+            "data": {
+                "labels": [d[:10] for d in sorted_dates],
+                "datasets": datasets,
+            },
+            "options": {
+                "responsive": True,
+                "plugins": {
+                    "title": {
+                        "display": True,
+                        "text": f"{panel['title']} — Patient {patient_id}",
+                        "font": {"size": 16, "weight": "bold"},
+                    },
+                    "legend": {"display": True, "position": "top"},
+                },
+                "interaction": {"intersect": False, "mode": "index"},
+            },
+            "summary": f"Combined disease progression chart: {panel['title']} showing {', '.join(s['name'] for s in lab_series)} over {len(sorted_dates)} time points.",
+        }
+
+        if dual_y_axis:
+            chart_data["dualYAxis"] = dual_y_axis
+
+        # Add reference lines for the first (primary) lab series
+        primary_lab = lab_series[0]["name"].lower()
+        ref_lines = get_reference_lines(primary_lab)
+        if ref_lines:
+            chart_data["referenceLines"] = ref_lines
+
+        # Gap 2: Encounter context for tooltips
+        enc_ctx = self._match_encounter_context(patient_id, chart_data["data"]["labels"])
+        if any(e is not None for e in enc_ctx):
+            chart_data["encounterContext"] = enc_ctx
+
+        return chart_data
+
     def generate_chart_from_extracted_values(self, patient_id: str, chart_type: str, extracted_values: List[Dict[str, Any]], observation_type: str) -> Dict[str, Any]:
         """Generate chart from values extracted from answer text
         
@@ -786,14 +1489,8 @@ class VisualizationService:
         unit = values[0].get("unit", "")
         display_name = values[0].get("display", observation_name.title())
         
-        # Determine chart color
-        color_map = {
-            "creatinine": "#e74c3c",
-            "hemoglobin": "#3498db",
-            "heart rate": "#2ecc71",
-            "glucose": "#f39c12",
-        }
-        chart_color = color_map.get(observation_name.lower(), "#3498db")
+        # Determine chart color using the module-level comprehensive color map
+        chart_color = _get_obs_color(observation_name)
         
         # Convert hex to rgba
         r = int(chart_color[1:3], 16)
@@ -844,6 +1541,18 @@ class VisualizationService:
             },
             "summary": f"Chart generated from {len(values)} values extracted from answer text"
         }
+        
+        # Add clinical reference range lines
+        ref_lines = get_reference_lines(observation_name)
+        if not ref_lines:
+            ref_lines = get_reference_lines(display_name)
+        if ref_lines:
+            chart_data["referenceLines"] = ref_lines
+        
+        # Gap 2: Encounter context for tooltips
+        enc_ctx = self._match_encounter_context(patient_id, chart_data["data"]["labels"])
+        if any(e is not None for e in enc_ctx):
+            chart_data["encounterContext"] = enc_ctx
         
         return chart_data
     
@@ -1493,31 +2202,8 @@ class VisualizationService:
             observation_name_safe = observation_name or "Unknown"
             clean_display = observation_name_safe.title() if isinstance(observation_name_safe, str) else "Unknown"
         
-        # Determine chart color based on observation type
-        color_map = {
-            "creatinine": "#e74c3c",
-            "hemoglobin": "#3498db",
-            "gfr": "#2ecc71",
-            "glomerular filtration": "#2ecc71",
-            "cholesterol": "#f39c12",
-            "sodium": "#9b59b6",
-            "potassium": "#1abc9c",
-            "calcium": "#34495e",
-            "bun": "#e67e22",
-            "albumin": "#8e44ad",
-            "bilirubin": "#f1c40f",
-            "temperature": "#e91e63",
-            "respiratory": "#00bcd4",
-            "oxygen": "#4caf50",
-            "saturation": "#4caf50",
-            "bmi": "#ff9800",
-            "weight": "#795548",
-            "height": "#607d8b"
-        }
-        
-        # Safely handle None observation_name
-        observation_name_safe = (observation_name or "").lower() if observation_name else ""
-        chart_color = color_map.get(observation_name_safe, "#3498db")
+        # Determine chart color using the module-level comprehensive color map
+        chart_color = _get_obs_color(observation_name)
         
         # Convert hex to rgba for background
         r = int(chart_color[1:3], 16)
@@ -1620,6 +2306,18 @@ class VisualizationService:
         
         # Generate summary
         chart_data["summary"] = self._generate_chart_summary(observation_data, observation_name, patient_id)
+        
+        # Add clinical reference range lines
+        ref_lines = get_reference_lines(observation_name)
+        if not ref_lines and clean_display:
+            ref_lines = get_reference_lines(clean_display)
+        if ref_lines:
+            chart_data["referenceLines"] = ref_lines
+        
+        # Gap 2: Encounter context for tooltips
+        enc_ctx = self._match_encounter_context(patient_id, chart_data["data"]["labels"])
+        if any(e is not None for e in enc_ctx):
+            chart_data["encounterContext"] = enc_ctx
         
         return chart_data
     
@@ -3173,22 +3871,17 @@ class VisualizationService:
         datasets = []
         all_labels = set()
         
-        # Color map matching current design
-        color_map = {
-            "systolic_bp": "#e74c3c",
-            "diastolic_bp": "#c0392b",
-            "heart_rate": "#2ecc71",
-            "temperature": "#e91e63",
-            "respiratory_rate": "#00bcd4",
-            "glucose": "#e74c3c",
-            "creatinine": "#3498db",
-            "hemoglobin": "#3498db",
-            "sodium": "#9b59b6",
-            "potassium": "#1abc9c",
-            "chloride": "#1abc9c",
-            "calcium": "#34495e",
-            "bun": "#e67e22",
+        # Use module-level comprehensive color map (keyed by obs type name)
+        # For this function, obs_type keys use underscore style; map those first
+        _key_aliases = {
+            "systolic_bp":      "blood pressure",
+            "diastolic_bp":     "blood pressure",
+            "heart_rate":       "heart rate",
+            "respiratory_rate": "respiratory rate",
         }
+        def _abnormal_color(obs_type: str) -> str:
+            mapped = _key_aliases.get(obs_type, obs_type.replace("_", " "))
+            return _get_obs_color(mapped)
         
         # Display name mapping
         display_names = {
@@ -3215,7 +3908,7 @@ class VisualizationService:
             values_sorted = sorted(values, key=lambda x: x.get("date", ""))
             
             # Get color
-            color = color_map.get(obs_type, "#3498db")
+            color = _abnormal_color(obs_type)
             r = int(color[1:3], 16)
             g = int(color[3:5], 16)
             b = int(color[5:7], 16)

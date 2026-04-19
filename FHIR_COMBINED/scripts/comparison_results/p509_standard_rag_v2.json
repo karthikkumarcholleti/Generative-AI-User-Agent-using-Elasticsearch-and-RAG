@@ -1,0 +1,26 @@
+{
+  "Q1_differential": {
+    "query": "Based on all available data, what is your differential diagnosis for this patient?",
+    "response": "No diabetes mellitus data is present in the retrieved records. \n\nHowever, the patient has a low risk for Type 2 Diabetes Mellitus (Status: unknown).",
+    "retrieved_count": 28,
+    "pipeline_mode": "Standard RAG"
+  },
+  "Q2_metabolic": {
+    "query": "What does the glucose data tell us about this patient's metabolic status?",
+    "response": "The glucose data tells us about this patient's metabolic status.\n\n1. The patient's glucose levels are elevated, with values of 105.0 mg/dL (recorded on 2025-07-08), 141.0 mg/dL (recorded on 2025-07-29), 295.0 mg/dL (recorded on 2025-07-30), 198.0 mg/dL (recorded on 2025-07-30), and 223.0 mg/dL (recorded on 2025-07-30).\n\nThese values are above the normal random glucose level of <140 mg/dL, indicating hyperglycemia.\n\n2. The patient has a medical condition listed as \"Diabetes mellitus\" with a status of unknown.\n\nThis suggests that the patient may have diabetes, which could be contributing to the elevated glucose levels.\n\n3. The patient's glycated hemoglobin (HbA1c) is not present in the retrieved records.\n\nHowever, the estimated glucose mean value from glycated hemoglobin is 105.0 mg/dL (recorded on 2025-07-08), which is above the normal fasting glucose level of <100 mg/dL.\n\n4. The patient's blood glucose levels are consistently elevated across multiple measurements, which supports the presence of diabetes.\n\nThe elevated glucose levels and the presence of diabetes as a medical condition suggest that the patient's metabolic status is likely affected by diabetes.\n\n\ud83d\udcca I've automatically generated a observation trend:glucose chart below to help visualize this data. Auto-generated glucose trend chart based on your question about glucose levels.",
+    "retrieved_count": 50,
+    "pipeline_mode": "Standard RAG"
+  },
+  "Q3_renal": {
+    "query": "What do the creatinine and BUN values tell us about kidney function?",
+    "response": "The retrieved records contain creatinine data, but not BUN data.\n\n1. Creatinine: 2.\n\n\ud83d\udcca I've automatically generated a observation trend:creatinine chart below to help visualize this data. Auto-generated Creatinine trend chart based on your question about creatinine.",
+    "retrieved_count": 50,
+    "pipeline_mode": "Standard RAG"
+  },
+  "Q4_cardiovascular": {
+    "query": "What cardiovascular risk factors and findings are present for this patient?",
+    "response": "Found: \n1. TROPONIN I.CARDIAC: 0.04 (recorded on 2025-07-10)\n\nNot found:\nNo cardiovascular risk factors data is present in the retrieved records.\n\nPartially found:\nThe patient has a history of myocardial infarction, as indicated by the presence of TROPONIN I.CARDIAC: 0.04 (recorded on 2025-07-10).",
+    "retrieved_count": 26,
+    "pipeline_mode": "Standard RAG"
+  }
+}

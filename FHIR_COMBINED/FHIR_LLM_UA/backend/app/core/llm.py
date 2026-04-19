@@ -27,7 +27,7 @@ if not os.path.isabs(MODEL_PATH):
     # If relative, make it relative to repo root (not backend directory)
     MODEL_PATH = str(ROOT_DIR / MODEL_PATH.lstrip("./"))
 # Balanced token limit for complete responses while preventing OOM
-MAX_NEW_TOKENS = int(os.getenv("LLM_MAX_NEW_TOKENS", "800"))  # Reduced to 800 to prevent OOM
+MAX_NEW_TOKENS = int(os.getenv("LLM_MAX_NEW_TOKENS", "1200"))  # Raised to 1200 — GPU headroom confirmed (2x T4, <6GB used)
 TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
 TOP_P = float(os.getenv("LLM_TOP_P", "0.9"))
 

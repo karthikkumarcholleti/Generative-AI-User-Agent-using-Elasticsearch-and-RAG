@@ -1,0 +1,100 @@
+{
+  "Q1_differential": {
+    "query": "What is the most likely primary diagnosis and what alternatives should be considered?",
+    "response": "Based on the provided data, the most likely primary diagnosis and alternatives to consider are:\n\n1. Chronic kidney disease stage 3 (Status: unknown)\n2. Diabetes mellitus (Status: unknown)\n3. Congestive heart failure (Status: unknown)\n4. Hyperparathyroidism (Status: unknown)\n5. Hypomagnesemia (Status: unknown)\n\nThe patient's creatinine level is 1.09 unit (recorded on 2025-07-16).\n\nAll available vitals and observations are:\n\n1. IGM - 924.0 (recorded on 2025-07-22)\n2. EOSINOPHILS - 0.08 (recorded on 2025-07-23)\n3. BILIRUBIN.NON-GLUCURONIDATED - 0.5 (recorded on 2025-07-29)\n\nNo hemoglobin A1C data is available for this patient in the medical records.\n\nNo heart rate data is available for this patient in the medical records.\n\nNo blood pressure data is available for this patient in the medical records.\n\nNo respiratory rate data is available for this patient in the medical records.\n\nNo temperature data is available for this patient in the medical records.\n\nNo blood glucose data is available for this patient in the medical records.\n\nNo thyroid nodule data is available for this patient in the medical records.\n\nNo Crohn Disease data is available for this patient in the medical records.\n\nNo Pneumonia data is available for this patient in the medical records.\n\nNo Osteoarthritis data is available for this patient in the medical records.\n\nNo Type 2 Diabetes Mellitus data is available for this patient in the medical records.\n\nNo Peripheral arterial disease data is available for this patient in the medical records.\n\nNo Chronic Obstructive Pulmonary Disease data is available for this patient in the medical records.\n\nNo Restless legs data is available for this patient in the medical records.\n\nNo Chronic constipation data is available for this patient in the medical records.\n\nNo Disorder of lumbar disc data is available for this patient in the medical records.\n\nNo Mild intermittent asthma data is available for this patient in the medical records.",
+    "retrieved_count": 23,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q2_metabolic": {
+    "query": "What do the glucose values indicate about this patient's metabolic status?",
+    "response": "To answer the question \"What do the glucose values indicate about this patient's metabolic status?\", we need to analyze the available glucose data.\n\n1. The patient's glucose mean value is 105.0 mg/dL (recorded on 2025-07-08).\n2. The patient's glucose level is 106.0 mg/dL (recorded on 2025-07-23).\n3. The patient's glucose level is 182.0 mg/dL (recorded on 2025-07-28).\n4. The patient's glucose level is 155.0 mg/dL (recorded on 2025-07-28).\n5. The patient's glucose level is 147.0 mg/dL (recorded on 2025-07-29).\n6. The patient's glucose level is 141.0 mg/dL (recorded on 2025-07-29).\n7. The patient's glucose level is 295.0 mg/dL (recorded on 2025-07-30).\n8. The patient's glucose level is 198.0 mg/dL (recorded on 2025-07-30).\n9. The patient's glucose level is 223.0 mg/dL (recorded on 2025-07-30).\n\nConsidering the glucose values, the patient has multiple readings above the normal fasting glucose range (<100 mg/dL). Specifically, the readings on 2025-07-28 (182.0 mg/dL and 155.0 mg/dL), 2025-07-29 (147.0 mg/dL and 141.0 mg/dL), and 2025-07-30 (295.0 mg/dL, 198.0 mg/dL, and 223.0 mg/dL) are significantly elevated. These findings suggest impaired glucose regulation and potential hyperglycemia, which may indicate the patient's metabolic status is compromised.\n\n\ud83d\udcca I've automatically generated a observation trend:glucose chart below to help visualize this data. Auto-generated glucose trend chart based on your question about glucose levels.",
+    "retrieved_count": 54,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udcca Create glucose trend chart",
+        "type": "visualization",
+        "action": "create_glucose_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q3_renal": {
+    "query": "What do the creatinine and BUN values tell us about this patient's kidney function?",
+    "response": "To answer the question about the patient's kidney function based on creatinine and BUN values, we need to analyze the available data.\n\n1. Creatinine:MCNC:PT:SER/PLAS:QN:: 2.3 (recorded on 2025-07-29)\n2. Urea Nitrogen:MCNC:PT:SER/PLAS:QN:: 66.0 (recorded on 2025-07-29)\n3. Urea Nitrogen/Creatinine:MCRTO:PT:SER/PLAS:QN:: 35.45 (recorded on 2025-07-30)\n\nThe patient's creatinine level is 2.3 unit (recorded on 2025-07-29), which is higher than the normal range. The Urea Nitrogen level is 66.0 unit (recorded on 2025-07-29), which is also higher than the normal range. The Urea Nitrogen/Creatinine ratio is 35.45 (recorded on 2025-07-30), which is higher than the normal range.\n\nThese elevated values suggest impaired kidney function.\n\n\ud83d\udcca I've automatically generated a observation trend:creatinine chart below to help visualize this data. Auto-generated Creatinine trend chart based on your question about creatinine.",
+    "retrieved_count": 47,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udcca Create glucose trend chart",
+        "type": "visualization",
+        "action": "create_glucose_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q4_cardiovascular": {
+    "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+    "response": "Based on the provided data, the patient shows signs of cardiovascular disease. The supporting evidence includes:\n\n1. Elevated troponin I.cardiatic level: 0.04 (recorded on 2025-07-10)\n2. Elevated cholesterol level: 73.0 (recorded on 2025-07-14)\n3. Elevated cholesterol/triglyceride ratio: 1.0 (recorded on 2025-07-20)\n4. Presence of congestive heart failure (Status: unknown)\n5. Presence of myocardial infarction (Status: unknown)\n6. Presence of carotid artery stenosis (Status: unknown)\n7. Presence of essential hypertension (Status: unknown)\n\nThese findings suggest that the patient may be at risk for cardiovascular disease.\n\n\ud83d\udcca I've automatically generated a observation trend:troponin chart below to help visualize this data. Auto-generated Troponin trend chart based on your question about troponin.",
+    "retrieved_count": 30,
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  }
+}

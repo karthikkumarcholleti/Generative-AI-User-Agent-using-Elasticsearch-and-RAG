@@ -1,0 +1,164 @@
+{
+  "Q1_differential": {
+    "query": "Based on all available data, what is your differential diagnosis for this patient?",
+    "response": "No blood pressure data is present in the retrieved records.\n\nNo heart rate data is present in the retrieved records.\n\nNo glucose data is present in the retrieved records.\n\nNo HbA1c data is present in the retrieved records.\n\nNo BNP data is present in the retrieved records.\n\nNo NT-proBNP data is present in the retrieved records.\n\nNo oxygen saturation data is present in the retrieved records.\n\nNo respiratory rate data is present in the retrieved records.\n\nNo creatinine data is present in the retrieved records.\n\nNo BMI data is present in the retrieved records.\n\nNo smoking history data is present in the retrieved records.\n\nNo corticosteroid use data is present in the retrieved records.\n\nNo autoimmune markers data is present in the retrieved records.\n\nNo eosinophilia data is present in the retrieved records.\n\nNo elevated IgE data is present in the retrieved records.\n\nNo family history of diabetes data is present in the retrieved records.\n\nNo personal history of diabetes data is present in the retrieved records.\n\nNo history of myocardial infarction data is present in the retrieved records.\n\nNo history of congestive heart failure data is present in the retrieved records.\n\nNo history of asthma data is present in the retrieved records.\n\nNo history of chronic obstructive pulmonary disease (COPD) data is present in the retrieved records.\n\nNo history of peripheral arterial disease data is present in the retrieved records.\n\nNo history of carpal tunnel syndrome data is present in the retrieved records.\n\nNo history of osteoarthritis data is present in the retrieved records.\n\nNo history of hyperparathyroidism data is present in the retrieved records.\n\nNo history of Crohn Disease data is present in the retrieved records.\n\nNo history of type 2 diabetes mellitus data is present in the retrieved records.\n\nNo history of type 1 diabetes mellitus data is present in the retrieved records.\n\nNo history of thyroid nodule data is present in the retrieved records.\n\nNo history of monoclonal gammopathy data is present in the retrieved records.\n\nNo history of restless legs data is present in the retrieved records.\n\nNo history of unsteady when walking data is present in the retrieved records.\n\nNo history of thyroid nodule data is present in the retrieved records.",
+    "retrieved_count": 28,
+    "pipeline_mode": "MedRAG + KG",
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have glucose data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have hba1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have a1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q2_metabolic": {
+    "query": "What does the glucose data tell us about this patient's metabolic status?",
+    "response": "The query asks about the glucose data, so let's answer that directly.\n\nGlucose data is present in the records.\n\nFound:\n- GLUCOSE MEAN VALUE: 105.0 (recorded on 2025-07-08)\n- GLUCOSE: 141.0 (recorded on 2025-07-29)\n- GLUCOSE: 295.0 (recorded on 2025-07-30)\n- GLUCOSE: 198.0 (recorded on 2025-07-30)\n- GLUCOSE: 223.0 (recorded on 2025-07-30)\n\nNo other glucose data is present in the retrieved records.\n\n\ud83d\udcca I've automatically generated a observation trend:glucose chart below to help visualize this data. Auto-generated glucose trend chart based on your question about glucose levels.",
+    "retrieved_count": 50,
+    "pipeline_mode": "MedRAG + KG",
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have hba1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have a1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have blood sugar data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create glucose trend chart",
+        "type": "visualization",
+        "action": "create_glucose_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q3_renal": {
+    "query": "What do the creatinine and BUN values tell us about kidney function?",
+    "response": "The query asks about the creatinine and BUN values, so let's answer that directly.\n\nFound: creatinine values are present in the records.\n- Creatinine: 2.4 mg/dL (recorded on 2025-07-29)\n- Creatinine: 2.3 mg/dL (recorded on 2025-07-29)\n- Creatinine: 2.2 mg/dL (recorded on 2025-07-30)\n\nNot found: BUN data is absent in the retrieved records.\n\nNow, let's proceed with the KG differential diagnosis context to reason about the most likely diagnosis.\n\n\ud83d\udcca I've automatically generated a observation trend:creatinine chart below to help visualize this data. Auto-generated Creatinine trend chart based on your question about creatinine.",
+    "retrieved_count": 50,
+    "pipeline_mode": "MedRAG + KG",
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have gfr data for this patient? (needed to evaluate Chronic Kidney Disease (CKD))",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have bun data for this patient? (needed to evaluate Chronic Kidney Disease (CKD))",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have potassium data for this patient? (needed to evaluate Chronic Kidney Disease (CKD))",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create glucose trend chart",
+        "type": "visualization",
+        "action": "create_glucose_chart"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  },
+  "Q4_cardiovascular": {
+    "query": "What cardiovascular risk factors and findings are present for this patient?",
+    "response": "The query asks about cardiovascular risk factors and findings present for this patient.\n\nFound: \n- TROPONIN I.CARDIAC:MCNC:PT:SER/PLAS:QN:: 0.04 (recorded on 2025-07-10)\n- COAGULATION TISSUE FACTOR INDUCED.INR:RELTIME:PT:PPP:QN:COAG: 1.1 (recorded on 2025-07-16)\n- COAGULATION TISSUE FACTOR INDUCED:TIME:PT:PPP:QN:COAG: 11.5 (recorded on 2025-07-16)\n- CHOLESTEROL/TRIGLYCERIDE:MCRTO:PT:SER/PLAS:QN:: 1.0 (recorded on 2025-07-20)\n- CHOLESTEROL:MCNC:PT:SER/PLAS:QN:: 65.0 (recorded on 2025-07-20)\n\nNot found:\n- Blood pressure data\n- Glucose data\n- Creatinine data\n- eGFR data\n- BNP data\n- NT-proBNP data\n- Heart rate data\n- HbA1c data\n- LDL data\n- HDL data\n- Triglycerides data\n\nNow, let's proceed with the differential diagnosis structure.\n\n**MEDRAG DIFFERENTIAL DIAGNOSIS**\n\n1. **Most Likely Diagnosis**: Hypercholesterolemia\n   Supporting evidence: \n   - CHOLESTEROL:MCNC:PT:SER/PLAS:QN:: 65.0 (recorded on 2025-07-20) indicating elevated cholesterol levels.\n\n2. **Key Supporting Evidence**:\n   - Elevated troponin I level (0.04) indicating possible cardiac damage or stress.\n   - Elevated coagulation tissue factor induced levels (11.5) indicating possible cardiovascular risk.\n\n3. **Alternative Diagnoses**:\n   - Essential Hypertension: Although blood pressure data is not present, the patient's age and other risk factors make this a possible alternative diagnosis.",
+    "retrieved_count": 26,
+    "pipeline_mode": "MedRAG + KG",
+    "follow_up_options": [
+      {
+        "text": "\ud83d\udd2c Do you have glucose data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have hba1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udd2c Do you have a1c data for this patient? (needed to evaluate Type 2 Diabetes Mellitus)",
+        "type": "diagnostic_question",
+        "action": "kg_proactive_question"
+      },
+      {
+        "text": "\ud83d\udcca Create comprehensive vital signs dashboard",
+        "type": "visualization",
+        "action": "create_vitals_dashboard"
+      },
+      {
+        "text": "\ud83d\udccb Generate detailed patient report",
+        "type": "report",
+        "action": "generate_patient_report"
+      },
+      {
+        "text": "\ud83d\udd04 Refresh patient data",
+        "type": "action",
+        "action": "refresh_data"
+      }
+    ]
+  }
+}
