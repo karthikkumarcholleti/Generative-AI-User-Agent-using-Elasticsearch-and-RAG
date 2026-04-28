@@ -67,6 +67,48 @@ def log_data(label: str, data: Any, color: str = Colors.GREEN):
     """Print formatted data line"""
     print(f"{color}  {label}:{Colors.ENDC} {data}")
 
+# ── Unit normalization for RAG context text ───────────────────────────────────
+# Converts non-standard units to canonical clinical units so the LLM never
+# sees mixed representations of the same measurement in the same context
+# (e.g. glucose 5.0 mmol/L alongside glucose 90 mg/dL).
+# Mirrors the UNIT_CONVERSIONS table in visualization_service.py.
+_CONTEXT_UNIT_CONVERSIONS: Dict[str, Dict[str, Any]] = {
+    "glucose":      {"mmol/l": {"factor": 18.018, "target": "mg/dL"}},
+    "creatinine":   {
+        "µmol/l":  {"factor": 0.01131, "target": "mg/dL"},
+        "μmol/l":  {"factor": 0.01131, "target": "mg/dL"},
+        "umol/l":  {"factor": 0.01131, "target": "mg/dL"},
+        "micromol/l": {"factor": 0.01131, "target": "mg/dL"},
+    },
+    "urea nitrogen": {"mmol/l": {"factor": 2.801, "target": "mg/dL"}},
+    "bun":           {"mmol/l": {"factor": 2.801, "target": "mg/dL"}},
+    "cholesterol":   {"mmol/l": {"factor": 38.67, "target": "mg/dL"}},
+    "ldl":           {"mmol/l": {"factor": 38.67, "target": "mg/dL"}},
+    "hdl":           {"mmol/l": {"factor": 38.67, "target": "mg/dL"}},
+    "triglycerides": {"mmol/l": {"factor": 88.57, "target": "mg/dL"}},
+    "hemoglobin":    {
+        "g/l":    {"factor": 0.1,    "target": "g/dL"},
+        "mmol/l": {"factor": 1.6113, "target": "g/dL"},
+    },
+    "calcium":  {"mmol/l": {"factor": 4.008, "target": "mg/dL"}},
+    "sodium":   {"mmol/l": {"factor": 1.0,   "target": "mEq/L"}},
+    "potassium": {"mmol/l": {"factor": 1.0,  "target": "mEq/L"}},
+}
+
+def _normalize_context_value(display: str, value: float, unit: str) -> Tuple[float, str]:
+    """Return (normalized_value, canonical_unit) for a RAG context observation.
+    If no conversion applies, returns (value, unit) unchanged."""
+    disp_l = display.lower()
+    unit_l = (unit or "").lower().strip()
+    for obs_key, unit_map in _CONTEXT_UNIT_CONVERSIONS.items():
+        if obs_key in disp_l:
+            if unit_l in unit_map:
+                rule = unit_map[unit_l]
+                return round(value * rule["factor"], 2), rule["target"]
+            break  # matched obs type but unit is already canonical — stop
+    return value, unit
+
+
 class RAGService:
     """Retrieval Augmented Generation service for chat agent"""
     
@@ -819,22 +861,36 @@ class RAGService:
 
                         # ── Implausibility filter ──────────────────────────
                         # Skip observations with clearly invalid values caused
-                        # by hospital data quality issues (e.g., cholesterol=1.0,
-                        # creatinine=0.001). These mislead the LLM.
+                        # by hospital data quality issues (e.g., unit-mixing,
+                        # data-entry errors). Checks both physiological floors
+                        # and ceilings to prevent LLM hallucination.
                         try:
                             _num = float(value_str.split()[0])
                             _disp_l = display.lower()
+                            _is_ratio = "ratio" in _disp_l
                             _implausible = (
+                                # --- Low-end (near-zero, physically impossible) ---
                                 ("cholesterol" in _disp_l and _num < 10) or
-                                ("creatinine" in _disp_l and "ratio" not in _disp_l and _num < 0.05) or
+                                ("creatinine" in _disp_l and not _is_ratio and _num < 0.05) or
                                 ("glucose" in _disp_l and _num < 0.5) or
-                                ("hemoglobin" in _disp_l and "a1c" not in _disp_l and _num < 1)
+                                ("hemoglobin" in _disp_l and "a1c" not in _disp_l and _num < 1) or
+                                # --- High-end (physiologically impossible ceilings) ---
+                                ("cholesterol" in _disp_l and _num > 700) or
+                                ("creatinine" in _disp_l and not _is_ratio and _num > 30) or
+                                ("glucose" in _disp_l and _num > 1500) or
+                                ("hemoglobin" in _disp_l and "a1c" not in _disp_l and _num > 25) or
+                                ("blood pressure" in _disp_l and _num > 300) or
+                                ("heart rate" in _disp_l and (_num < 10 or _num > 350)) or
+                                ("body temperature" in _disp_l and (_num < 25 or _num > 46))
                             )
                             if _implausible:
-                                logger.debug(f"[Context filter] Skipping implausible value: {display}={_num}")
+                                logger.warning(
+                                    f"[Context filter] Skipping implausible value: {display}={_num} "
+                                    f"(unit={unit}) — likely ETL/unit error"
+                                )
                                 continue
                         except (ValueError, TypeError, IndexError):
-                            pass  # Can't parse — keep the observation
+                            pass  # Can't parse numeric value — keep the observation
                         # ──────────────────────────────────────────────────
                         
                         # Handle date fields (code 67723-7)
@@ -846,19 +902,45 @@ class RAGService:
                                     # Convert YYYYMMDD format to readable date
                                     date_num = float(clean_value)
                                     if date_num > 10000000:  # Valid date format
-                                        date_str = str(int(date_num))
-                                        if len(date_str) == 8:  # YYYYMMDD
-                                            formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-                                            context_parts.append(f"- {display}: {formatted_date}")
+                                        date_str_raw = str(int(date_num))
+                                        if len(date_str_raw) == 8:  # YYYYMMDD
+                                            _mm = int(date_str_raw[4:6])
+                                            _dd = int(date_str_raw[6:8])
+                                            # Reject impossible calendar dates (e.g. 20250200, 20251345)
+                                            if 1 <= _mm <= 12 and 1 <= _dd <= 31:
+                                                formatted_date = f"{date_str_raw[:4]}-{date_str_raw[4:6]}-{date_str_raw[6:8]}"
+                                                context_parts.append(f"- {display}: {formatted_date}")
+                                            else:
+                                                logger.warning(
+                                                    f"[Date filter] Rejecting corrupt date value "
+                                                    f"{date_str_raw} for field '{display}'"
+                                                )
                                             continue
                                 except (ValueError, TypeError):
                                     pass
                         
+                        # ── Unit normalization (context text) ─────────────
+                        # Convert non-canonical units so the LLM context is
+                        # consistent (e.g. glucose always in mg/dL, not mmol/L).
+                        try:
+                            _raw_num = float(value_str.split()[0])
+                            _norm_num, _norm_unit = _normalize_context_value(display, _raw_num, unit)
+                            if _norm_unit != unit:
+                                logger.debug(
+                                    f"[Unit normalize] {display}: {_raw_num} {unit} → "
+                                    f"{_norm_num} {_norm_unit}"
+                                )
+                                value_str = str(_norm_num)
+                                unit = _norm_unit
+                        except (ValueError, TypeError, IndexError):
+                            pass  # Non-numeric value — no conversion needed
+                        # ──────────────────────────────────────────────────
+
                         # Remove redundant "unit" from value if it exists
                         if value_str.endswith(" unit") and unit == "unit":
                             value_str = value_str[:-5]  # Remove " unit"
                             unit = ""  # Don't add unit again
-                        
+
                         # Only add unit if it's meaningful and not already in the value
                         if unit and unit != "unit" and unit not in value_str:
                             unit_text = f" {unit}"
@@ -1103,16 +1185,23 @@ CLINICAL REFERENCE RANGES:
             # Value-interpretation queries ("what do X values indicate?") are NOT
             # DDx requests — they should use the compact direct-answer format.
             _ddx_intent_keywords = [
+                # Explicit DDx phrasing
                 "differential diagnosis", "differential", "ddx",
                 "most likely diagnosis", "what is the diagnosis",
                 "possible diagnos", "probable diagnos",
+                # Clinical reasoning requests
                 "what could this be", "what conditions could",
-                "overall assessment", "overall health", "clinical assessment",
-                "summarize", "summary", "health status", "health overview",
+                "overall assessment", "clinical assessment",
+                "clinical summary",           # "clinical summary" is DDx-oriented
+                "health status",              # "health status" implies holistic view
+                # Disease-specific evidence questions
                 "signs of cardiovascular", "signs of kidney", "signs of diabetes",
                 "signs of heart", "signs of liver", "signs of infection",
                 "evidence of", "risk of", "risk for",
                 "show signs of", "does this patient",
+                # NOTE: "summary", "health overview", "summarize" removed —
+                # those fire from the summary panel, not clinical DDx intent,
+                # and caused over-verbose DDx output for routine summaries.
             ]
             # Phrases that indicate a simple value-lookup, NOT a DDx request.
             # Use only strong leading-phrase signals so they don't fire when
@@ -1124,6 +1213,10 @@ CLINICAL REFERENCE RANGES:
                 "list the", "give me the",
                 "what are the values", "what are the levels",
                 "what are the results", "what are the readings",
+                # Comparative/range queries — users want a value, not a DDx
+                "how high is", "how low is",
+                "how does", "compare",
+                "normal range for", "reference range for",
             ]
             _query_lower = query.lower()
             _has_ddx_intent = any(kw in _query_lower for kw in _ddx_intent_keywords)
@@ -1334,15 +1427,23 @@ All clinical decisions must be made by qualified healthcare providers.
                                 unit = metadata.get("unit", "")
                                 date_str = str(metadata.get("date", ""))[:10] if metadata.get("date") else ""
 
-                                # Implausibility guard (mirrors main context path)
+                                # Implausibility guard (identical to main context path)
                                 try:
                                     _nv = float(str(value_str).split()[0])
                                     _dl = (display or "").lower()
+                                    _ir = "ratio" in _dl
                                     if (
                                         ("cholesterol" in _dl and _nv < 10) or
-                                        ("creatinine" in _dl and "ratio" not in _dl and _nv < 0.05) or
+                                        ("creatinine" in _dl and not _ir and _nv < 0.05) or
                                         ("glucose" in _dl and _nv < 0.5) or
-                                        ("hemoglobin" in _dl and "a1c" not in _dl and _nv < 1)
+                                        ("hemoglobin" in _dl and "a1c" not in _dl and _nv < 1) or
+                                        ("cholesterol" in _dl and _nv > 700) or
+                                        ("creatinine" in _dl and not _ir and _nv > 30) or
+                                        ("glucose" in _dl and _nv > 1500) or
+                                        ("hemoglobin" in _dl and "a1c" not in _dl and _nv > 25) or
+                                        ("blood pressure" in _dl and _nv > 300) or
+                                        ("heart rate" in _dl and (_nv < 10 or _nv > 350)) or
+                                        ("body temperature" in _dl and (_nv < 25 or _nv > 46))
                                     ):
                                         continue
                                 except (ValueError, TypeError, IndexError):
@@ -1861,7 +1962,7 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
             "query": query,
             "intent": intent,
             "response": response_text,
-            "timestamp": "2024-01-01T00:00:00Z"  # You might want to use actual timestamp
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         })
         
         # Final summary

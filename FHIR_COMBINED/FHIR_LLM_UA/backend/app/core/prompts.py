@@ -4,30 +4,20 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 import json
 
-# ---------- Shared system prompt (used for all categories) ----------
+# ---------- Shared system prompt ----------
 SYSTEM_PROMPT = (
-    "You are a clinical summarization assistant designed to help healthcare professionals review patient data.\n"
-    "- Be concise and strictly factual. Only summarize the data provided.\n"
-    "- Never invent, infer, speculate, or add information not explicitly in the data.\n"
-    "- Never suggest potential conditions, risks, or concerns not mentioned in the records.\n"
-    "- If a date or value is missing, write: 'date not recorded' or 'value not recorded'.\n"
-    "- Preserve units. Do not change units. Do not round away meaning.\n"
-    "- Do not diagnose, prescribe, or suggest clinical implications beyond the provided data.\n"
-    "- IMPORTANT: This tool provides data summarization only. All clinical decisions must be made by qualified healthcare providers based on their professional judgment.\n"
-    "- Write in clear, flowing paragraphs that are easy for clinicians to read.\n"
-    "- Use natural language and complete sentences for most content.\n"
-    "- For conditions lists, use numbered format (1, 2, 3) with brief explanations for better readability.\n"
-    "- For observations, use bullet points with clinical interpretations (normal/high/low) for better readability.\n"
-    "- ALWAYS start with the exact introductory sentence provided in the task instructions.\n"
-    "- For demographics: 'Demographics of the patient based on their medical records:' followed by 'Patient Demographics:' and bullet points only\n"
-    "- For observations: 'The patient's laboratory and clinical observations include:'\n"
-    "- For conditions: 'Based on the patient's medical data, the patient has the following medical conditions:'\n"
-    "- For care plans: 'Based on the documented clinical data, the following care considerations may be relevant for this patient:'\n"
-    "- Structure your response as coherent paragraphs based only on the actual data provided.\n"
-        "- If no relevant data is available for a section, state 'No data available' or 'Information not recorded'.\n"
-        "- For observations, do not mention 'No other observations', 'No other data', or similar disclaimers - just summarize what is available.\n"
-        "- For observations, only include entries with actual numeric or string values - exclude null, missing, or empty values.\n"
-    "- Always complete your sentences properly - do not leave them truncated.\n"
+    "You are a clinical summarization assistant helping healthcare professionals review patient data.\n"
+    "- Be factual and base your response strictly on the data provided.\n"
+    "- You MAY provide standard clinical interpretations of values (e.g., 'HbA1c of 8.5% indicates poor glycemic control'; "
+    "'creatinine of 2.1 mg/dL suggests possible renal impairment'). Use well-established clinical thresholds.\n"
+    "- Do NOT fabricate data, invent values, or add information not present in the records.\n"
+    "- Do NOT diagnose or prescribe. Interpret values clinically, but always note all decisions rest with the clinician.\n"
+    "- Preserve units exactly. Do not convert or round away meaning.\n"
+    "- If a date or value is missing, write: 'not recorded'.\n"
+    "- Write in clear, complete sentences. Never leave a sentence truncated.\n"
+    "- Use bullet points for lists; paragraphs for narrative sections.\n"
+    "- If no data is available for a section, write 'No data recorded' and stop — do not pad.\n"
+    "- ALWAYS complete your response before stopping. Do not start a point you cannot finish.\n"
 )
 
 # ---------- Helpers ----------
@@ -38,6 +28,14 @@ def _j(x: Any) -> str:
 def _header(title: str) -> str:
     return f"{title.upper()}:\n"
 
+def _demo_context(demo: Dict[str, Any]) -> str:
+    """One-line patient context line for use inside section prompts."""
+    name = demo.get("name", "Unknown")
+    age = demo.get("ageYears", "")
+    gender = demo.get("gender", "")
+    parts = [p for p in [name, f"{age} y/o" if age and age != "value not recorded" else "", gender] if p]
+    return f"Patient: {', '.join(parts)}" if parts else ""
+
 # ---------- Category user prompts ----------
 
 def prompt_patient_summary(
@@ -47,222 +45,311 @@ def prompt_patient_summary(
     notes: List[Dict[str, Any]],
 ) -> str:
     """
-    Full patient summary: demographics + unique conditions + all observation rows
-    (already capped by the API's budget logic) + recent notes.
+    Clinical handoff summary: all data, highlights critical findings.
     """
-    # Group conditions by category for better organization
     from ..api.condition_categorizer import group_conditions_by_category
-    
+
     grouped_conditions = group_conditions_by_category(conditions)
-    
-    # Build conditions section organized by category
-    conditions_text = _header("Conditions (organized by medical category)")
+
+    conditions_text = _header("Conditions (by category, high priority first)")
     category_order = [
         "Cardiovascular", "Metabolic", "Respiratory", "Neurological",
         "Mental Health", "Musculoskeletal", "Gastrointestinal", "Renal",
         "Endocrine", "Oncology", "Acute", "Other"
     ]
-    
     for category in category_order:
         if category in grouped_conditions:
-            cat_conditions = grouped_conditions[category]
-            sorted_conditions = sorted(
-                cat_conditions,
+            cat_conds = grouped_conditions[category]
+            sorted_conds = sorted(
+                cat_conds,
                 key=lambda c: {"high": 3, "medium": 2, "low": 1}.get(c.get("priority", "low"), 1),
                 reverse=True
             )
             conditions_text += f"\n{category}:\n"
-            for cond in sorted_conditions:
+            for cond in sorted_conds:
                 priority = cond.get("priority", "low")
                 name = cond.get("normalizedName") or cond.get("display", "Unknown")
                 status = cond.get("clinicalStatus", "unknown")
-                conditions_text += f"  [{priority.upper()}]: {name} (Status: {status})\n"
-    
+                conditions_text += f"  [{priority.upper()}] {name} (Status: {status})\n"
+
     return (
         _header("Demographics") + _j(demo) + "\n\n"
         + conditions_text + "\n\n"
-        + _header("Observations (rows, newest first)") + _j(observations) + "\n\n"
+        + _header("Observations (newest first, with trends)") + _j(observations) + "\n\n"
         + _header("Notes (most recent first)") + _j(notes) + "\n\n"
-        "TASK:\n"
-        "Summary of patient's medical records:\n"
-        "Write a comprehensive summary based on demographics, conditions, observations, and notes. CRITICAL: Do NOT mention or include any category if data is not available. If notes are available, prioritize notes then consider other categories. Do NOT duplicate the observations category format. Structure your response as follows:\n\n1. Start with 'Summary of patient's medical records:' as the main heading\n2. When discussing conditions, organize by medical category (Cardiovascular, Metabolic, Respiratory, etc.) and highlight HIGH PRIORITY conditions first\n3. Provide a comprehensive summary synthesizing information from all available categories in paragraph format\n4. Do NOT list individual observations with values - instead, provide insights about key findings, trends, or patterns\n5. CRITICAL: Do NOT include sentences like 'No observations are available', 'No notes are available' - Simply skip those sections entirely if data is not available\n6. If patterns or trends are identified, include a section 'Clinical Insights:' with numbered points (1., 2., 3., etc.) - ONLY if meaningful insights can be derived from the data\n7. Do not mention 'normal range not specified' - use clinical interpretations (normal/high/low/abnormal) based on provided data\n8. Do not use phrases like 'Based on the patient's medical data' or 'The patient's laboratory and clinical observations include' - write in your own summary style\n9. Do NOT list individual observations with their values - focus on overall health status and key findings\n10. Emphasize high-priority conditions (Cardiovascular, Metabolic, Respiratory, Neurological) when present\n"
+        "TASK: Write a clinical handoff summary for this patient.\n\n"
+        "Structure:\n"
+        "1. **Patient Overview** — one paragraph: name, age, gender, key demographics.\n"
+        "2. **Active Conditions** — organized by system (Cardiovascular, Metabolic, etc.). "
+        "List HIGH priority conditions with their clinical status. Include brief clinical interpretation.\n"
+        "3. **Key Lab and Vital Findings** — list the most clinically significant observations with "
+        "actual values and interpretation (normal/elevated/low). Highlight anything abnormal or trending badly.\n"
+        "4. **Clinical Notes Highlights** — if notes exist, summarize the most recent clinical findings.\n"
+        "5. **Clinical Insights** — numbered points on important patterns, risks, or monitoring needs "
+        "that can be derived directly from the data.\n\n"
+        "Rules:\n"
+        "- Include specific values for abnormal findings (e.g., 'Creatinine 2.1 mg/dL — elevated').\n"
+        "- Do NOT say 'No data available' for any section that has data.\n"
+        "- Do NOT write sections for data categories that are genuinely empty.\n"
+        "- Prioritize what a clinician needs to know at a glance.\n"
+        "- Complete every sentence. Do not start a point you cannot finish.\n"
     )
 
-def prompt_conditions(conditions: List[Dict[str, Any]]) -> str:
-    # Group conditions by category
+
+def prompt_conditions(
+    conditions: List[Dict[str, Any]],
+    demo: Optional[Dict[str, Any]] = None,
+) -> str:
     from ..api.condition_categorizer import group_conditions_by_category
-    
+
     grouped = group_conditions_by_category(conditions)
-    
-    # Build organized prompt by category
-    prompt = _header("Conditions (organized by medical category)")
-    
-    # Sort categories by precedence (Cardiovascular first, then Metabolic, etc.)
     category_order = [
         "Cardiovascular", "Metabolic", "Respiratory", "Neurological",
         "Mental Health", "Musculoskeletal", "Gastrointestinal", "Renal",
         "Endocrine", "Oncology", "Acute", "Other"
     ]
-    
+
+    context_line = _demo_context(demo) if demo else ""
+
+    prompt = ""
+    if context_line:
+        prompt += context_line + "\n\n"
+
+    prompt += _header("Conditions (by medical category)")
+
     for category in category_order:
         if category in grouped:
-            cat_conditions = grouped[category]
-            # Sort by priority: high first, then medium, then low
-            sorted_conditions = sorted(
-                cat_conditions,
+            cat_conds = grouped[category]
+            sorted_conds = sorted(
+                cat_conds,
                 key=lambda c: {"high": 3, "medium": 2, "low": 1}.get(c.get("priority", "low"), 1),
                 reverse=True
             )
-            
-            prompt += f"\n{category} ({len(cat_conditions)} condition{'s' if len(cat_conditions) != 1 else ''}):\n"
-            for cond in sorted_conditions:
+            prompt += f"\n{category} ({len(cat_conds)} condition{'s' if len(cat_conds) != 1 else ''}):\n"
+            for cond in sorted_conds:
                 priority = cond.get("priority", "low")
-                priority_marker = "🔴 HIGH" if priority == "high" else "🟡 MEDIUM" if priority == "medium" else "🟢 LOW"
+                marker = "HIGH" if priority == "high" else "MED" if priority == "medium" else "LOW"
                 name = cond.get("normalizedName") or cond.get("display", "Unknown")
                 status = cond.get("clinicalStatus", "unknown")
-                prompt += f"  {priority_marker}: {name} (Status: {status})\n"
-    
-    # Handle any remaining categories not in the precedence list
-    for category, cat_conditions in grouped.items():
+                prompt += f"  [{marker}] {name} (Status: {status})\n"
+
+    for category, cat_conds in grouped.items():
         if category not in category_order:
-            sorted_conditions = sorted(
-                cat_conditions,
+            sorted_conds = sorted(
+                cat_conds,
                 key=lambda c: {"high": 3, "medium": 2, "low": 1}.get(c.get("priority", "low"), 1),
                 reverse=True
             )
-            prompt += f"\n{category} ({len(cat_conditions)} condition{'s' if len(cat_conditions) != 1 else ''}):\n"
-            for cond in sorted_conditions:
+            prompt += f"\n{category} ({len(cat_conds)} condition{'s' if len(cat_conds) != 1 else ''}):\n"
+            for cond in sorted_conds:
                 priority = cond.get("priority", "low")
-                priority_marker = "🔴 HIGH" if priority == "high" else "🟡 MEDIUM" if priority == "medium" else "🟢 LOW"
+                marker = "HIGH" if priority == "high" else "MED" if priority == "medium" else "LOW"
                 name = cond.get("normalizedName") or cond.get("display", "Unknown")
                 status = cond.get("clinicalStatus", "unknown")
-                prompt += f"  {priority_marker}: {name} (Status: {status})\n"
-    
-    prompt += "\n\nTASK:\n"
-    prompt += "Write a comprehensive conditions summary organized by medical category:\n"
-    prompt += "1. Start with HIGH PRIORITY conditions first (Cardiovascular, Metabolic, Respiratory, Neurological)\n"
-    prompt += "2. Group conditions by their medical category (Cardiovascular, Metabolic, Respiratory, etc.)\n"
-    prompt += "3. Within each category, list HIGH priority conditions first, then MEDIUM, then LOW\n"
-    prompt += "4. For each condition, provide: [Condition name] - [brief one-sentence explanation]\n"
-    prompt += "5. Mention clinical status (active, resolved, unknown) when available\n"
-    prompt += "6. Use this format:\n"
-    prompt += "   CARDIOVASCULAR:\n"
-    prompt += "   1. [High priority condition] - [explanation] (Status: active)\n"
-    prompt += "   2. [Medium priority condition] - [explanation] (Status: resolved)\n"
-    prompt += "   METABOLIC:\n"
-    prompt += "   1. [High priority condition] - [explanation] (Status: active)\n"
-    prompt += "7. Do NOT include ICD codes, SNOMED codes, or any codes\n"
-    prompt += "8. Do NOT add risk assessments, care considerations, or clinical implications not explicitly stated\n"
-    prompt += "9. Focus on organizing by category and highlighting high-priority conditions\n"
-    
+                prompt += f"  [{marker}] {name} (Status: {status})\n"
+
+    prompt += (
+        "\n\nTASK: Write a clinical conditions summary organized by medical category.\n\n"
+        "Based on the patient's medical data, the patient has the following medical conditions:\n\n"
+        "1. List HIGH priority conditions first within each category.\n"
+        "2. For each condition provide: condition name — brief one-sentence clinical explanation.\n"
+        "3. Mention clinical status (active/resolved/unknown).\n"
+        "4. Format:\n"
+        "   CARDIOVASCULAR:\n"
+        "   1. [Condition] — [explanation] (Status: active)\n"
+        "5. Do NOT include ICD/SNOMED codes.\n"
+        "6. Do NOT add risk assessments or care recommendations not in the data.\n"
+        "7. Complete every sentence. Do not start an entry you cannot finish.\n"
+    )
     return prompt
 
-def prompt_observations_summary(observations: List[Dict[str, Any]]) -> str:
-    """Observations summary focused on analysis rather than listing all individual values"""
+
+def prompt_observations_summary(
+    observations: List[Dict[str, Any]],
+    demo: Optional[Dict[str, Any]] = None,
+    conditions: Optional[List[Dict[str, Any]]] = None,
+) -> str:
+    """Observations summary with actual values, clinical interpretation, and trends."""
     obs_count = len(observations)
+    context_line = _demo_context(demo) if demo else ""
+
+    # Build a short conditions context so the LLM can interpret lab values in clinical context
+    cond_context = ""
+    if conditions:
+        high_conds = [
+            (c.get("normalizedName") or c.get("display", ""))
+            for c in conditions
+            if c.get("priority") == "high" and c.get("clinicalStatus") != "resolved"
+        ][:6]
+        if high_conds:
+            cond_context = f"Key active conditions: {', '.join(high_conds)}.\n"
+
+    header = ""
+    if context_line:
+        header += context_line + "\n"
+    if cond_context:
+        header += cond_context
+    if header:
+        header += "\n"
+
     return (
-        _header("Observations (all data for comprehensive analysis)") + _j(observations) + "\n\n"
+        header
+        + _header(f"Observations ({obs_count} total, newest first, with trends)") + _j(observations) + "\n\n"
         "TASK:\n"
         "The patient's laboratory and clinical observations include:\n\n"
-        f"Analyze ALL {obs_count} observations and provide a comprehensive summary focusing on:\n\n"
-        "1. Key Findings: Highlight the most important abnormal values and their clinical significance\n"
-        "2. Trends: Identify patterns, changes over time, and stability of values\n"
-        "3. Categories: Group observations by type (Vital Signs, Blood Chemistry, etc.)\n"
-        "4. Clinical Interpretation: Provide clinical context for abnormal values based on the data provided\n\n"
-        "Format:\n"
-        "- Use bullet points with clinical interpretations (normal/high/low/abnormal)\n"
-        "- Group by category: Vital Signs, Blood Chemistry, Blood Counts, etc.\n"
-        "- Include trend information when available (stable/increasing/decreasing)\n"
-        "- Focus on clinically significant findings rather than listing every single value\n"
-        "- Use common abbreviations: BP, HR, Temp. Spell out all other terms\n"
-        "- Include ranges and averages when available in the data\n"
-        "- Do NOT use bold formatting or asterisks in your response\n\n"
+        f"Analyze ALL {obs_count} observations and write a structured clinical observations summary.\n\n"
+        "Structure:\n"
+        "1. **Vital Signs** — list each with value, unit, status (normal/elevated/low), and trend if available.\n"
+        "2. **Blood Chemistry** — glucose, creatinine, BUN, electrolytes, liver enzymes, etc.\n"
+        "3. **Hematology** — CBC values: Hgb, WBC, platelets, etc.\n"
+        "4. **Endocrine / Metabolic** — HbA1c, cholesterol, thyroid, etc.\n"
+        "5. **Other** — any remaining observations.\n\n"
+        "For each observation:\n"
+        "  - Show the actual value with units.\n"
+        "  - State whether it is normal, elevated, or low using standard clinical ranges.\n"
+        "  - Include trend summary if available (e.g., 'stable over 5 measurements, Avg: X, Range: Y-Z').\n"
+        "  - Provide brief clinical interpretation for abnormal values.\n\n"
         "Examples:\n"
-        "Vital Signs:\n"
-        "• Heart rate: 98.0 /min - normal, stable over 5 measurements (Avg: 98.80, Range: 94.00-102.00)\n"
-        "• Systolic blood pressure: 129.0 mmHg - high, stable over 5 measurements (Avg: 121.80, Range: 103.00-152.00)\n\n"
-        "Blood Chemistry:\n"
-        "• Glucose: 155.0 mg/dL - high, indicating possible diabetes or impaired glucose regulation\n"
-        "• Creatinine: 0.9 mg/dL - normal, stable over measurements\n\n"
-        "CRITICAL: Provide a comprehensive analysis of ALL observations, not just a subset. Focus on clinical significance and patterns. Only use data explicitly provided in the observations above."
+        "  - Heart rate: 98 /min — normal, stable over 5 measurements (Avg: 98.8, Range: 94-102)\n"
+        "  - Systolic BP: 129 mmHg — elevated, stable (Avg: 121.8, Range: 103-152)\n"
+        "  - HbA1c: 8.5% — elevated, indicating poor glycemic control\n"
+        "  - Creatinine: 2.1 mg/dL — elevated, may indicate renal impairment\n\n"
+        "Rules:\n"
+        "- Include ALL observations — do not skip any.\n"
+        "- Only use sections that have data; skip empty sections.\n"
+        "- Use standard abbreviations: BP, HR, Hgb, WBC, BUN, HbA1c.\n"
+        "- Do NOT include dates.\n"
+        "- Complete every line. Do not start an entry you cannot finish.\n"
     )
+
 
 def prompt_observations(observations: List[Dict[str, Any]]) -> str:
+    """Detailed observation listing with full trend data (kept for compatibility)."""
     obs_count = len(observations)
     return (
-        _header("Observations (aggregated with trends when available)") + _j(observations) + "\n\n"
+        _header("Observations (aggregated with trends)") + _j(observations) + "\n\n"
         "TASK:\n"
-        "List ALL patient observations with trend details:\n\n"
-        f"CRITICAL: Include ALL {obs_count} observations. No exceptions. No duplicates.\n\n"
-        "Format depends on trend data available:\n"
-        "- If valueString contains trend with 'Avg' and 'Range': • [Name]: [value] [unit] - [status], [trend] over N measurements (Avg: X, Range: Y-Z)\n"
-        "- If valueString has simple trend (X → Y): • [Name]: [value] [unit] - [status], [trend] (X → Y)\n"
-        "- If no trend: • [Name]: [value] [unit] - [status]\n\n"
-        "Examples:\n"
-        "  • Heart rate: 98.0 /min - normal, stable over 5 measurements (Avg: 98.80, Range: 94.00-102.00)\n"
-        "  • Systolic BP: 129.0 mmHg - high, stable over 5 measurements (Avg: 121.80, Range: 103.00-152.00)\n"
-        "  • Diastolic BP: 86.0 mmHg - high, increasing over 5 measurements (Avg: 71.00, Range: 64.00-86.00)\n"
-        "  • Glucose: 155.0 mg/dL - high, decreasing (160.0 → 155.0)\n"
-        "  • Albumin: 3.8 g/dL - normal\n\n"
+        "The patient's laboratory and clinical observations include:\n\n"
+        f"List ALL {obs_count} observations. No exceptions. No duplicates.\n\n"
+        "Format:\n"
+        "  - If trend available: [Name]: [value] [unit] - [status], [trend] over N measurements (Avg: X, Range: Y-Z)\n"
+        "  - If no trend: [Name]: [value] [unit] - [status]\n\n"
         "Rules:\n"
-        "1. Use ONLY common abbreviations: BP, HR, Temp. Spell out all other terms.\n"
-        "2. One line per observation - NO DUPLICATES (do not list same observation twice)\n"
-        "3. Keep Systolic BP and Diastolic BP separate - do NOT combine as '129.0 /90.0'\n"
-        "4. Include trend statistics from valueString when available\n"
-        "5. Status: normal/high/low based on clinical ranges\n"
-        "6. Group by category: Vital Signs, Blood Chemistry, Blood Counts, etc.\n"
-        "7. NO dates in the output\n"
-        "8. Fix units: use 'mmHg' not '/mmHg', use '/min' not '/ min'\n\n"
-        "COMPLETE THE ENTIRE LIST. Do not truncate. Finish all observations.\n"
+        "1. Abbreviations: BP, HR, Temp. Spell out everything else.\n"
+        "2. One line per observation — no duplicates.\n"
+        "3. Status: normal/elevated/low based on clinical ranges.\n"
+        "4. Group by: Vital Signs, Blood Chemistry, Blood Counts, Other.\n"
+        "5. No dates in output.\n"
+        "6. Complete every line. Do not start an entry you cannot finish.\n"
     )
 
-def prompt_notes(notes: List[Dict[str, Any]]) -> str:
+
+def prompt_notes(
+    notes: List[Dict[str, Any]],
+    demo: Optional[Dict[str, Any]] = None,
+) -> str:
+    context_line = _demo_context(demo) if demo else ""
+    header = (context_line + "\n\n") if context_line else ""
     return (
-        _header("Notes (most recent first)") + _j(notes) + "\n\n"
+        header
+        + _header("Notes (most recent first)") + _j(notes) + "\n\n"
         "TASK:\n"
-        "Write a comprehensive notes summary in paragraph format using only the provided data:\n"
-        "Start with a professional introductory sentence about the patient's clinical notes. Summarize only the clinical narrative that is explicitly documented in the notes, including key events, decisions, transfers, and follow-ups with dates when present in the records. Describe only the symptoms and responses that have been explicitly documented. Use this format: 'The patient's clinical notes document: [clinical narrative].' Write in flowing, well-structured paragraphs that synthesize the information from the actual notes provided. Do not add interpretations, clinical assessments, or implications beyond what is explicitly stated in the source notes.\n"
+        "Write a comprehensive clinical notes summary in paragraph format.\n"
+        "Summarize the clinical narrative documented in the notes: key events, clinical decisions, "
+        "transfers, procedures, and follow-up actions with dates when present. "
+        "Describe only what is explicitly documented. "
+        "Write in flowing, well-structured paragraphs. "
+        "Do not add interpretations or clinical implications beyond what is stated in the notes. "
+        "Complete every sentence. Do not start a sentence you cannot finish.\n"
     )
 
-def prompt_demographics(demo: Dict[str, Any]) -> str:
+
+def prompt_demographics(
+    demo: Dict[str, Any],
+    conditions: Optional[List[Dict[str, Any]]] = None,
+    obs_count: Optional[int] = None,
+) -> str:
+    # Build a brief clinical context summary for richer demographics section
+    cond_summary = ""
+    if conditions:
+        active = [c for c in conditions if c.get("clinicalStatus") not in ("resolved", "inactive")]
+        high = [c for c in active if c.get("priority") == "high"]
+        cond_summary = (
+            f"\nClinical context: {len(conditions)} documented conditions "
+            f"({len(active)} active, {len(high)} high-priority)."
+        )
+    obs_summary = f" {obs_count} observations on record." if obs_count else ""
+
     return (
-        _header("Patient Demographics") + _j(demo) + "\n\n"
-        "TASK:\n"
-        "Write a comprehensive demographic summary in paragraph format using only the provided data:\n"
-        "Demographics of the patient based on their medical records:\n"
-        "Provide a demographic summary in bullet-point format including only the basic patient information that is explicitly documented such as name, patient ID, age, and gender. Include contact information and location when available in the records. Use this exact format: 'Patient Demographics:\n- Name: [name]\n- Patient ID: [id]\n- Age: [age] years\n- Gender: [gender]\n- Birth Date: [date]\n- Location: [location]'. If a value says 'value not recorded', omit the word 'years' (e.g., write 'Age: value not recorded' not 'Age: value not recorded years'). Do not add any introductory sentences, paragraphs, or explanatory text - start directly with 'Patient Demographics:'. Do not add clinical relevance assessments or implications beyond what is explicitly stated in the data.\n"
+        _header("Patient Demographics") + _j(demo)
+        + (cond_summary + obs_summary + "\n" if (cond_summary or obs_summary) else "")
+        + "\n\nTASK:\n"
+        "Demographics of the patient based on their medical records:\n\n"
+        "Provide a demographic summary using ONLY the data above. Use this exact format:\n\n"
+        "Patient Demographics:\n"
+        "- Name: [full name]\n"
+        "- Patient ID: [id]\n"
+        "- Age: [age] years  (write 'not recorded' if missing)\n"
+        "- Gender: [gender]  (write 'not recorded' if missing)\n"
+        "- Date of Birth: [date]  (write 'not recorded' if missing)\n"
+        "- Location: [city, state postal_code]  (write 'not recorded' if missing)\n"
+        + (
+            "\nClinical Summary:\n"
+            "- Documented conditions: [total] ([active] active, [high-priority] high-priority)\n"
+            "- Observations on record: [count]\n"
+            if (cond_summary or obs_summary) else ""
+        )
+        + "\nDo not add introductory text, narrative paragraphs, or clinical implications. "
+        "Start directly with 'Patient Demographics:'. "
+        "If a field says 'value not recorded' or 'date not recorded', write 'not recorded' for that field.\n"
     )
 
-def prompt_care_plans(demo: Dict[str, Any], conditions: List[Dict[str, Any]], observations: List[Dict[str, Any]], notes: List[Dict[str, Any]]) -> str:
-    # Summarize key data points instead of dumping full JSON to reduce tokens and confusion
-    age_str = f"Age: {demo.get('ageYears', 'unknown')}" if demo.get('ageYears') != 'value not recorded' else ""
-    gender_str = f"Gender: {demo.get('gender', 'unknown')}" if demo.get('gender') != 'value not recorded' else ""
+
+def prompt_care_plans(
+    demo: Dict[str, Any],
+    conditions: List[Dict[str, Any]],
+    observations: List[Dict[str, Any]],
+    notes: List[Dict[str, Any]],
+) -> str:
+    age_str = f"Age: {demo.get('ageYears')}" if demo.get('ageYears') not in (None, 'value not recorded') else ""
+    gender_str = f"Gender: {demo.get('gender')}" if demo.get('gender') not in (None, 'value not recorded') else ""
     demographics_summary = f"Patient: {demo.get('name', 'Unknown')} (ID: {demo.get('patientId', 'Unknown')}). {age_str} {gender_str}".strip()
-    
-    conditions_summary = [f"{c.get('display', 'Unknown condition')}" for c in conditions[:10]]  # Top 10 only
-    observations_summary = [f"{o.get('display', 'Unknown')}: {o.get('valueNumber', o.get('valueString', 'N/A'))}" for o in observations[:15]]  # Top 15 only
-    
+
+    # Include all conditions, not just 10
+    conditions_summary = [
+        f"{c.get('display', 'Unknown condition')} [{c.get('clinicalStatus', 'unknown')}]"
+        for c in conditions
+    ]
+    # Include abnormal observations
+    obs_items = []
+    for o in observations[:20]:
+        val = o.get('valueNumber', o.get('valueString', 'N/A'))
+        display = o.get('display', 'Unknown')
+        unit = o.get('unit', '')
+        obs_items.append(f"{display}: {val} {unit}".strip())
+
     return (
         "CLINICAL CONTEXT FOR CARE PLANNING:\n\n"
-        f"Patient: {demographics_summary}\n\n"
-        f"Key Conditions: {', '.join(conditions_summary) if conditions_summary else 'None documented'}\n\n"
-        f"Recent Key Observations: {', '.join(observations_summary[:10]) if observations_summary else 'None documented'}\n\n"
+        f"{demographics_summary}\n\n"
+        f"Conditions ({len(conditions_summary)} total):\n"
+        + "\n".join(f"  - {c}" for c in conditions_summary) + "\n\n"
+        + "Recent Observations:\n"
+        + "\n".join(f"  - {o}" for o in obs_items) + "\n\n"
         "TASK:\n"
         "Based on the documented clinical data, the following care considerations may be relevant for this patient:\n\n"
-        "Write ONLY care considerations as a numbered list (1., 2., 3., etc.). Each consideration should be:\n"
-        "- Specific and data-driven\n"
-        "- Based on the documented conditions or observations\n"
-        "- Brief (1-2 sentences maximum per consideration)\n"
-        "- Focused on monitoring, management, or follow-up areas\n\n"
-        "CRITICAL INSTRUCTIONS:\n"
-        "- Do NOT repeat demographics, conditions list, or observations list\n"
-        "- Do NOT start with 'Demographics of the patient' or similar\n"
-        "- Start DIRECTLY with numbered care considerations\n"
-        "- Only include considerations you can support with the data provided\n"
-        "- If no meaningful considerations can be made, write: 'No specific care considerations available based on current data.'\n"
-        "- End immediately after the last consideration - no disclaimers or concluding statements\n"
-        "- IMPORTANT: These are data-driven observations only. All clinical decisions must be made by qualified healthcare providers based on their professional judgment.\n"
+        "Write a numbered list of care considerations (1., 2., 3., ...). Each should be:\n"
+        "- Specific and tied to the data above (cite the condition or observation).\n"
+        "- Brief (1-2 sentences).\n"
+        "- Focused on monitoring, management, or follow-up.\n\n"
+        "Rules:\n"
+        "- Do NOT repeat the demographics, conditions list, or observations list.\n"
+        "- Start DIRECTLY with '1.'\n"
+        "- Only include considerations supported by the data.\n"
+        "- End after the last consideration — no disclaimers or concluding paragraphs.\n"
+        "- Complete every sentence. Do not start an entry you cannot finish.\n"
+        "- All clinical decisions rest with qualified healthcare providers.\n"
     )
+
 
 # ---------- Registry ----------
 def render_prompt(
@@ -272,6 +359,7 @@ def render_prompt(
     conditions: Optional[List[Dict[str, Any]]] = None,
     observations: Optional[List[Dict[str, Any]]] = None,
     notes: Optional[List[Dict[str, Any]]] = None,
+    obs_count: Optional[int] = None,
 ) -> Dict[str, str]:
     """
     Returns {'system': SYSTEM_PROMPT, 'user': user_prompt_text}
@@ -286,14 +374,24 @@ def render_prompt(
             ),
         }
     if cat == "conditions":
-        return {"system": SYSTEM_PROMPT, "user": prompt_conditions(conditions or [])}
+        return {"system": SYSTEM_PROMPT, "user": prompt_conditions(conditions or [], demo=demo)}
     if cat == "observations":
-        return {"system": SYSTEM_PROMPT, "user": prompt_observations_summary(observations or [])}
+        return {
+            "system": SYSTEM_PROMPT,
+            "user": prompt_observations_summary(observations or [], demo=demo, conditions=conditions),
+        }
     if cat == "notes":
-        return {"system": SYSTEM_PROMPT, "user": prompt_notes(notes or [])}
+        return {"system": SYSTEM_PROMPT, "user": prompt_notes(notes or [], demo=demo)}
     if cat == "demographics":
-        return {"system": SYSTEM_PROMPT, "user": prompt_demographics(demo or {})}
+        _obs_count = obs_count if obs_count is not None else (len(observations) if observations else None)
+        return {
+            "system": SYSTEM_PROMPT,
+            "user": prompt_demographics(demo or {}, conditions=conditions, obs_count=_obs_count),
+        }
     if cat == "care_plans":
-        return {"system": SYSTEM_PROMPT, "user": prompt_care_plans(demo or {}, conditions or [], observations or [], notes or [])}
+        return {
+            "system": SYSTEM_PROMPT,
+            "user": prompt_care_plans(demo or {}, conditions or [], observations or [], notes or []),
+        }
 
     raise ValueError(f"Unknown category: {category}")

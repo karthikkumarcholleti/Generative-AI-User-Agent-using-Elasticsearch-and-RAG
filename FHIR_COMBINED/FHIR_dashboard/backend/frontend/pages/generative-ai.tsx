@@ -379,6 +379,12 @@ export default function GenerativeAIPage() {
   // Track component mount status to handle responses that arrive after tab switch
   const isMountedRef = useRef(true);
 
+  // Refs holding the latest UI state so route-change event handlers never read stale closures
+  const selectedPatientRef = useRef<PatientLite | null>(null);
+  const activeSectionRef = useRef<SectionType>('patients');
+  const isChatMinimizedRef = useRef(false);
+  const isGenerativeAIMinimizedRef = useRef(false);
+
   // Load patients on mount
   useEffect(() => {
     async function loadPatients() {
@@ -396,6 +402,12 @@ export default function GenerativeAIPage() {
 
     loadPatients();
   }, []);
+
+  // Keep refs in sync with state so event-listener closures always read current values
+  useEffect(() => { selectedPatientRef.current = selectedPatient; }, [selectedPatient]);
+  useEffect(() => { activeSectionRef.current = activeSection; }, [activeSection]);
+  useEffect(() => { isChatMinimizedRef.current = isChatMinimized; }, [isChatMinimized]);
+  useEffect(() => { isGenerativeAIMinimizedRef.current = isGenerativeAIMinimized; }, [isGenerativeAIMinimized]);
 
   // Note: Restore state useEffect moved after generateSummaries definition to avoid hoisting issue
 
@@ -452,59 +464,47 @@ export default function GenerativeAIPage() {
     // Check current route and auto-minimize if not on generative-ai
     if (router.pathname !== '/generative-ai') {
       setIsGenerativeAIMinimized(true);
-      // Save minimized state (NO messages - messages are in backend cache)
-      if (selectedPatient) {
+      // Use ref values — this effect runs synchronously, so refs are current
+      const patient = selectedPatientRef.current;
+      if (patient) {
         const stateToSave = {
-          patientId: selectedPatient.patientId,
-          activeSection,
-          isChatMinimized,
+          patientId: patient.patientId,
+          activeSection: activeSectionRef.current,
+          isChatMinimized: isChatMinimizedRef.current,
           isMinimized: true,
         };
         localStorage.setItem('generativeAIState', JSON.stringify(stateToSave));
       }
     } else {
-      // If on generative-ai page, check if we should restore
-      // If coming from another page, restore state (don't force minimize)
       const savedState = localStorage.getItem('generativeAIState');
       if (savedState) {
         try {
           const parsed = JSON.parse(savedState);
-          // Only restore minimized state if explicitly set, otherwise show page
-          if (parsed.isMinimized === false) {
-            setIsGenerativeAIMinimized(false);
-          } else if (parsed.isMinimized === true) {
-            // Keep minimized if explicitly minimized
-            setIsGenerativeAIMinimized(true);
-          } else {
-            // Default: show page when navigating to it
-            setIsGenerativeAIMinimized(false);
-          }
+          setIsGenerativeAIMinimized(parsed.isMinimized === true);
         } catch (e) {
-          // Default: show page
           setIsGenerativeAIMinimized(false);
         }
       } else {
-        // No saved state, show page
         setIsGenerativeAIMinimized(false);
       }
     }
 
+    // Use refs inside the event listener to avoid stale-closure bugs when patients
+    // are switched quickly while a route transition is in flight.
     const handleRouteChange = (url: string) => {
-      // If navigating away from generative-ai page, minimize it and save state
       if (!url.includes('/generative-ai')) {
         setIsGenerativeAIMinimized(true);
-        // Save minimized state (NO messages - messages are in backend cache)
-        if (selectedPatient) {
+        const patient = selectedPatientRef.current;
+        if (patient) {
           const stateToSave = {
-            patientId: selectedPatient.patientId,
-            activeSection,
-            isChatMinimized,
+            patientId: patient.patientId,
+            activeSection: activeSectionRef.current,
+            isChatMinimized: isChatMinimizedRef.current,
             isMinimized: true,
           };
           localStorage.setItem('generativeAIState', JSON.stringify(stateToSave));
         }
       } else {
-        // If navigating to generative-ai page, restore state (clear minimized)
         const savedState = localStorage.getItem('generativeAIState');
         if (savedState) {
           try {
@@ -512,7 +512,7 @@ export default function GenerativeAIPage() {
             parsed.isMinimized = false;
             localStorage.setItem('generativeAIState', JSON.stringify(parsed));
           } catch (e) {
-            // Ignore errors
+            // ignore
           }
         }
         setIsGenerativeAIMinimized(false);
@@ -523,7 +523,10 @@ export default function GenerativeAIPage() {
     return () => {
       router.events?.off('routeChangeStart', handleRouteChange);
     };
-  }, [router.pathname, router, selectedPatient, activeSection, isChatMinimized, messages]);
+  // Deliberately omit selectedPatient/activeSection/isChatMinimized from deps —
+  // those values are read via refs to avoid stale closures in the event listener.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.pathname, router]);
 
   // Track component mount status
   useEffect(() => {
@@ -771,15 +774,17 @@ export default function GenerativeAIPage() {
       setSummaries(data.summaries as Partial<Record<SummaryCategory, string>>);
       setContextCounts(data.contextCounts);
       setSummaryMeta({ model: data.model, generatedAt: data.generatedAt });
-      // Mark summaries as generated in localStorage
+      // Mark summaries as generated — only if localStorage still belongs to this patient
       const savedState = localStorage.getItem('generativeAIState');
       if (savedState) {
         try {
           const parsed = JSON.parse(savedState);
-          parsed.summariesGenerated = true;
-          localStorage.setItem('generativeAIState', JSON.stringify(parsed));
+          if (parsed.patientId === patientId) {
+            parsed.summariesGenerated = true;
+            localStorage.setItem('generativeAIState', JSON.stringify(parsed));
+          }
         } catch (e) {
-          // Ignore errors
+          // ignore
         }
       }
       // Success - always set loading to false

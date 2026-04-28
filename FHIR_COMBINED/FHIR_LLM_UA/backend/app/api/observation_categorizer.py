@@ -199,6 +199,27 @@ OBSERVATION_CATEGORIES: Dict[str, Dict[str, any]] = {
         "priority": "high"
     },
 
+    # Mental Health / Functional Assessments
+    "mental_health": {
+        "keywords": [
+            # PHQ screening tools
+            "phq", "phq-9", "phq9", "patient health questionnaire",
+            "phq-2", "phq2",
+            # GAD anxiety tools
+            "gad", "gad-7", "gad7", "generalized anxiety",
+            # General mental health
+            "depression", "anxiety", "mood", "psychiatric",
+            "mental", "cognitive", "mmse", "mini-mental",
+            "moca", "montreal cognitive",
+            # Functional / pain
+            "pain score", "pain scale", "vas", "visual analog",
+            "functional", "audit", "cage", "dast",
+        ],
+        "display_name": "Mental Health & Functional",
+        "color": "bg-violet-50 border-violet-200 text-violet-800",
+        "priority": "high"
+    },
+
     # Other (default category)
     "other": {
         "keywords": [],
@@ -223,6 +244,7 @@ CATEGORY_PRECEDENCE = [
     "thyroid",
     "respiratory",
     "anthropometric",
+    "mental_health",
     "other"
 ]
 

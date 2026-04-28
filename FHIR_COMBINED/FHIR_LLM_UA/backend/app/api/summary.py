@@ -356,15 +356,14 @@ def _generate_observations_summary_with_counts(observations: List[Dict[str, Any]
 def _get_patient_data(patient_id: str, category: str = "default"):
     """Fetch all patient data from database with adaptive limits based on category"""
     
-    # Adaptive limits: complex categories use reduced limits to save memory
-    if category in ["patient_summary", "care_plans"]:
-        # Reduced limits for memory-intensive categories
-        max_conditions = 30
-        max_observations = 50
+    # All categories use the same DB limits so every section sees the same data.
+    # care_plans uses slightly reduced context to keep the prompt manageable.
+    if category == "care_plans":
+        max_conditions = 40
+        max_observations = 60
         max_notes = 2
-        max_note_chars = 2000
+        max_note_chars = MAX_NOTE_CHARS
     else:
-        # Normal limits for simple categories
         max_conditions = MAX_CONDITIONS
         max_observations = MAX_OBSERVATIONS
         max_notes = MAX_NOTES
@@ -627,9 +626,14 @@ def generate_all_summaries(patient_id: str):
             demo, conditions, observations, notes, context_counts = _get_patient_data(patient_id, category)
             
             if category == "demographics":
-                # Use LLM for demographics to get proper introductory sentence
+                # Pass conditions and obs count so demographics section shows clinical context
                 try:
-                    prompts = render_prompt(category, demo=demo)
+                    prompts = render_prompt(
+                        category,
+                        demo=demo,
+                        conditions=conditions,
+                        obs_count=len(observations),
+                    )
                     summary_text = generate_chat(prompts["system"], prompts["user"], category=category).strip()
                     summaries[category] = summary_text
                     print(f"✓ {category} completed")

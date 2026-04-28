@@ -747,15 +747,25 @@ class KnowledgeGraphService:
                     if val:
                         # Suppress generic "unit" placeholder from hospital data
                         real_unit = unit_str if (unit_str and unit_str.lower() not in ("unit", "units", "")) else ""
-                        # Sanity check: skip implausible values (likely bad DB data)
-                        # e.g. cholesterol=1.0, creatinine=0.001 — clearly wrong
+                        # Sanity check: skip implausible values (likely ETL/unit errors).
+                        # Thresholds are kept identical to rag_service.py to ensure
+                        # both pipelines agree on what constitutes valid data.
                         try:
                             numeric_val = float(val)
+                            _is_ratio = "ratio" in obs_lower
                             _implausible = (
+                                # Low-end floors
                                 ("cholesterol" in obs_lower and numeric_val < 10) or
-                                ("creatinine" in obs_lower and numeric_val < 0.1) or
-                                ("glucose" in obs_lower and numeric_val < 1) or
-                                ("hemoglobin" in obs_lower and "a1c" not in obs_lower and numeric_val < 1)
+                                ("creatinine" in obs_lower and not _is_ratio and numeric_val < 0.05) or
+                                ("glucose" in obs_lower and numeric_val < 0.5) or
+                                ("hemoglobin" in obs_lower and "a1c" not in obs_lower and numeric_val < 1) or
+                                # High-end ceilings (physically impossible)
+                                ("cholesterol" in obs_lower and numeric_val > 700) or
+                                ("creatinine" in obs_lower and not _is_ratio and numeric_val > 30) or
+                                ("glucose" in obs_lower and numeric_val > 1500) or
+                                ("hemoglobin" in obs_lower and "a1c" not in obs_lower and numeric_val > 25) or
+                                ("blood pressure" in obs_lower and numeric_val > 300) or
+                                ("heart rate" in obs_lower and (numeric_val < 10 or numeric_val > 350))
                             )
                         except (ValueError, TypeError):
                             _implausible = False

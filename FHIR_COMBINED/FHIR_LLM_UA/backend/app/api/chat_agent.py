@@ -877,9 +877,11 @@ def index_patient_data(patient_id: str):
     try:
         # Get patient data from database with all data (for_indexing=True)
         patient_data = get_patient_data_from_db(patient_id, for_indexing=True)
-        
+
         # Index into ElasticSearch with embeddings enabled for semantic search
         if es_client.is_connected():
+            # Delete existing docs first to avoid stale/duplicate documents
+            es_client.delete_patient_data(patient_id)
             success = es_client.index_patient_data(patient_id, patient_data, generate_embeddings=True)
             if success:
                 return {"message": f"Successfully indexed data for patient {patient_id} with embeddings for semantic search"}
@@ -887,7 +889,7 @@ def index_patient_data(patient_id: str):
                 raise HTTPException(status_code=500, detail="Failed to index patient data")
         else:
             raise HTTPException(status_code=503, detail="ElasticSearch not available")
-        
+
     except Exception as e:
         logger.error(f"Failed to index patient data: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to index patient data: {str(e)}")

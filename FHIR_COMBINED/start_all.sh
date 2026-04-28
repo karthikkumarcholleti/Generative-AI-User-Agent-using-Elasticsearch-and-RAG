@@ -301,7 +301,8 @@ else
     log_step "Step 3: Starting Backend API (port ${BACKEND_PORT})"
 
     cd "$BACKEND_DIR"
-    source "$VENV_DIR/bin/activate"
+    # venv activation disabled: venv/Python3.13 lacks elasticsearch; conda env has all deps
+    # source "$VENV_DIR/bin/activate"
 
     log_info "Starting FastAPI backend..."
     nohup python -m uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT} > "$BACKEND_LOG" 2>&1 &

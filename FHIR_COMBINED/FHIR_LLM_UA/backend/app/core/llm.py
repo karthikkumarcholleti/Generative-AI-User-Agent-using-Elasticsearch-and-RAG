@@ -226,29 +226,36 @@ def _is_complete_sentence(text: str) -> bool:
     return True
 
 def _get_category_token_limit(user_prompt: str, category: str = "default") -> int:
-    """Determine token limit based on prompt content/category.
-    
-    Uses the same limits as the working version for reliability.
-    """
-    # Detect category from prompt
+    """Determine token limit based on the named category (authoritative) with prompt-text fallback."""
+    # Use the explicit category name — reliable, not fragile text matching
+    _LIMITS = {
+        "patient_summary": 1800,   # Comprehensive clinical handoff summary
+        "observations":    2500,   # Full value listing with trends
+        "conditions":      1600,   # All conditions organized by category
+        "demographics":     500,   # Short bullet-point list
+        "notes":            600,   # Clinical notes narrative
+        "care_plans":       900,   # Numbered care considerations
+        "chat":            1400,   # User queries — space for full answer
+        "compression":     2000,   # Context compression
+    }
+    if category in _LIMITS:
+        return _LIMITS[category]
+    # Fallback: prompt-text heuristics for callers that don't pass a category
     if "TASK:\nSummary of patient's medical records:" in user_prompt:
-        return 1000  # patient_summary needs substantial space
+        return 1800
     elif "TASK:\nBased on the documented clinical data" in user_prompt:
-        return 700  # care_plans needs substantial space
+        return 900
     elif "clinical observations include:" in user_prompt:
-        return 2500  # observations need MAXIMUM space - many values to list with ranges
+        return 2500
     elif "conditions summary" in user_prompt:
-        return 1500  # conditions need more space to complete properly
+        return 1600
     elif "Demographics" in user_prompt and "Name:" in user_prompt:
-        return 500  # demographics are short but need space for complete sentences
+        return 500
     elif "notes summary" in user_prompt:
-        return 500  # notes need moderate space
-    elif "chat query" in user_prompt.lower() or "user query:" in user_prompt.lower() or "patient query:" in user_prompt.lower():
-        return 1200  # chat queries need more space to avoid incomplete responses
-    elif category == "compression":
-        return 2000  # compression needs space to extract relevant information
-    else:
-        return 600  # default
+        return 600
+    elif "chat query" in user_prompt.lower() or "user query:" in user_prompt.lower():
+        return 1400
+    return 600  # default
 
 def generate_general_medical_help(user_prompt: str) -> str:
     """Generate concise medical help for general questions (2 sentences max)."""
@@ -372,9 +379,10 @@ def generate_chat(system_prompt: str, user_prompt: str, category: str = "default
                 return_tensors="pt",
             ).to(_model.device)
 
-            # Get category-specific base token limit
-            base_tokens = _get_category_token_limit(user_prompt, category)
-            max_tokens = min(base_tokens, MAX_NEW_TOKENS)
+            # Use category-specific token limit — do NOT apply the global MAX_NEW_TOKENS cap
+            # here; per-category limits are calibrated for content completeness.
+            # The global cap is only the default returned when category is unknown.
+            max_tokens = _get_category_token_limit(user_prompt, category)
             
             # Check memory usage and reduce further if needed
             # For research quality, we use less aggressive reduction to ensure complete responses

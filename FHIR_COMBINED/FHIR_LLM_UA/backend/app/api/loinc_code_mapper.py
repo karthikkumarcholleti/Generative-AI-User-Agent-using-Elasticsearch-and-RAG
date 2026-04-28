@@ -381,6 +381,180 @@ LOINC_CODE_MAPPINGS: Dict[str, Dict[str, str]] = {
         "category": "vital_signs",
         "keywords": ["pain", "pain score", "pain severity", "numeric pain rating"]
     },
+
+    # ── CBC Differential (previously missing — caused NULL display + wrong aggregation) ──
+    "26515-7": {
+        "name": "Platelet Count (automated)",
+        "display": "Platelets [#/volume] in Blood by Automated count",
+        "category": "laboratory",
+        "keywords": ["platelet", "plt", "thrombocyte", "blood count"]
+    },
+    "4544-3": {
+        "name": "Hematocrit (automated)",
+        "display": "Hematocrit [Volume Fraction] of Blood by Automated count",
+        "category": "laboratory",
+        "keywords": ["hematocrit", "hct", "blood count"]
+    },
+    "787-2": {
+        "name": "MCV",
+        "display": "MCV [Entitic volume] by Automated count",
+        "category": "laboratory",
+        "keywords": ["mcv", "mean corpuscular volume", "blood count"]
+    },
+    "785-6": {
+        "name": "MCH",
+        "display": "MCH [Entitic mass] by Automated count",
+        "category": "laboratory",
+        "keywords": ["mch", "mean corpuscular hemoglobin", "blood count"]
+    },
+    "788-0": {
+        "name": "MCHC",
+        "display": "MCHC [Mass/volume] by Automated count",
+        "category": "laboratory",
+        "keywords": ["mchc", "mean corpuscular hemoglobin concentration", "blood count"]
+    },
+    "770-8": {
+        "name": "MCHC (automated)",
+        "display": "MCHC [Mass/volume] by Automated count",
+        "category": "laboratory",
+        "keywords": ["mchc", "mean corpuscular hemoglobin concentration", "blood count"]
+    },
+    "32623-1": {
+        "name": "Platelet Mean Volume",
+        "display": "Platelet mean volume [Entitic volume] by Automated count",
+        "category": "laboratory",
+        "keywords": ["platelet volume", "mpv", "mean platelet volume"]
+    },
+    "751-8": {
+        "name": "Neutrophils %",
+        "display": "Neutrophils/100 leukocytes in Blood",
+        "category": "laboratory",
+        "keywords": ["neutrophil", "neutrophils", "differential", "blood count"]
+    },
+    "731-0": {
+        "name": "Lymphocytes %",
+        "display": "Lymphocytes/100 leukocytes in Blood",
+        "category": "laboratory",
+        "keywords": ["lymphocyte", "lymphocytes", "differential", "blood count"]
+    },
+    "736-9": {
+        "name": "Lymphocytes Count",
+        "display": "Lymphocytes [#/volume] in Blood by Automated count",
+        "category": "laboratory",
+        "keywords": ["lymphocyte", "lymphocytes", "differential", "blood count"]
+    },
+    "742-7": {
+        "name": "Monocytes %",
+        "display": "Monocytes/100 leukocytes in Blood",
+        "category": "laboratory",
+        "keywords": ["monocyte", "monocytes", "differential", "blood count"]
+    },
+    "713-8": {
+        "name": "Eosinophils %",
+        "display": "Eosinophils/100 leukocytes in Blood",
+        "category": "laboratory",
+        "keywords": ["eosinophil", "eosinophils", "differential", "blood count"]
+    },
+    "711-2": {
+        "name": "Eosinophils Count",
+        "display": "Eosinophils [#/volume] in Blood by Automated count",
+        "category": "laboratory",
+        "keywords": ["eosinophil", "eosinophils", "differential", "blood count"]
+    },
+    "704-7": {
+        "name": "Basophils %",
+        "display": "Basophils/100 leukocytes in Blood",
+        "category": "laboratory",
+        "keywords": ["basophil", "basophils", "differential", "blood count"]
+    },
+    "706-2": {
+        "name": "Basophils Count",
+        "display": "Basophils [#/volume] in Blood by Automated count",
+        "category": "laboratory",
+        "keywords": ["basophil", "basophils", "differential", "blood count"]
+    },
+
+    # ── Metabolic / Chemistry (previously missing) ───────────────────────────
+    "33037-3": {
+        "name": "Anion Gap",
+        "display": "Anion gap 3 in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["anion gap", "electrolyte", "acid base", "metabolic acidosis"]
+    },
+    "2885-2": {
+        "name": "Total Protein",
+        "display": "Protein [Mass/volume] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["total protein", "protein", "albumin", "nutrition"]
+    },
+    "3097-3": {
+        "name": "BUN/Creatinine Ratio",
+        "display": "Urea nitrogen/Creatinine [Mass Ratio] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["bun creatinine ratio", "urea creatinine ratio", "kidney function", "renal"]
+    },
+    "1759-0": {
+        "name": "AST/ALT Ratio",
+        "display": "Aspartate aminotransferase/Alanine aminotransferase [Enzymatic activity ratio] in Serum or Plasma",
+        "category": "laboratory",
+        "keywords": ["ast alt ratio", "liver function", "hepatic"]
+    },
+
+    # ── Urinalysis (previously missing) ─────────────────────────────────────
+    "5811-5": {
+        "name": "Urine Specific Gravity",
+        "display": "Specific gravity of Urine by Test strip",
+        "category": "laboratory",
+        "keywords": ["urine specific gravity", "urinalysis", "urine", "renal"]
+    },
+    "5803-2": {
+        "name": "Urine pH",
+        "display": "pH of Urine by Test strip",
+        "category": "laboratory",
+        "keywords": ["urine ph", "urinalysis", "urine", "acid base"]
+    },
+    "20405-7": {
+        "name": "Urine Nitrite",
+        "display": "Nitrite [Presence] in Urine by Test strip",
+        "category": "laboratory",
+        "keywords": ["urine nitrite", "urinalysis", "uti", "infection"]
+    },
+
+    # ── Body Composition ─────────────────────────────────────────────────────
+    "5905-5": {
+        "name": "Body Fat Percentage",
+        "display": "Body fat [Mass fraction]",
+        "category": "vital_signs",
+        "keywords": ["body fat", "fat percentage", "adiposity", "obesity", "bmi"]
+    },
+
+    # ── Mental Health / Functional Assessments ───────────────────────────────
+    "44261-6": {
+        "name": "PHQ-9 Score",
+        "display": "PHQ-9 total score [Reported.PHQ]",
+        "category": "mental_health",
+        "keywords": ["phq-9", "phq9", "depression", "patient health questionnaire", "mental health"]
+    },
+    "76508-1": {
+        "name": "Social Activity Frequency",
+        "display": "In a typical week, how many times do you talk on the phone or video chat with family or friends",
+        "category": "mental_health",
+        "keywords": ["social activity", "social isolation", "mental health", "functional assessment"]
+    },
+    "98977-2": {
+        "name": "Healthcare Visit Frequency",
+        "display": "In the past 12 months, how many times have you seen a doctor",
+        "category": "mental_health",
+        "keywords": ["healthcare visits", "doctor visits", "functional assessment"]
+    },
+
+    # ── Other / Ranking ──────────────────────────────────────────────────────
+    "263486008": {
+        "name": "Rank",
+        "display": "Rank",
+        "category": "other",
+        "keywords": ["rank", "order", "priority"]
+    },
 }
 
 # ── LOINC display-name → human alias mapping ─────────────────────────────────

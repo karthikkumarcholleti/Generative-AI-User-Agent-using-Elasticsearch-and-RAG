@@ -37,4 +37,11 @@ else:
         database=DB_NAME,
     )
 
-engine = create_engine(database_url, pool_pre_ping=True)
+engine = create_engine(
+    database_url,
+    pool_pre_ping=True,       # test connections before checkout to catch stale ones
+    pool_size=5,              # keep 5 persistent connections ready
+    max_overflow=10,          # allow up to 10 extra connections under load
+    pool_recycle=1800,        # recycle connections after 30 min to avoid MySQL 8h timeout
+    pool_timeout=30,          # wait up to 30 s for a connection before raising
+)

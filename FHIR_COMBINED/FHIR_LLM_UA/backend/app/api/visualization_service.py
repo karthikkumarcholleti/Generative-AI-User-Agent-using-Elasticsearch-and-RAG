@@ -4060,10 +4060,20 @@ class VisualizationService:
     def _generate_professional_vitals_dashboard(self, patient_id: str) -> Dict[str, Any]:
         """Generate professional medical dashboard with multiple vital signs"""
         glucose_data = self.extract_observation_data(patient_id, "glucose")
-        bp_data = self.extract_observation_data(patient_id, "blood pressure")
+        systolic_data = self.extract_observation_data(patient_id, "systolic")
+        diastolic_data = self.extract_observation_data(patient_id, "diastolic")
         hr_data = self.extract_observation_data(patient_id, "heart rate")
         temp_data = self.extract_observation_data(patient_id, "temperature")
-        
+
+        # Latest BP readings (separate systolic / diastolic — previously both used the
+        # same mixed bp_data list which produced wrong values for both fields)
+        latest_systolic = systolic_data[-1]["value"] if systolic_data else None
+        latest_diastolic = diastolic_data[-1]["value"] if diastolic_data else None
+        bp_elevated = (
+            (latest_systolic is not None and latest_systolic > 130) or
+            (latest_diastolic is not None and latest_diastolic > 80)
+        )
+
         dashboard_data = {
             "type": "professional_vitals_dashboard",
             "patient_id": patient_id,
@@ -4076,11 +4086,11 @@ class VisualizationService:
                     "trend": "stable"
                 },
                 "blood_pressure": {
-                    "systolic": bp_data[-1]["value"] if bp_data else None,
-                    "diastolic": bp_data[-1]["value"] if bp_data else None,
+                    "systolic": latest_systolic,
+                    "diastolic": latest_diastolic,
                     "unit": "mmHg",
                     "normal_range": "<130/<80",
-                    "status": "high" if bp_data and bp_data[-1]["value"] > 130 else "normal",
+                    "status": "high" if bp_elevated else "normal",
                     "trend": "stable"
                 },
                 "heart_rate": {
