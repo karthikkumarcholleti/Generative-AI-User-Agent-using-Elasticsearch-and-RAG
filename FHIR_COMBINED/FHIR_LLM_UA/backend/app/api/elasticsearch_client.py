@@ -511,7 +511,7 @@ class ElasticSearchClient:
                         "minimum_should_match": 1  # At least one should clause must match
                     }
                 },
-                "size": 50,  # Increased size
+                "size": 150,  # Increased for broader retrieval
                 "sort": [
                     {"_score": {"order": "desc"}},  # Sort by relevance first
                     {"timestamp": {"order": "desc"}}  # Then by date
@@ -698,6 +698,42 @@ class ElasticSearchClient:
             logger.error(f"Failed to get patient summary: {e}")
             return {}
     
+    def get_all_patient_data_by_type(
+        self,
+        patient_id: str,
+        data_type: str,
+        size: int = 300,
+        index_name: str = "patient_data",
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch ALL ES documents of a specific data_type for a patient.
+        Returns date-DESC sorted hits with full _source (LOINC-resolved metadata).
+        Used by the summary pipeline so it benefits from the same enriched data
+        as the chat pipeline, without relevance-ranking bias.
+        """
+        if not self.is_connected():
+            logger.warning("ES not connected — get_all_patient_data_by_type returning empty")
+            return []
+        try:
+            body = {
+                "query": {"bool": {"must": [
+                    {"term": {"patient_id": patient_id}},
+                    {"term": {"data_type": data_type}},
+                ]}},
+                "size": size,
+                "sort": [{"timestamp": {"order": "desc"}}],
+            }
+            response = self.client.search(index=index_name, body=body)
+            hits = response["hits"]["hits"]
+            logger.info(
+                "get_all_patient_data_by_type: patient=%s type=%s → %d docs",
+                patient_id, data_type, len(hits),
+            )
+            return [h["_source"] for h in hits]
+        except Exception as e:
+            logger.error("get_all_patient_data_by_type failed: %s", e)
+            return []
+
     def delete_patient_data(self, patient_id: str, index_name: str = "patient_data") -> bool:
         """Delete all data for a specific patient"""
         if not self.is_connected():

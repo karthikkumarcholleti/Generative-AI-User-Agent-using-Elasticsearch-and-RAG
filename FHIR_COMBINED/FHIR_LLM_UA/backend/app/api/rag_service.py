@@ -40,6 +40,33 @@ from .medrag_knowledge_graph import kg_service  # MedRAG KG singleton
 
 logger = logging.getLogger(__name__)
 
+# DDx intent keywords — exported for the debug endpoint
+DDX_INTENT_KEYWORDS = [
+    "differential diagnosis", "differential", "ddx",
+    "most likely diagnosis", "what is the diagnosis",
+    "possible diagnos", "probable diagnos",
+    "what could this be", "what conditions could",
+    "overall assessment", "clinical assessment",
+    "clinical summary",
+    "health status",
+    "signs of cardiovascular", "signs of kidney", "signs of diabetes",
+    "signs of heart", "signs of liver", "signs of infection",
+    "evidence of", "risk of", "risk for",
+    "show signs of", "does this patient",
+]
+
+VALUE_LOOKUP_OVERRIDES = [
+    "what do the", "what does the",
+    "what do ", "what does ",
+    "tell me the", "show me the",
+    "list the", "give me the",
+    "what are the values", "what are the levels",
+    "what are the results", "what are the readings",
+    "how high is", "how low is",
+    "how does", "compare",
+    "normal range for", "reference range for",
+]
+
 # ANSI color codes for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -1184,43 +1211,9 @@ CLINICAL REFERENCE RANGES:
             # DECISION: require EXPLICIT DDx-intent keywords to enable DDx mode.
             # Value-interpretation queries ("what do X values indicate?") are NOT
             # DDx requests — they should use the compact direct-answer format.
-            _ddx_intent_keywords = [
-                # Explicit DDx phrasing
-                "differential diagnosis", "differential", "ddx",
-                "most likely diagnosis", "what is the diagnosis",
-                "possible diagnos", "probable diagnos",
-                # Clinical reasoning requests
-                "what could this be", "what conditions could",
-                "overall assessment", "clinical assessment",
-                "clinical summary",           # "clinical summary" is DDx-oriented
-                "health status",              # "health status" implies holistic view
-                # Disease-specific evidence questions
-                "signs of cardiovascular", "signs of kidney", "signs of diabetes",
-                "signs of heart", "signs of liver", "signs of infection",
-                "evidence of", "risk of", "risk for",
-                "show signs of", "does this patient",
-                # NOTE: "summary", "health overview", "summarize" removed —
-                # those fire from the summary panel, not clinical DDx intent,
-                # and caused over-verbose DDx output for routine summaries.
-            ]
-            # Phrases that indicate a simple value-lookup, NOT a DDx request.
-            # Use only strong leading-phrase signals so they don't fire when
-            # embedded mid-query (e.g. "... what is the supporting evidence?")
-            _value_lookup_overrides = [
-                "what do the", "what does the",
-                "what do ", "what does ",
-                "tell me the", "show me the",
-                "list the", "give me the",
-                "what are the values", "what are the levels",
-                "what are the results", "what are the readings",
-                # Comparative/range queries — users want a value, not a DDx
-                "how high is", "how low is",
-                "how does", "compare",
-                "normal range for", "reference range for",
-            ]
             _query_lower = query.lower()
-            _has_ddx_intent = any(kw in _query_lower for kw in _ddx_intent_keywords)
-            _is_value_lookup = any(kw in _query_lower for kw in _value_lookup_overrides)
+            _has_ddx_intent = any(kw in _query_lower for kw in DDX_INTENT_KEYWORDS)
+            _is_value_lookup = any(kw in _query_lower for kw in VALUE_LOOKUP_OVERRIDES)
             # Full DDx only when: explicit DDx keyword AND NOT a simple value lookup.
             # DDx intent takes priority if the query contains BOTH signals.
             _apply_ddx = bool(kg_candidates) and _has_ddx_intent and not _is_value_lookup
@@ -1628,12 +1621,58 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
         # =====================================================================
         log_section(f"🔎 STEP 2 — ELASTICSEARCH RETRIEVAL ({'Standard RAG' if not USE_MEDRAG else 'MedRAG — same retrieval, KG augments in Step 4'})", Colors.YELLOW)
         retrieved_data = self.retrieve_relevant_data(patient_id, query, intent)
-        
+
         # Enhanced logging for research quality - track retrieval success
         if retrieved_data:
             logger.info(f"Successfully retrieved {len(retrieved_data)} documents for patient {patient_id}")
         else:
             logger.warning(f"No documents retrieved for patient {patient_id}, query: '{query}'")
+
+        # ── Secondary targeted ES query for observation-specific queries ─────────
+        # When the user asks about a specific vital/lab metric (e.g., "all heart rate
+        # values"), the main hybrid search returns top-150 mixed across all types,
+        # leaving only a handful of the named metric. We supplement with ALL readings
+        # of the specific metric so the LLM can enumerate them completely.
+        _targeted_obs_term: str = ""
+        _total_targeted: int = 0
+        _obs_terms = [
+            "heart rate", "blood pressure", "systolic", "diastolic", "glucose",
+            "hba1c", "hemoglobin a1c", "hemoglobin", "creatinine", "cholesterol",
+            "bun", "sodium", "potassium", "weight", "bmi", "oxygen saturation",
+            "temperature", "respiratory rate", "pulse",
+        ]
+        if intent.get("type") == "observations":
+            _query_lower_obs = query.lower()
+            _matched_obs_term = next(
+                (t for t in _obs_terms if t in _query_lower_obs), None
+            )
+            if _matched_obs_term:
+                try:
+                    from .elasticsearch_client import es_client as _es_client
+                    _all_obs = _es_client.get_all_patient_data_by_type(
+                        patient_id, "observations", size=200
+                    )
+                    _targeted = [
+                        doc for doc in _all_obs
+                        if _matched_obs_term in (doc.get("metadata", {}).get("display") or "").lower()
+                        or _matched_obs_term in (doc.get("content") or "").lower()
+                    ]
+                    if _targeted:
+                        _total_targeted = len(_targeted)
+                        _targeted_obs_term = _matched_obs_term
+                        _existing_contents = {r.get("content", "") for r in retrieved_data}
+                        for _doc in _targeted:
+                            if _doc.get("content", "") not in _existing_contents:
+                                retrieved_data.append(_doc)
+                                _existing_contents.add(_doc.get("content", ""))
+                        logger.info(
+                            "Targeted obs supplement: term='%s' total=%d added=%d",
+                            _matched_obs_term, _total_targeted,
+                            sum(1 for d in _targeted if d.get("content", "") in _existing_contents),
+                        )
+                except Exception as _te:
+                    logger.warning("Targeted obs supplement failed: %s", _te)
+        # ─────────────────────────────────────────────────────────────────────────
         
         # =====================================================================
         # STEP 3 — SOURCE EXTRACTION
@@ -1815,6 +1854,13 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
                 else:
                     response_text = f"No data related to your query is available for this patient in the medical records."
         
+        # Append "N total readings" note when a targeted obs supplement was done
+        if _targeted_obs_term and _total_targeted > 15:
+            response_text += (
+                f"\n\n[Note: {_total_targeted} total {_targeted_obs_term} readings in record"
+                " — full timeline visible in the chart above.]"
+            )
+
         # =====================================================================
         # STEP 5 — INTELLIGENT VISUALIZATION
         # ─────────────────────────────────────────────────────────────────────

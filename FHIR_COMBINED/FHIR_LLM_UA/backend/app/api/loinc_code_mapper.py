@@ -555,6 +555,12 @@ LOINC_CODE_MAPPINGS: Dict[str, Dict[str, str]] = {
         "category": "other",
         "keywords": ["rank", "order", "priority"]
     },
+    "67723-7": {
+        "name": "Date",
+        "display": "Date (numeric encoded YYYYMMDD)",
+        "category": "administrative",
+        "keywords": ["date", "encounter date", "record date", "event date"],
+    },
 }
 
 # ── LOINC display-name → human alias mapping ─────────────────────────────────

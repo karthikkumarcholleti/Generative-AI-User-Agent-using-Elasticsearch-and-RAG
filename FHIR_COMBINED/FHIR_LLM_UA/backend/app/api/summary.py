@@ -130,8 +130,10 @@ def _clean_demographics(demo: Dict[str, Any]) -> Dict[str, Any]:
                 cleaned[key] = 'value not recorded'
             elif key in ['gender', 'city', 'state', 'postalCode']:
                 cleaned[key] = 'value not recorded'
+            elif key == 'name':
+                cleaned[key] = 'Not recorded'
             else:
-                cleaned[key] = value  # Keep patientId and name always
+                cleaned[key] = value  # Keep patientId always
     return cleaned
 
 def _generate_observations_fallback(observations: List[Dict[str, Any]], demo: Dict[str, Any]) -> str:
@@ -372,7 +374,8 @@ def _get_patient_data(patient_id: str, category: str = "default"):
     with engine.connect() as conn:
         # Demographics
         sql_p = """
-        SELECT patient_id, CONCAT(given_name, ' ', family_name) AS name,
+        SELECT patient_id,
+               COALESCE(CONCAT_WS(' ', NULLIF(TRIM(given_name),''), NULLIF(TRIM(family_name),'')), 'Not recorded') AS name,
                birth_date, gender, city, state, postal_code
         FROM patients
         WHERE patient_id = :pid
@@ -381,36 +384,61 @@ def _get_patient_data(patient_id: str, category: str = "default"):
         p = conn.execute(text(sql_p), {"pid": patient_id}).mappings().first()
         if not p:
             raise HTTPException(status_code=404, detail="patient not found")
+    # demographics query ends here — close MySQL connection before ES calls
 
-        # Conditions (dedupe by code|display, newest first), then cap by MAX_CONDITIONS
-        sql_c = """
-        SELECT c.code, c.display, c.clinical_status, c.effectiveDateTime AS recordedDate
-        FROM conditions c
-        WHERE c.patient_id = :pid
-        ORDER BY COALESCE(c.effectiveDateTime, '1000-01-01') DESC, c.id DESC
-        """
-        rows_c = conn.execute(text(sql_c), {"pid": patient_id}).mappings().all()
+    # ── Conditions: ES first (LOINC-resolved metadata), MySQL fallback ───────
+    from .elasticsearch_client import es_client
+    from .loinc_code_mapper import get_observation_display_from_code
+
+    conditions: List[Dict[str, Any]] = []
+    es_conds = es_client.get_all_patient_data_by_type(patient_id, "conditions", size=100)
+    if es_conds:
         seen = set()
-        conditions: List[Dict[str, Any]] = []
+        for doc in es_conds:
+            meta = doc.get("metadata", {})
+            key = f"{meta.get('code', '')}|{meta.get('display', '')}"
+            if key in seen:
+                continue
+            seen.add(key)
+            categorized = categorize_condition(
+                code=meta.get("code"),
+                display=meta.get("display"),
+                clinical_status=meta.get("clinicalStatus"),
+            )
+            conditions.append({
+                "code": meta.get("code"),
+                "display": meta.get("display"),
+                "clinicalStatus": meta.get("clinicalStatus"),
+                "recordedDate": meta.get("date"),
+                "category": categorized["category"],
+                "priority": categorized["priority"],
+                "normalizedName": categorized["name"],
+            })
+            if len(conditions) >= max_conditions:
+                break
+    else:
+        # MySQL fallback when ES not connected / patient not indexed
+        with engine.connect() as conn:
+            sql_c = """
+            SELECT c.code, c.display, c.clinical_status, c.effectiveDateTime AS recordedDate
+            FROM conditions c
+            WHERE c.patient_id = :pid
+            ORDER BY COALESCE(c.effectiveDateTime, '1000-01-01') DESC, c.id DESC
+            """
+            rows_c = conn.execute(text(sql_c), {"pid": patient_id}).mappings().all()
+        seen = set()
         for r in rows_c:
             key = f"{r['code']}|{r['display']}"
             if key in seen:
                 continue
             seen.add(key)
-            
-            # Categorize condition using full-stack logic
             categorized = categorize_condition(
-                code=r["code"],
-                display=r["display"],
-                clinical_status=r["clinical_status"]
+                code=r["code"], display=r["display"], clinical_status=r["clinical_status"]
             )
-            
             conditions.append({
-                "code": r["code"],
-                "display": r["display"],
+                "code": r["code"], "display": r["display"],
                 "clinicalStatus": r["clinical_status"],
                 "recordedDate": _iso(r["recordedDate"]),
-                # Add categorization fields
                 "category": categorized["category"],
                 "priority": categorized["priority"],
                 "normalizedName": categorized["name"],
@@ -418,129 +446,156 @@ def _get_patient_data(patient_id: str, category: str = "default"):
             if len(conditions) >= max_conditions:
                 break
 
-        # Observations: Smart filtering strategy
-        # 1. Filter NULL values at SQL level
-        # 2. Get only observations with actual values (numeric or string)
-        # 3. Prioritize recent observations
-        # 4. Aggregate repeated observations with trends
-        sql_o = """
-        SELECT o.code, o.display, o.value_numeric AS valueNumber, o.value_string AS valueString,
-               o.unit, o.effectiveDateTime, o.value_numeric AS raw_num
-        FROM observations o
-        WHERE o.patient_id = :pid
-          AND (o.value_numeric IS NOT NULL OR o.value_string IS NOT NULL)
-        ORDER BY COALESCE(o.effectiveDateTime, '1000-01-01') DESC, o.id DESC
-        LIMIT :limit
-        """
-        rows_o = conn.execute(text(sql_o), {"pid": patient_id, "limit": max_observations}).mappings().all()
-        
-        # Group observations by display name for trend analysis
-        obs_groups: Dict[str, List[Dict[str, Any]]] = {}
+    # ── Observations: ES first (LOINC-resolved — no NULL-display collapse) ───
+    # Chat uses ES-resolved data; summaries must use the same source for consistency.
+    obs_groups: Dict[str, List[Dict[str, Any]]] = {}
+    es_obs = es_client.get_all_patient_data_by_type(patient_id, "observations", size=300)
+    if es_obs:
+        for doc in es_obs:
+            meta = doc.get("metadata", {})
+            display = meta.get("display") or meta.get("name") or None
+            code = meta.get("code") or ""
+            if not display and code:
+                display = get_observation_display_from_code(code)
+            display_key = (display or code or "Unknown").strip()
+
+            raw_val = meta.get("value")
+            value_number = None
+            value_string = None
+            if raw_val is not None:
+                try:
+                    value_number = float(raw_val)
+                except (ValueError, TypeError):
+                    value_string = str(raw_val)
+
+            if display_key not in obs_groups:
+                obs_groups[display_key] = []
+            obs_groups[display_key].append({
+                "code": code,
+                "display": display or display_key,
+                "valueNumber": value_number,
+                "valueString": value_string,
+                "unit": meta.get("unit"),
+                "effectiveDateTime": meta.get("date"),
+            })
+    else:
+        # MySQL fallback with LOINC resolution for NULL displays
+        with engine.connect() as conn:
+            sql_o = """
+            SELECT o.code, o.display, o.value_numeric AS valueNumber, o.value_string AS valueString,
+                   o.unit, o.effectiveDateTime, o.value_numeric AS raw_num
+            FROM observations o
+            WHERE o.patient_id = :pid
+              AND (o.value_numeric IS NOT NULL OR o.value_string IS NOT NULL)
+            ORDER BY COALESCE(o.effectiveDateTime, '1000-01-01') DESC, o.id DESC
+            LIMIT :limit
+            """
+            rows_o = conn.execute(text(sql_o), {"pid": patient_id, "limit": max_observations}).mappings().all()
         for r in rows_o:
             eff = r["effectiveDateTime"]
             if not eff and (r["code"] or "") == "67723-7":
                 eff = _parse_numeric_date(r["raw_num"])
-
-            # Convert Decimal to float for JSON serialization
             value_number = r["valueNumber"]
             if value_number is not None:
                 try:
                     value_number = float(value_number)
                 except (ValueError, TypeError):
                     value_number = None
-
-            display_key = (r["display"] or "Unknown").strip()
+            # Resolve NULL display via LOINC mapper (prevents all-Unknown collapse)
+            display = r["display"]
+            if not display and r["code"]:
+                display = get_observation_display_from_code(r["code"])
+            display_key = (display or r["code"] or "Unknown").strip()
             if display_key not in obs_groups:
                 obs_groups[display_key] = []
-            
             obs_groups[display_key].append({
                 "code": r["code"],
-                "display": r["display"],
+                "display": display or display_key,
                 "valueNumber": value_number,
                 "valueString": r["valueString"],
                 "unit": r["unit"],
                 "effectiveDateTime": _iso(eff),
             })
-        
-        # Build aggregated observations list
-        observations: List[Dict[str, Any]] = []
-        for display_key, obs_list in obs_groups.items():
-            if len(obs_list) == 1:
-                # Single observation - add as is
-                observations.append(obs_list[0])
-            elif len(obs_list) >= 2:
-                # Multiple observations - aggregate with trend
-                numeric_values = [o["valueNumber"] for o in obs_list if o["valueNumber"] is not None]
-                
-                if len(numeric_values) >= 2:
-                    # Calculate trend for numeric values
-                    avg_value = sum(numeric_values) / len(numeric_values)
-                    min_value = min(numeric_values)
-                    max_value = max(numeric_values)
-                    latest_value = obs_list[0]["valueNumber"]  # Most recent
-                    oldest_value = obs_list[-1]["valueNumber"]  # Oldest
-                    
-                    # Determine trend
-                    if latest_value is not None and oldest_value is not None:
-                        if latest_value > oldest_value * 1.1:
-                            trend = "increasing"
-                        elif latest_value < oldest_value * 0.9:
-                            trend = "decreasing"
-                        else:
-                            trend = "stable"
+
+    # Build aggregated observations list (trend analysis — same logic regardless of source)
+    observations: List[Dict[str, Any]] = []
+    for display_key, obs_list in obs_groups.items():
+        if len(obs_list) == 1:
+            observations.append(obs_list[0])
+        else:
+            numeric_values = [o["valueNumber"] for o in obs_list if o["valueNumber"] is not None]
+            if len(numeric_values) >= 2:
+                avg_value = sum(numeric_values) / len(numeric_values)
+                min_value = min(numeric_values)
+                max_value = max(numeric_values)
+                latest_value = obs_list[0]["valueNumber"]
+                oldest_value = obs_list[-1]["valueNumber"]
+                if latest_value is not None and oldest_value is not None:
+                    if latest_value > oldest_value * 1.1:
+                        trend = "increasing"
+                    elif latest_value < oldest_value * 0.9:
+                        trend = "decreasing"
                     else:
                         trend = "stable"
-                    
-                    # Get date range
-                    dates = [o["effectiveDateTime"] for o in obs_list if o["effectiveDateTime"]]
-                    date_range = f"{dates[-1]} to {dates[0]}" if len(dates) >= 2 else dates[0] if dates else "unknown"
-                    
-                    # Create concise trend description
-                    measurement_count = len(numeric_values)
-                    if measurement_count == 2:
-                        trend_desc = f"Trend: {trend} ({oldest_value:.2f} → {latest_value:.2f})"
-                    else:
-                        trend_desc = f"Trend: {trend} over {measurement_count} measurements (Avg: {avg_value:.2f}, Range: {min_value:.2f}-{max_value:.2f})"
-                    
-                    # Add aggregated observation
-                    observations.append({
-                        "code": obs_list[0]["code"],
-                        "display": obs_list[0]["display"],
-                        "valueNumber": latest_value,  # Most recent value
-                        "valueString": trend_desc,
-                        "unit": obs_list[0]["unit"],
-                        "effectiveDateTime": date_range,
-                    })
                 else:
-                    # Multiple observations but not numeric - just add most recent
-                    observations.append(obs_list[0])
-        
-        # Deduplicate observations by display name (catch any remaining duplicates)
-        # Keep the first occurrence (most comprehensive data)
-        seen_displays = set()
-        deduplicated_observations = []
-        for obs in observations:
-            display_normalized = (obs.get("display") or "Unknown").strip().lower()
-            if display_normalized not in seen_displays:
-                seen_displays.add(display_normalized)
-                deduplicated_observations.append(obs)
-        
-        observations = deduplicated_observations
+                    trend = "stable"
+                dates = [o["effectiveDateTime"] for o in obs_list if o["effectiveDateTime"]]
+                date_range = f"{dates[-1]} to {dates[0]}" if len(dates) >= 2 else (dates[0] if dates else "unknown")
+                measurement_count = len(numeric_values)
+                if measurement_count == 2:
+                    trend_desc = f"Trend: {trend} ({oldest_value:.2f} → {latest_value:.2f})"
+                else:
+                    trend_desc = f"Trend: {trend} over {measurement_count} measurements (Avg: {avg_value:.2f}, Range: {min_value:.2f}-{max_value:.2f})"
+                observations.append({
+                    "code": obs_list[0]["code"],
+                    "display": obs_list[0]["display"],
+                    "valueNumber": latest_value,
+                    "valueString": trend_desc,
+                    "unit": obs_list[0]["unit"],
+                    "effectiveDateTime": date_range,
+                })
+            else:
+                observations.append(obs_list[0])
 
-        # Notes: most-recent first, limited by MAX_NOTES
-        sql_n = """
-        SELECT COALESCE(n.note_datetime, n.created_at) AS created,
-               n.note_text AS text, n.source_type AS sourceType,
-               n.filename_txt AS fileName, n.base_key AS baseKey
-        FROM notes n
-        WHERE n.patient_id = :pid
-        ORDER BY COALESCE(n.note_datetime, n.created_at) DESC, n.id DESC
-        LIMIT :limit
-        """
-        rows_n = conn.execute(text(sql_n), {"pid": patient_id, "limit": max_notes}).mappings().all()
+    # Deduplicate by resolved display name
+    seen_displays: set = set()
+    deduplicated_observations = []
+    for obs in observations:
+        display_normalized = (obs.get("display") or "Unknown").strip().lower()
+        if display_normalized not in seen_displays:
+            seen_displays.add(display_normalized)
+            deduplicated_observations.append(obs)
+    observations = deduplicated_observations
+
+    # ── Notes: ES first, MySQL fallback ──────────────────────────────────────
+    es_notes = es_client.get_all_patient_data_by_type(patient_id, "notes", size=max_notes + 2)
+    if es_notes:
+        notes = []
+        for doc in es_notes[:max_notes]:
+            meta = doc.get("metadata", {})
+            text_val = doc.get("content", "")
+            notes.append({
+                "created": meta.get("date"),
+                "text": text_val[:max_note_chars] if text_val else None,
+                "sourceType": meta.get("sourceType"),
+                "fileName": meta.get("fileName"),
+                "baseKey": meta.get("baseKey"),
+            })
+    else:
+        with engine.connect() as conn:
+            sql_n = """
+            SELECT COALESCE(n.note_datetime, n.created_at) AS created,
+                   n.note_text AS text, n.source_type AS sourceType,
+                   n.filename_txt AS fileName, n.base_key AS baseKey
+            FROM notes n
+            WHERE n.patient_id = :pid
+            ORDER BY COALESCE(n.note_datetime, n.created_at) DESC, n.id DESC
+            LIMIT :limit
+            """
+            rows_n = conn.execute(text(sql_n), {"pid": patient_id, "limit": max_notes}).mappings().all()
         notes = [{
             "created": _iso(r["created"]),
-            "text": r["text"][:max_note_chars] if r["text"] else None,  # Truncate long notes to prevent OOM
+            "text": r["text"][:max_note_chars] if r["text"] else None,
             "sourceType": r["sourceType"],
             "fileName": r["fileName"],
             "baseKey": r["baseKey"],
@@ -624,7 +679,29 @@ def generate_all_summaries(patient_id: str):
             
             # Fetch data with category-specific limits (adaptive)
             demo, conditions, observations, notes, context_counts = _get_patient_data(patient_id, category)
-            
+
+            # MedRAG KG enrichment for patient_summary and observations
+            kg_context = ""
+            if category in ("patient_summary", "observations") and observations:
+                try:
+                    from .rag_service import USE_MEDRAG
+                    from .medrag_knowledge_graph import kg_service
+                    if USE_MEDRAG:
+                        kg_retrieved = [
+                            {
+                                "content": f"{o.get('display', '')} {o.get('valueNumber', '')} {o.get('unit', '')}".strip(),
+                                "metadata": o,
+                            }
+                            for o in observations[:50]
+                        ]
+                        kg_result = kg_service.run_kg_pipeline("patient summary", kg_retrieved)
+                        kg_candidates = kg_result.get("candidate_diseases", [])
+                        if kg_candidates:
+                            matched = kg_result.get("matched_evidence", {})
+                            kg_context = kg_service.build_kg_summary(kg_candidates, matched)
+                except Exception as kg_err:
+                    logger.warning("MedRAG KG injection failed for %s: %s", category, kg_err)
+
             if category == "demographics":
                 # Pass conditions and obs count so demographics section shows clinical context
                 try:
@@ -673,6 +750,7 @@ def generate_all_summaries(patient_id: str):
                         conditions=conditions,
                         observations=observations,  # Use ALL observations
                         notes=notes,
+                        kg_context=kg_context,
                     )
                     summary_text = generate_chat(prompts["system"], prompts["user"], category=category).strip()
                     summaries[category] = summary_text
@@ -706,6 +784,7 @@ def generate_all_summaries(patient_id: str):
                                 conditions=conditions,
                                 observations=reduced_observations,
                                 notes=notes,
+                                kg_context=kg_context,
                             )
                             summary_text = generate_chat(prompts["system"], prompts["user"], category=category).strip()
                             summaries[category] = summary_text
@@ -753,6 +832,7 @@ def generate_all_summaries(patient_id: str):
                             conditions=conditions,
                             observations=observations_limited,
                             notes=notes_limited,
+                            kg_context=kg_context,
                         )
                         summary_text = generate_chat(prompts["system"], prompts["user"], category=category).strip()
                         
@@ -872,7 +952,8 @@ def get_patient_summary(patient_id: str):
     with engine.connect() as conn:
         # Demographics
         sql_p = """
-        SELECT patient_id, CONCAT(given_name, ' ', family_name) AS name,
+        SELECT patient_id,
+               COALESCE(CONCAT_WS(' ', NULLIF(TRIM(given_name),''), NULLIF(TRIM(family_name),'')), 'Not recorded') AS name,
                birth_date, gender, city, state, postal_code
         FROM patients
         WHERE patient_id = :pid

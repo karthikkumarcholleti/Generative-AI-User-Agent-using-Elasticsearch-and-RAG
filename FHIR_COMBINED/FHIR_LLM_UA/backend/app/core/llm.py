@@ -229,12 +229,12 @@ def _get_category_token_limit(user_prompt: str, category: str = "default") -> in
     """Determine token limit based on the named category (authoritative) with prompt-text fallback."""
     # Use the explicit category name — reliable, not fragile text matching
     _LIMITS = {
-        "patient_summary": 1800,   # Comprehensive clinical handoff summary
+        "patient_summary": 2200,   # 5-section clinical handoff; complex patients need room
         "observations":    2500,   # Full value listing with trends
-        "conditions":      1600,   # All conditions organized by category
-        "demographics":     500,   # Short bullet-point list
-        "notes":            600,   # Clinical notes narrative
-        "care_plans":       900,   # Numbered care considerations
+        "conditions":      1800,   # 40+ conditions need room when sorted by category
+        "demographics":    1000,   # Bullet-list but was truncating at 500
+        "notes":            900,   # Multi-note narratives were truncating at 600
+        "care_plans":      1200,   # Numbered care list for complex patients
         "chat":            1400,   # User queries — space for full answer
         "compression":     2000,   # Context compression
     }
@@ -250,9 +250,9 @@ def _get_category_token_limit(user_prompt: str, category: str = "default") -> in
     elif "conditions summary" in user_prompt:
         return 1600
     elif "Demographics" in user_prompt and "Name:" in user_prompt:
-        return 500
+        return 1000
     elif "notes summary" in user_prompt:
-        return 600
+        return 900
     elif "chat query" in user_prompt.lower() or "user query:" in user_prompt.lower():
         return 1400
     return 600  # default
@@ -395,14 +395,17 @@ def generate_chat(system_prompt: str, user_prompt: str, category: str = "default
                 
                 # Progressive token reduction based on memory usage with category-aware minimums
                 # Same thresholds as working version for reliability
-                if memory_usage > 0.90:
-                    max_tokens = min(max_tokens, 150)  # Emergency: minimal tokens
-                elif memory_usage > 0.80:
-                    max_tokens = min(max_tokens, 300)  # High pressure: reduce significantly
-                elif memory_usage > 0.70:
-                    max_tokens = min(max_tokens, 500)  # Moderate pressure: reduce moderately
-                elif memory_usage > 0.60:
-                    max_tokens = min(max_tokens, 700)  # Light pressure: slight reduction
+                # Only apply emergency caps when ANOTHER process has taken shared GPU
+                # memory. Our own model weights are ~5.4 GB; KV-cache is cleared
+                # between calls. Aggressive caps below 600 produce clinically useless
+                # truncated summaries — prefer waiting or returning a clear error.
+                if memory_usage > 0.92:
+                    max_tokens = min(max_tokens, 400)  # Emergency: another process is using most GPU
+                elif memory_usage > 0.82:
+                    max_tokens = min(max_tokens, 600)  # High shared pressure
+                elif memory_usage > 0.72:
+                    max_tokens = min(max_tokens, 900)  # Moderate shared pressure
+                # Below 72%: use full category budget — normal operation
 
             outputs = _model.generate(
                 inputs,

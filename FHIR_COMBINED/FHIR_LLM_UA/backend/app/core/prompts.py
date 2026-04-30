@@ -11,12 +11,13 @@ SYSTEM_PROMPT = (
     "- You MAY provide standard clinical interpretations of values (e.g., 'HbA1c of 8.5% indicates poor glycemic control'; "
     "'creatinine of 2.1 mg/dL suggests possible renal impairment'). Use well-established clinical thresholds.\n"
     "- Do NOT fabricate data, invent values, or add information not present in the records.\n"
-    "- Do NOT diagnose or prescribe. Interpret values clinically, but always note all decisions rest with the clinician.\n"
+    "- Do NOT diagnose or prescribe. Interpret values clinically, but note all decisions rest with the clinician.\n"
     "- Preserve units exactly. Do not convert or round away meaning.\n"
-    "- If a date or value is missing, write: 'not recorded'.\n"
+    "- If a field is null, None, or says 'value not recorded'/'date not recorded', write: 'not recorded'.\n"
     "- Write in clear, complete sentences. Never leave a sentence truncated.\n"
     "- Use bullet points for lists; paragraphs for narrative sections.\n"
     "- If no data is available for a section, write 'No data recorded' and stop — do not pad.\n"
+    "- ALWAYS state the most critical findings first. If output is cut short, the highest-priority findings must already be stated.\n"
     "- ALWAYS complete your response before stopping. Do not start a point you cannot finish.\n"
 )
 
@@ -43,6 +44,7 @@ def prompt_patient_summary(
     conditions: List[Dict[str, Any]],
     observations: List[Dict[str, Any]],
     notes: List[Dict[str, Any]],
+    kg_context: str = "",
 ) -> str:
     """
     Clinical handoff summary: all data, highlights critical findings.
@@ -77,21 +79,22 @@ def prompt_patient_summary(
         + conditions_text + "\n\n"
         + _header("Observations (newest first, with trends)") + _j(observations) + "\n\n"
         + _header("Notes (most recent first)") + _j(notes) + "\n\n"
-        "TASK: Write a clinical handoff summary for this patient.\n\n"
+        + (kg_context + "\n\n" if kg_context else "")
+        + "TASK: Write a clinical handoff summary for this patient.\n\n"
+        "LEAD WITH ALERTS: Before all sections, if any value is critically abnormal, flag it:\n"
+        "  [CRITICAL] HbA1c 11.2% — severely uncontrolled diabetes\n"
+        "  [ELEVATED] Creatinine 2.4 mg/dL — possible renal impairment\n"
+        "  [LOW] Hemoglobin 8.1 g/dL — anemia\n\n"
         "Structure:\n"
-        "1. **Patient Overview** — one paragraph: name, age, gender, key demographics.\n"
+        "1. **Patient Overview** — one paragraph: name, age, gender. Include total active conditions count.\n"
         "2. **Active Conditions** — organized by system (Cardiovascular, Metabolic, etc.). "
-        "List HIGH priority conditions with their clinical status. Include brief clinical interpretation.\n"
-        "3. **Key Lab and Vital Findings** — list the most clinically significant observations with "
-        "actual values and interpretation (normal/elevated/low). Highlight anything abnormal or trending badly.\n"
-        "4. **Clinical Notes Highlights** — if notes exist, summarize the most recent clinical findings.\n"
-        "5. **Clinical Insights** — numbered points on important patterns, risks, or monitoring needs "
-        "that can be derived directly from the data.\n\n"
-        "Rules:\n"
-        "- Include specific values for abnormal findings (e.g., 'Creatinine 2.1 mg/dL — elevated').\n"
-        "- Do NOT say 'No data available' for any section that has data.\n"
+        "HIGH priority conditions first with clinical status.\n"
+        "3. **Key Lab and Vital Findings** — most clinically significant observations with actual values, "
+        "units, and normal/elevated/low status. For trends: 'Creatinine rising: 1.8 → 2.1 → 2.4 mg/dL — monitor for CKD progression'.\n"
+        "4. **Clinical Notes Highlights** — summarize the most recent clinical findings if notes exist.\n"
+        "5. **Clinical Insights** — numbered monitoring priorities and care gaps derived from the data.\n\n"
+        "- Include specific values with units for ALL abnormal findings.\n"
         "- Do NOT write sections for data categories that are genuinely empty.\n"
-        "- Prioritize what a clinician needs to know at a glance.\n"
         "- Complete every sentence. Do not start a point you cannot finish.\n"
     )
 
@@ -168,6 +171,7 @@ def prompt_observations_summary(
     observations: List[Dict[str, Any]],
     demo: Optional[Dict[str, Any]] = None,
     conditions: Optional[List[Dict[str, Any]]] = None,
+    kg_context: str = "",
 ) -> str:
     """Observations summary with actual values, clinical interpretation, and trends."""
     obs_count = len(observations)
@@ -195,7 +199,8 @@ def prompt_observations_summary(
     return (
         header
         + _header(f"Observations ({obs_count} total, newest first, with trends)") + _j(observations) + "\n\n"
-        "TASK:\n"
+        + (kg_context + "\n\n" if kg_context else "")
+        + "TASK:\n"
         "The patient's laboratory and clinical observations include:\n\n"
         f"Analyze ALL {obs_count} observations and write a structured clinical observations summary.\n\n"
         "Structure:\n"
@@ -209,11 +214,10 @@ def prompt_observations_summary(
         "  - State whether it is normal, elevated, or low using standard clinical ranges.\n"
         "  - Include trend summary if available (e.g., 'stable over 5 measurements, Avg: X, Range: Y-Z').\n"
         "  - Provide brief clinical interpretation for abnormal values.\n\n"
-        "Examples:\n"
-        "  - Heart rate: 98 /min — normal, stable over 5 measurements (Avg: 98.8, Range: 94-102)\n"
-        "  - Systolic BP: 129 mmHg — elevated, stable (Avg: 121.8, Range: 103-152)\n"
-        "  - HbA1c: 8.5% — elevated, indicating poor glycemic control\n"
-        "  - Creatinine: 2.1 mg/dL — elevated, may indicate renal impairment\n\n"
+        "Abnormal value flagging — prefix the line with the appropriate tag:\n"
+        "  [CRITICAL] — life-threatening (e.g., K+ <2.5, Hgb <7, glucose >500)\n"
+        "  [ELEVATED] — above normal range (e.g., HbA1c >7%, creatinine >1.2 mg/dL, systolic BP >140)\n"
+        "  [LOW]      — below normal range (e.g., Hgb <12 g/dL, sodium <135 mEq/L)\n\n"
         "Rules:\n"
         "- Include ALL observations — do not skip any.\n"
         "- Only use sections that have data; skip empty sections.\n"
@@ -301,7 +305,7 @@ def prompt_demographics(
         )
         + "\nDo not add introductory text, narrative paragraphs, or clinical implications. "
         "Start directly with 'Patient Demographics:'. "
-        "If a field says 'value not recorded' or 'date not recorded', write 'not recorded' for that field.\n"
+        "If a field is null, None, missing, or says 'value not recorded'/'date not recorded', write 'not recorded'.\n"
     )
 
 
@@ -347,7 +351,6 @@ def prompt_care_plans(
         "- Only include considerations supported by the data.\n"
         "- End after the last consideration — no disclaimers or concluding paragraphs.\n"
         "- Complete every sentence. Do not start an entry you cannot finish.\n"
-        "- All clinical decisions rest with qualified healthcare providers.\n"
     )
 
 
@@ -360,6 +363,7 @@ def render_prompt(
     observations: Optional[List[Dict[str, Any]]] = None,
     notes: Optional[List[Dict[str, Any]]] = None,
     obs_count: Optional[int] = None,
+    kg_context: str = "",
 ) -> Dict[str, str]:
     """
     Returns {'system': SYSTEM_PROMPT, 'user': user_prompt_text}
@@ -370,7 +374,8 @@ def render_prompt(
         return {
             "system": SYSTEM_PROMPT,
             "user": prompt_patient_summary(
-                demo or {}, conditions or [], observations or [], notes or []
+                demo or {}, conditions or [], observations or [], notes or [],
+                kg_context=kg_context,
             ),
         }
     if cat == "conditions":
@@ -378,7 +383,9 @@ def render_prompt(
     if cat == "observations":
         return {
             "system": SYSTEM_PROMPT,
-            "user": prompt_observations_summary(observations or [], demo=demo, conditions=conditions),
+            "user": prompt_observations_summary(
+                observations or [], demo=demo, conditions=conditions, kg_context=kg_context
+            ),
         }
     if cat == "notes":
         return {"system": SYSTEM_PROMPT, "user": prompt_notes(notes or [], demo=demo)}

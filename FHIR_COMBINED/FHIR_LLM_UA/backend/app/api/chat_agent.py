@@ -1310,3 +1310,41 @@ def get_current_mode():
         "use_medrag": use_medrag,
         "pipeline_mode": "MedRAG + KG" if use_medrag else "Standard RAG"
     }
+
+
+@router.post("/debug-intent")
+def debug_intent(body: dict):
+    """
+    Test intent detection without running the full LLM pipeline.
+    Returns the classified intent plus DDx flag analysis.
+    Useful for diagnosing why a query returns DDx vs direct-answer format.
+    """
+    query = body.get("query", "")
+    patient_id = body.get("patient_id", "")
+    if not query:
+        raise HTTPException(status_code=400, detail="'query' field is required")
+
+    from .intent_classifier import intent_classifier
+    from .rag_service import DDX_INTENT_KEYWORDS, VALUE_LOOKUP_OVERRIDES
+
+    intent = intent_classifier.classify(query)
+    query_lower = query.lower()
+    has_ddx = any(kw in query_lower for kw in DDX_INTENT_KEYWORDS)
+    is_lookup = any(kw in query_lower for kw in VALUE_LOOKUP_OVERRIDES)
+    matched_ddx_kw = [kw for kw in DDX_INTENT_KEYWORDS if kw in query_lower]
+    matched_lookup_kw = [kw for kw in VALUE_LOOKUP_OVERRIDES if kw in query_lower]
+
+    return {
+        "query": query,
+        "patient_id": patient_id,
+        "intent": intent,
+        "has_ddx_intent": has_ddx,
+        "is_value_lookup": is_lookup,
+        "apply_ddx": has_ddx and not is_lookup,
+        "matched_ddx_keywords": matched_ddx_kw,
+        "matched_lookup_keywords": matched_lookup_kw,
+        "note": (
+            "apply_ddx=True → full DDx 5-step format; "
+            "apply_ddx=False → compact direct-answer format"
+        ),
+    }
