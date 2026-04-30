@@ -753,28 +753,35 @@ def generate_all_summaries(patient_id: str):
                         kg_context=kg_context,
                     )
                     summary_text = generate_chat(prompts["system"], prompts["user"], category=category).strip()
+                    # generate_chat returns error strings on OOM (no exception raised)
+                    if "temporarily unavailable" in summary_text.lower():
+                        raise RuntimeError("OOM detected via return value")
                     summaries[category] = summary_text
                     print(f"✓ {category} completed (full analysis)")
-                    
+
                     # Clear memory after generation
                     clear_gpu_memory()
                 except Exception as llm_error:
                     error_type = type(llm_error).__name__
-                    is_oom = (torch is not None and 
-                             hasattr(torch.cuda, 'OutOfMemoryError') and 
-                             isinstance(llm_error, torch.cuda.OutOfMemoryError))
-                    
-                    print(f"✗ {category} failed: {error_type}: {str(llm_error)[:100]}")
-                    
+                    is_oom = (
+                        "OOM detected" in str(llm_error)
+                        or (torch is not None and
+                            hasattr(torch.cuda, 'OutOfMemoryError') and
+                            isinstance(llm_error, torch.cuda.OutOfMemoryError))
+                    )
+
+                    print(f"✗ {category} failed ({error_type}), retrying with reduced observations...")
+
                     # Clear memory on any error
                     try:
-                        from app.core.llm import clear_gpu_memory
-                        clear_gpu_memory()
+                        from app.core.llm import clear_gpu_memory_aggressive
+                        clear_gpu_memory_aggressive()
+                        time.sleep(3)
                     except:
                         pass
-                    
-                    # If OOM, try with reduced data
-                    if is_oom:
+
+                    # Retry with reduced data (always, not just on OOM — error string also triggers this)
+                    if True:
                         try:
                             # Retry with fewer observations
                             reduced_observations = observations[:30] if len(observations) > 30 else observations
@@ -797,8 +804,6 @@ def generate_all_summaries(patient_id: str):
                         except Exception as retry_error:
                             print(f"✗ {category} retry failed: {str(retry_error)[:100]}")
                             summaries[category] = f"Summary temporarily unavailable due to system memory constraints. Please refresh the page."
-                    else:
-                        summaries[category] = f"Summary temporarily unavailable due to system constraints. Please refresh the page."
             
             elif category in ["conditions", "notes", "patient_summary"]:
                 # Use LLM for other categories with error handling and retry logic
@@ -921,6 +926,15 @@ def get_patient_llm_summary(patient_id: str, category: str = "patient_summary"):
 
     # If not cached, fetch patient data and generate (with category-specific limits)
     print(f"🔍 Cache miss - generating {category} summary...")
+
+    # Clear GPU KV-cache before generation (same as all_summaries does between sections)
+    try:
+        from app.core.llm import clear_gpu_memory_aggressive
+        clear_gpu_memory_aggressive()
+        time.sleep(1)
+    except Exception:
+        pass
+
     demo, conditions, observations, notes, context_counts = _get_patient_data(patient_id, category)
     print(f"🔍 Data retrieved - Conditions: {len(conditions)}, Observations: {len(observations)}, Notes: {len(notes)}")
 

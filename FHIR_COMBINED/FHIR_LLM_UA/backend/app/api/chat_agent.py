@@ -1316,7 +1316,8 @@ def get_current_mode():
 def debug_intent(body: dict):
     """
     Test intent detection without running the full LLM pipeline.
-    Returns the classified intent plus DDx flag analysis.
+    Uses fast keyword-based intent classification only (no LLM call).
+    Returns DDx flag analysis and inferred intent type.
     Useful for diagnosing why a query returns DDx vs direct-answer format.
     """
     query = body.get("query", "")
@@ -1324,11 +1325,29 @@ def debug_intent(body: dict):
     if not query:
         raise HTTPException(status_code=400, detail="'query' field is required")
 
-    from .intent_classifier import intent_classifier
     from .rag_service import DDX_INTENT_KEYWORDS, VALUE_LOOKUP_OVERRIDES
 
-    intent = intent_classifier.classify(query)
     query_lower = query.lower()
+
+    # Fast keyword-based intent type (mirrors the LLM classifier's common outputs)
+    _obs_kw = ["heart rate", "blood pressure", "glucose", "a1c", "hba1c", "creatinine",
+               "cholesterol", "hemoglobin", "weight", "bmi", "oxygen", "temperature",
+               "vitals", "lab", "reading", "value", "level", "result"]
+    _cond_kw = ["condition", "diagnosis", "diagnos", "disease", "disorder", "problem", "icd"]
+    _viz_kw  = ["chart", "graph", "plot", "visualiz", "trend", "over time", "timeline"]
+    _demo_kw = ["age", "gender", "name", "address", "dob", "date of birth", "demographic"]
+
+    if any(kw in query_lower for kw in _viz_kw):
+        fast_intent = "visualization"
+    elif any(kw in query_lower for kw in _obs_kw):
+        fast_intent = "observations"
+    elif any(kw in query_lower for kw in _cond_kw):
+        fast_intent = "conditions"
+    elif any(kw in query_lower for kw in _demo_kw):
+        fast_intent = "demographics"
+    else:
+        fast_intent = "general"
+
     has_ddx = any(kw in query_lower for kw in DDX_INTENT_KEYWORDS)
     is_lookup = any(kw in query_lower for kw in VALUE_LOOKUP_OVERRIDES)
     matched_ddx_kw = [kw for kw in DDX_INTENT_KEYWORDS if kw in query_lower]
@@ -1337,14 +1356,15 @@ def debug_intent(body: dict):
     return {
         "query": query,
         "patient_id": patient_id,
-        "intent": intent,
+        "fast_intent_type": fast_intent,
         "has_ddx_intent": has_ddx,
         "is_value_lookup": is_lookup,
         "apply_ddx": has_ddx and not is_lookup,
         "matched_ddx_keywords": matched_ddx_kw,
         "matched_lookup_keywords": matched_lookup_kw,
         "note": (
+            "fast_intent_type = keyword-based estimate (no LLM). "
             "apply_ddx=True → full DDx 5-step format; "
-            "apply_ddx=False → compact direct-answer format"
+            "apply_ddx=False → compact direct-answer format."
         ),
     }
