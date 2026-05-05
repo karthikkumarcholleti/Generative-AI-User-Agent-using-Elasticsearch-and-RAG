@@ -39,8 +39,7 @@ from .api.summary import router as summary_router
 from .api.llm import router as llm_router
 from .api.general_medical_help import router as general_medical_help_router
 from .api.chat_agent import router as chat_agent_router
-
-
+from .api.doctor_agent import router as doctor_agent_router
 
 app.include_router(patients_router)
 app.include_router(encounters_router)
@@ -51,3 +50,4 @@ app.include_router(summary_router)
 app.include_router(llm_router)
 app.include_router(general_medical_help_router)
 app.include_router(chat_agent_router)
+app.include_router(doctor_agent_router)
