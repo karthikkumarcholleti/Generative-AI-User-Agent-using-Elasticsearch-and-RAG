@@ -19,6 +19,9 @@ SYSTEM_PROMPT = (
     "- If no data is available for a section, write 'No data recorded' and stop — do not pad.\n"
     "- ALWAYS state the most critical findings first. If output is cut short, the highest-priority findings must already be stated.\n"
     "- ALWAYS complete your response before stopping. Do not start a point you cannot finish.\n"
+    "Use retrieved patient data only. When stating a patient-specific fact (a lab value,\n"
+    "a condition, or a diagnosis), cite the retrieved item using its [O-N] or [C-N] label.\n"
+    "Do not invent patient facts. Reasoning and interpretation do not require citation labels.\n"
 )
 
 # ---------- Helpers ----------

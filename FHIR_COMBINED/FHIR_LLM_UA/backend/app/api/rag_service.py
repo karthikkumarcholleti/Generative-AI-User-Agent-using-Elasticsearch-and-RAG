@@ -20,9 +20,15 @@ from datetime import datetime
 # USE_MEDRAG = True  → Run MedRAG pipeline (KG-augmented, differential diagnosis)
 # USE_MEDRAG = False → Run Standard RAG pipeline (Elasticsearch only, no KG)
 #
-# For research comparison: toggle this flag and compare LLM outputs side-by-side.
+# Set at startup via environment variable:
+#   USE_MEDRAG=true  uvicorn app.main:app ...   → MedRAG mode
+#   USE_MEDRAG=false uvicorn app.main:app ...   → Standard RAG mode
+#
+# Switch at runtime (no restart) via:
+#   POST /compare/set-mode  {"use_medrag": true/false}
 # =============================================================================
-USE_MEDRAG = True
+import os as _os
+USE_MEDRAG = _os.environ.get("USE_MEDRAG", "true").strip().lower() != "false"
 
 def set_use_medrag(enabled: bool) -> None:
     """Runtime toggle for the MedRAG pipeline (no restart required).
@@ -646,12 +652,12 @@ class RAGService:
                 intent_type == "grouped_visualization"  # Grouped visualization needs all data
             )
             
-            # For complex queries, we might need more documents, but keep at 100 for OOM safety
-            # Intent classifier already identified these as complex queries semantically
+            # Cap at 50 docs to keep prompts under ~4000 tokens and prevent generation OOM.
+            # 50 docs yields ~3500-4000 chars which is ~900-1000 tokens — safe for T4 GPUs.
             if is_complex_query:
-                max_results = 100  # Complex queries: enough for all observations/conditions
+                max_results = 50
             else:
-                max_results = 100  # Simple queries: standard limit
+                max_results = 50
             if len(results) > max_results:
                 results = results[:max_results]
                 log_info("Results Limited", f"✓ Limited to top {max_results} most recent documents (from {len(results) + max_results} total)")
@@ -666,7 +672,7 @@ class RAGService:
             logger.error(f"Failed to retrieve data: {e}")
             return []
     
-    def generate_contextual_response(self, patient_id: str, query: str, retrieved_data: List[Dict[str, Any]], intent: Dict[str, Any]) -> str:
+    def generate_contextual_response(self, patient_id: str, query: str, retrieved_data: List[Dict[str, Any]], intent: Dict[str, Any], context_hint: str = "") -> str:
         """
         Generate contextual response using retrieved data.
         Uses highlighting by default, with fallback to full documents (old method) if highlighting fails.
@@ -719,10 +725,16 @@ class RAGService:
         context_parts = []
         
         # Group data by type BEFORE limiting (to preserve observations/conditions)
+        # Normalize singular ES values to the plural form the context builder expects.
+        _TYPE_NORM = {
+            "observation": "observations",
+            "condition": "conditions",
+            "note": "notes",
+            "encounter": "encounters",
+        }
         data_by_type = {}
         for item in retrieved_data:
-            # Safely handle missing data_type key
-            data_type = item.get("data_type", "unknown")
+            data_type = _TYPE_NORM.get(item.get("data_type", "unknown"), item.get("data_type", "unknown"))
             if data_type not in data_by_type:
                 data_by_type[data_type] = []
             data_by_type[data_type].append(item)
@@ -751,43 +763,51 @@ class RAGService:
                 
                 for item in items:
                     metadata = item.get("metadata", {})
-                    code = metadata.get("code", "")
-                    display = metadata.get("display", "")
-                    
-                    # Create unique key for deduplication (code + normalized display)
-                    # Normalize display name for comparison (lowercase, strip)
+                    # Read from top-level fields (new ETL index); fall back to legacy metadata.*
+                    code = item.get("code") or metadata.get("code", "")
+                    display = (item.get("display")
+                               or item.get("content")
+                               or metadata.get("display", ""))
+                    # Strip SNOMED semantic-tag suffixes so clinicians see clean names
+                    if display:
+                        display = re.sub(
+                            r'\s*\((?:disorder|finding|situation|observable entity|procedure|body structure|qualifier value)\)\s*$',
+                            '', display, flags=re.IGNORECASE
+                        ).strip()
+                    clinical_status = (item.get("clinical_status")
+                                       or metadata.get("clinicalStatus", "unknown"))
+
                     normalized_display = display.lower().strip() if display else ""
                     unique_key = f"{code}_{normalized_display}"
-                    
-                    # Skip if we've already seen this condition
+
                     if unique_key in seen_conditions:
                         continue
                     seen_conditions.add(unique_key)
-                    
+
                     condition_data = {
                         "code": code,
                         "display": display,
-                        "clinicalStatus": metadata.get("clinicalStatus", "unknown"),
-                        "content": item.get("content", "")  # Safely handle missing content key
+                        "clinicalStatus": clinical_status,
+                        "content": item.get("content", ""),
                     }
-                    # Try to get category and priority from metadata if available
                     if "category" in metadata:
                         condition_data["category"] = metadata["category"]
                         condition_data["priority"] = metadata.get("priority", "low")
-                        condition_data["normalizedName"] = metadata.get("normalizedName", condition_data["display"])
+                        condition_data["normalizedName"] = metadata.get("normalizedName", display)
                     conditions_list.append(condition_data)
                 
                 # Group by category
                 grouped = group_conditions_by_category(conditions_list)
                 
                 # Build context organized by category with priority
-                context_parts.append("**Medical Conditions (organized by category):**")
+                _cond_idx = 1
+                context_parts.append("\n== RETRIEVED CONDITIONS — cite as [C-N] ==")
                 category_order = [
                     "Cardiovascular", "Metabolic", "Respiratory", "Neurological",
                     "Mental Health", "Musculoskeletal", "Gastrointestinal", "Renal",
                     "Endocrine", "Oncology", "Acute", "Other"
                 ]
-                
+
                 for category in category_order:
                     if category in grouped:
                         cat_conditions = grouped[category]
@@ -799,27 +819,26 @@ class RAGService:
                         )
                         context_parts.append(f"\n**{category}:**")
                         for cond in sorted_conditions:
-                            priority = cond.get("priority", "low")
-                            priority_marker = "🔴 HIGH" if priority == "high" else "🟡 MEDIUM" if priority == "medium" else "🟢 LOW"
                             name = cond.get("normalizedName") or cond.get("display", "Unknown")
-                            status = cond.get("clinicalStatus", "unknown")
-                            context_parts.append(f"  {priority_marker}: {name} (Status: {status})")
-                
-                # Handle any remaining categories
+                            status = cond.get("clinicalStatus") or "active"
+                            onset_date = cond.get("onsetDateTime", "") or cond.get("onset", "unknown")
+                            context_parts.append(
+                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}"
+                            )
+                            _cond_idx += 1
+
+                # Handle any remaining categories (including "Other" where SNOMED conditions land)
                 for category, cat_conditions in grouped.items():
                     if category not in category_order:
-                        sorted_conditions = sorted(
-                            cat_conditions,
-                            key=lambda c: {"high": 3, "medium": 2, "low": 1}.get(c.get("priority", "low"), 1),
-                            reverse=True
-                        )
                         context_parts.append(f"\n**{category}:**")
-                        for cond in sorted_conditions:
-                            priority = cond.get("priority", "low")
-                            priority_marker = "🔴 HIGH" if priority == "high" else "🟡 MEDIUM" if priority == "medium" else "🟢 LOW"
-                            name = cond.get("normalizedName") or cond.get("display", "Unknown")
-                            status = cond.get("clinicalStatus", "unknown")
-                            context_parts.append(f"  {priority_marker}: {name} (Status: {status})")
+                        for cond in cat_conditions:
+                            name   = cond.get("normalizedName") or cond.get("display") or cond.get("content", "Unknown")
+                            status = cond.get("clinicalStatus") or "active"
+                            onset_date = cond.get("onsetDateTime", "") or cond.get("onset", "unknown")
+                            context_parts.append(
+                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}"
+                            )
+                            _cond_idx += 1
             
             elif data_type == "observations":
                 context_parts.append("**Clinical Observations:**")
@@ -827,45 +846,60 @@ class RAGService:
                 # Deduplicate observations based on display name and value
                 unique_observations = {}
                 for item in items:
-                    # Extract metadata for deduplication
                     metadata = item.get("metadata", {})
-                    value = metadata.get("value", "")
-                    display = metadata.get("display", "")
-                    unit = metadata.get("unit", "")
-                    
-                    # Handle NULL display names: use code-based fallback
-                    code = metadata.get("code", "")
-                    if not display or not isinstance(display, str) or display.strip() == "Observation Name":
-                        # Try to get display from code mapping
+                    # Read from top-level fields (new ETL index); fall back to legacy metadata.*
+                    display = (item.get("display")
+                               or metadata.get("display", ""))
+                    code    = item.get("code") or metadata.get("code", "")
+                    # value: prefer numeric top-level field; legacy metadata stored strings
+                    raw_val = item.get("value_numeric")
+                    value   = str(raw_val) if raw_val is not None else metadata.get("value", "")
+                    unit    = item.get("unit") or metadata.get("unit", "") or ""
+                    ref_lo  = item.get("ref_range_low")
+                    ref_hi  = item.get("ref_range_high")
+                    date    = (item.get("timestamp")        # normalized to effective_date in ES client
+                               or metadata.get("date", ""))
+                    date_str = date[:10] if date else ""
+
+                    # Skip purely structural CCDA metadata entries that carry no clinical value
+                    _STRUCTURAL = {
+                        "diagnosis", "problem", "assertion", "diagnosis status",
+                        "severity observation", "criticality", "functional status",
+                        "observation name", "unknown",
+                    }
+                    if not display or display.lower().strip() in _STRUCTURAL:
+                        continue
+
+                    # Handle NULL display: try LOINC lookup
+                    if not display or display.strip() == "Observation Name":
                         try:
                             from .loinc_code_mapper import get_observation_display_from_code
-                            display = get_observation_display_from_code(code) or f"Code {code}" if code else "Unknown"
+                            display = get_observation_display_from_code(code) or (f"Code {code}" if code else "")
                         except ImportError:
-                            display = f"Code {code}" if code else "Unknown"
-                    
-                    # Skip if still no meaningful display
-                    if not display or display.strip() == "Unknown":
+                            display = f"Code {code}" if code else ""
+                    if not display:
                         continue
-                    
-                    # Create unique key based on display name, value, and date to preserve multiple readings
-                    # CRITICAL: Same value on different dates = DIFFERENT readings (NOT duplicates)
-                    # Only true duplicates: same display + same value + same date
-                    date = metadata.get("date", "")
-                    date_str = date[:10] if date else ""  # Use just the date part (YYYY-MM-DD)
-                    
-                    # For blood pressure, we want to keep systolic and diastolic separate
-                    # Create key that includes display, value, and date to preserve all readings
-                    # This ensures: BP 140/90 on 2025-01-01 and BP 140/90 on 2025-02-01 are BOTH kept (different dates)
-                    unique_key = f"{display.lower().strip() if display else (code.lower() if code else '')}_{value}_{date_str}"
-                    
-                    # Store all observations (including multiple readings with same display but different values/dates)
+
+                    # Clean raw LOINC technical strings so the LLM and clinician see
+                    # readable names: "CREATININE:MCNC:PT:SER/PLAS:QN::" → "Creatinine"
+                    if display and ':' in display and display[:3].isupper():
+                        try:
+                            from .loinc_code_mapper import get_clean_display_for_code
+                            display = get_clean_display_for_code(code, display)
+                        except ImportError:
+                            pass
+
+                    unique_key = f"{display.lower().strip()}_{value}_{date_str}"
                     if unique_key not in unique_observations:
                         unique_observations[unique_key] = {
                             "display": display,
+                            "code": code,
                             "value": value,
                             "unit": unit,
+                            "ref_lo": ref_lo,
+                            "ref_hi": ref_hi,
                             "date": date_str,
-                            "content": item.get("content", "")  # Safely handle missing content key
+                            "content": item.get("content", ""),
                         }
                 
                 # Add unique observations to context with proper formatting
@@ -874,111 +908,107 @@ class RAGService:
                     unique_observations.values(),
                     key=lambda x: (x.get("date", ""), x.get("display", ""))
                 )
-                
+
+                _obs_idx = 1
+                context_parts.append("\n== RETRIEVED OBSERVATIONS — cite as [O-N] ==")
                 for obs in sorted_observations:
-                    # Safely handle missing keys
-                    value = obs.get("value", "")
-                    display = obs.get("display", "")
+                    value    = obs.get("value", "")
+                    display  = obs.get("display", "")
                     date_str = obs.get("date", "")
-                    if value and display:
-                        # Clean up the value and unit formatting
-                        value_str = str(value).strip()
-                        unit = (obs.get("unit") or "").strip()
-                        display = str(display)  # Ensure it's a string
+                    ref_lo   = obs.get("ref_lo")
+                    ref_hi   = obs.get("ref_hi")
 
-                        # ── Implausibility filter ──────────────────────────
-                        # Skip observations with clearly invalid values caused
-                        # by hospital data quality issues (e.g., unit-mixing,
-                        # data-entry errors). Checks both physiological floors
-                        # and ceilings to prevent LLM hallucination.
-                        try:
-                            _num = float(value_str.split()[0])
-                            _disp_l = display.lower()
-                            _is_ratio = "ratio" in _disp_l
-                            _implausible = (
-                                # --- Low-end (near-zero, physically impossible) ---
-                                ("cholesterol" in _disp_l and _num < 10) or
-                                ("creatinine" in _disp_l and not _is_ratio and _num < 0.05) or
-                                ("glucose" in _disp_l and _num < 0.5) or
-                                ("hemoglobin" in _disp_l and "a1c" not in _disp_l and _num < 1) or
-                                # --- High-end (physiologically impossible ceilings) ---
-                                ("cholesterol" in _disp_l and _num > 700) or
-                                ("creatinine" in _disp_l and not _is_ratio and _num > 30) or
-                                ("glucose" in _disp_l and _num > 1500) or
-                                ("hemoglobin" in _disp_l and "a1c" not in _disp_l and _num > 25) or
-                                ("blood pressure" in _disp_l and _num > 300) or
-                                ("heart rate" in _disp_l and (_num < 10 or _num > 350)) or
-                                ("body temperature" in _disp_l and (_num < 25 or _num > 46))
-                            )
-                            if _implausible:
-                                logger.warning(
-                                    f"[Context filter] Skipping implausible value: {display}={_num} "
-                                    f"(unit={unit}) — likely ETL/unit error"
-                                )
-                                continue
-                        except (ValueError, TypeError, IndexError):
-                            pass  # Can't parse numeric value — keep the observation
-                        # ──────────────────────────────────────────────────
-                        
-                        # Handle date fields (code 67723-7)
-                        if display and "date" in display.lower():
-                            # Extract numeric part from value (remove " unit" if present)
-                            clean_value = value_str.replace(" unit", "").strip()
-                            if clean_value.replace(".", "").isdigit():
-                                try:
-                                    # Convert YYYYMMDD format to readable date
-                                    date_num = float(clean_value)
-                                    if date_num > 10000000:  # Valid date format
-                                        date_str_raw = str(int(date_num))
-                                        if len(date_str_raw) == 8:  # YYYYMMDD
-                                            _mm = int(date_str_raw[4:6])
-                                            _dd = int(date_str_raw[6:8])
-                                            # Reject impossible calendar dates (e.g. 20250200, 20251345)
-                                            if 1 <= _mm <= 12 and 1 <= _dd <= 31:
-                                                formatted_date = f"{date_str_raw[:4]}-{date_str_raw[4:6]}-{date_str_raw[6:8]}"
-                                                context_parts.append(f"- {display}: {formatted_date}")
-                                            else:
-                                                logger.warning(
-                                                    f"[Date filter] Rejecting corrupt date value "
-                                                    f"{date_str_raw} for field '{display}'"
-                                                )
-                                            continue
-                                except (ValueError, TypeError):
-                                    pass
-                        
-                        # ── Unit normalization (context text) ─────────────
-                        # Convert non-canonical units so the LLM context is
-                        # consistent (e.g. glucose always in mg/dL, not mmol/L).
-                        try:
-                            _raw_num = float(value_str.split()[0])
-                            _norm_num, _norm_unit = _normalize_context_value(display, _raw_num, unit)
-                            if _norm_unit != unit:
-                                logger.debug(
-                                    f"[Unit normalize] {display}: {_raw_num} {unit} → "
-                                    f"{_norm_num} {_norm_unit}"
-                                )
-                                value_str = str(_norm_num)
-                                unit = _norm_unit
-                        except (ValueError, TypeError, IndexError):
-                            pass  # Non-numeric value — no conversion needed
-                        # ──────────────────────────────────────────────────
+                    # Fallback: if ES has no reference range, look up by LOINC code
+                    if ref_lo is None or ref_hi is None:
+                        obs_code_for_ref = obs.get("code", "")
+                        if obs_code_for_ref:
+                            try:
+                                from .loinc_code_mapper import get_reference_range_for_code
+                                _rlo, _rhi = get_reference_range_for_code(obs_code_for_ref)
+                                if _rlo is not None:
+                                    ref_lo = _rlo
+                                    ref_hi = _rhi
+                            except ImportError:
+                                pass
 
-                        # Remove redundant "unit" from value if it exists
-                        if value_str.endswith(" unit") and unit == "unit":
-                            value_str = value_str[:-5]  # Remove " unit"
-                            unit = ""  # Don't add unit again
+                    if not (value and display):
+                        continue
 
-                        # Only add unit if it's meaningful and not already in the value
-                        if unit and unit != "unit" and unit not in value_str:
-                            unit_text = f" {unit}"
+                    value_str = str(value).strip()
+                    unit      = (obs.get("unit") or "").strip()
+                    display   = str(display)
+
+                    # ── Implausibility filter ──────────────────────────────
+                    try:
+                        _num    = float(value_str.split()[0])
+                        _disp_l = display.lower()
+                        _is_ratio = "ratio" in _disp_l
+                        _implausible = (
+                            ("cholesterol" in _disp_l and (_num < 10 or _num > 700)) or
+                            ("creatinine"  in _disp_l and not _is_ratio and (_num < 0.05 or _num > 30)) or
+                            ("glucose"     in _disp_l and (_num < 0.5 or _num > 1500)) or
+                            ("hemoglobin"  in _disp_l and "a1c" not in _disp_l and (_num < 1 or _num > 25)) or
+                            ("blood pressure" in _disp_l and _num > 300) or
+                            ("heart rate"     in _disp_l and (_num < 10 or _num > 350)) or
+                            ("body temperature" in _disp_l and (_num < 25 or _num > 46))
+                        )
+                        if _implausible:
+                            logger.warning(f"[Context filter] Skipping implausible: {display}={_num} unit={unit}")
+                            continue
+                    except (ValueError, TypeError, IndexError):
+                        pass
+                    # ────────────────────────────────────────────────────────
+
+                    # ── Unit normalization ────────────────────────────────
+                    try:
+                        _raw_num = float(value_str.split()[0])
+                        _norm_num, _norm_unit = _normalize_context_value(display, _raw_num, unit)
+                        if _norm_unit != unit:
+                            value_str = str(_norm_num)
+                            unit = _norm_unit
+                    except (ValueError, TypeError, IndexError):
+                        pass
+                    # ────────────────────────────────────────────────────────
+
+                    # Strip placeholder unit label; look up canonical unit from LOINC mapper
+                    if unit == "unit" or not unit:
+                        obs_code = obs.get("code", "")
+                        canonical = ""
+                        if obs_code:
+                            try:
+                                from .loinc_code_mapper import get_canonical_unit_for_code
+                                canonical = get_canonical_unit_for_code(obs_code)
+                            except ImportError:
+                                pass
+                        unit = canonical  # "" if code not in canonical unit map
+                    if value_str.endswith(" unit"):
+                        value_str = value_str[:-5].strip()
+
+                    unit_text = f" {unit}" if unit and unit not in value_str else ""
+
+                    # ── Abnormality flag from reference range ─────────────
+                    flag = ""
+                    try:
+                        _v = float(value_str)
+                        if ref_lo is not None and ref_hi is not None:
+                            ref_text = f" (ref: {ref_lo}-{ref_hi}{unit_text})"
+                            if _v > float(ref_hi):
+                                flag = " [HIGH]"
+                            elif _v < float(ref_lo):
+                                flag = " [LOW]"
+                            else:
+                                flag = " [normal]"
                         else:
-                            unit_text = ""
-                        
-                        # Include date if available for better context
-                        if date_str:
-                            context_parts.append(f"- {display}: {value_str}{unit_text} (recorded on {date_str})")
-                        else:
-                            context_parts.append(f"- {display}: {value_str}{unit_text}")
+                            ref_text = ""
+                    except (ValueError, TypeError):
+                        ref_text = ""
+                    # ────────────────────────────────────────────────────────
+
+                    flag_label = "HIGH" if flag == " [HIGH]" else ("LOW" if flag == " [LOW]" else "normal")
+                    context_parts.append(
+                        f"[O-{_obs_idx}] {display}: {value_str}{unit_text} | {flag_label} | Date: {date_str}"
+                    )
+                    _obs_idx += 1
             
             elif data_type == "notes":
                 context_parts.append("**Clinical Notes:**")
@@ -1029,16 +1059,22 @@ class RAGService:
                             context_parts.append(f"- {content}")
         
         context = "\n".join(context_parts)
-        
-        # RESEARCH-BASED APPROACH: No special handling, no explicit training
-        # Let the LLM naturally understand the query and respond appropriately
-        # Semantic search has already found relevant data
-        # LLM's built-in medical knowledge will handle interpretation
-        
+
+        # Inject structured clinician context hint into retrieval block (P6)
+        # Injected ONLY here — never into system_prompt — to prevent prompt injection
+        if context_hint:
+            context = context_hint + "\n" + context
+
+        # ── DDx intent detection (must precede system prompt so prompt adapts) ──
+        _query_lower_early = query.lower()
+        _has_ddx_intent_early = any(kw in _query_lower_early for kw in DDX_INTENT_KEYWORDS)
+        _is_value_lookup_early = any(kw in _query_lower_early for kw in VALUE_LOOKUP_OVERRIDES)
+        _apply_ddx_early = _has_ddx_intent_early and not _is_value_lookup_early
+
         # =====================================================================
         # [STANDARD RAG — STEP 4a] System Prompt (no KG layer)
-        # To revert to Standard RAG: set USE_MEDRAG = False at the top of this file.
-        # The block below runs when USE_MEDRAG = False.
+        # To revert to Standard RAG: set USE_MEDRAG = True at the top of this file.
+        # The block below runs when USE_MEDRAG = True.
         # =====================================================================
         # system_prompt = """You are a clinical AI assistant helping healthcare professionals
         # analyze patient data. You have access to the patient's medical records and can provide
@@ -1051,26 +1087,24 @@ class RAGService:
             # ─────────────────────────────────────────────────────────────────
             # [STANDARD RAG — STEP 4a] System prompt — flat patient context,
             # no knowledge graph, no differential diagnosis ranking.
-            # Uncomment USE_MEDRAG = False at top of file to activate this path.
+            # Uncomment USE_MEDRAG = True at top of file to activate this path.
             # ─────────────────────────────────────────────────────────────────
             system_prompt = """You are a clinical AI assistant helping healthcare professionals analyze patient data.
 You have access to a subset of the patient's medical records retrieved by semantic search.
 
 CORE RULES:
-- ONLY use data explicitly present in the context provided below.
-- NEVER generate, invent, or infer data that is not shown in the context.
+- ONLY use values and findings that appear verbatim in the context provided below.
+- NEVER invent, estimate, or assume any lab value, measurement, or date not in the context.
+- NEVER list tests or measurements that are absent — do not write "not explicitly mentioned" or similar. Simply omit them.
 - NEVER use bold formatting (**text**) or asterisks (*).
-- Use clean numbered lists with a blank line between items.
-- Complete every sentence — do not truncate mid-list.
+- Use clean numbered lists. Complete every sentence.
 
 ANSWERING RULES:
-- Answer ONLY what the query asks — nothing more, nothing less.
-- ALWAYS lead with what IS present in the records — never open with an absence or a missing field.
-- If the queried data IS in the context: present it clearly (value, unit, date) as the FIRST thing you say.
-- If the queried data is NOT in the context: say so in ONE sentence and STOP. Do NOT enumerate other missing types.
-- If related (but not exact) data exists: note it briefly after the one-sentence absence statement.
-- For diagnosis questions: state the most likely diagnosis FIRST, then supporting evidence from the records.
-- Do NOT ask for missing data that the clinician did not ask about.
+- ALWAYS lead with what IS present — never open with an absence statement.
+- Report every condition listed in Medical Conditions. Report every observation that has a value.
+- Values flagged [HIGH] or [LOW] are abnormal — highlight those first.
+- If specific queried data is absent: acknowledge in ONE sentence and move on. Do not enumerate all other absent types.
+- For diagnosis questions: state the most likely diagnosis FIRST, then evidence from the records.
 
 MEDICAL TERM MAPPING:
 - "CREATININE:MCNC:PT:SER/PLAS:QN::" = creatinine
@@ -1080,15 +1114,21 @@ MEDICAL TERM MAPPING:
 - Map LOINC/SNOMED technical codes to plain clinical terms when presenting data.
 
 All clinical decisions must be made by qualified healthcare providers.
+Use retrieved patient data only. When stating a patient-specific fact (a lab value,
+a condition, or a diagnosis), cite the retrieved item using its [O-N] or [C-N] label.
+Do not invent patient facts. Reasoning and interpretation do not require citation labels.
 """
         else:
             # ─────────────────────────────────────────────────────────────────
-            # [MEDRAG — STEP 4a] System prompt — KG-augmented, instructs the LLM
-            # to reason using the differential diagnosis context injected by the KG.
+            # [MEDRAG — STEP 4a] System prompt — adapts based on DDx intent.
+            # DDx queries: KG-augmented differential diagnosis reasoning.
+            # Non-DDx queries: same flat-retrieval prompt as Standard RAG
+            #   (prevents DDx framing from polluting direct value lookups).
             # Based on: Zhao et al., ACM WWW 2025 (MedRAG paper)
             # Active when USE_MEDRAG = True (default).
             # ─────────────────────────────────────────────────────────────────
-            system_prompt = """You are a clinical AI assistant (powered by MedRAG) helping healthcare professionals analyze patient data and perform differential diagnosis.
+            if _apply_ddx_early:
+                system_prompt = """You are a clinical AI assistant (powered by MedRAG) helping healthcare professionals analyze patient data and perform differential diagnosis.
 
 You have access to:
   1. The patient's EHR records (demographics, conditions, observations, clinical notes)
@@ -1105,21 +1145,16 @@ MEDRAG DIFFERENTIAL DIAGNOSIS GUIDELINES:
 - Provide clinically sound reasoning, not just a list of values
 
 CRITICAL GUIDELINES - FOLLOW EXACTLY:
-- ONLY use the actual data provided in the context below
-- NEVER generate or make up data that is not in the context
-- NEVER add normal ranges, reference values, or clinical interpretations not provided
-- NEVER use bold formatting (**text**) or asterisks (*) in your response
-- Use clean, simple numbered lists
-- Be precise and clinical in your responses
-- Highlight abnormal values and concerning patterns ONLY from the provided data
-- Provide actionable insights for healthcare providers
-- Use medical terminology appropriately
-- Always consider patient safety and clinical significance
-- If the specifically asked-about data is absent, say so in ONE sentence only. Do NOT enumerate all other data types that are also not present.
-- NEVER open a response with a statement about absent data — always lead with what IS present
-- When performing differential diagnosis, START with the most likely diagnosis, then evidence, then alternatives
-- KG "?" diagnostic gaps are clinical guideline criteria — do NOT report them as absent from patient records
-- Do NOT add information not explicitly provided in the data
+- ONLY use values and findings that appear verbatim in the context below.
+- NEVER invent, estimate, or assume a lab value, measurement, or date that is not in the context.
+- NEVER list tests or measurements that are absent — do not say "not explicitly mentioned". Silence is correct for absent data.
+- If a specific data point is missing, acknowledge it in at most ONE sentence, then move on.
+- NEVER open a response with an absence statement — always lead with what IS present.
+- Lead with the diagnosis, not a data dump. Cite only the 3-5 most clinically significant findings that support or refute it.
+- Highlight abnormal values ([HIGH]/[LOW]) that are directly relevant to the differential.
+- NEVER use bold formatting (**text**) or asterisks (*).
+- Use clean numbered lists. Complete every sentence.
+- KG "?" diagnostic gaps are clinical guideline criteria — do NOT report them as absent from patient records.
 
 MEDRAG RESPONSE STRUCTURE (when KG context is present):
 1. Most Likely Diagnosis — state it clearly with supporting evidence
@@ -1136,11 +1171,42 @@ MEDICAL TERM RECOGNITION:
 
 IMPORTANT: This tool provides data analysis and KG-elicited reasoning only.
 All clinical decisions must be made by qualified healthcare providers.
+Use retrieved patient data only. When stating a patient-specific fact (a lab value,
+a condition, or a diagnosis), cite the retrieved item using its [O-N] or [C-N] label.
+Do not invent patient facts. Reasoning and interpretation do not require citation labels.
 """
+            else:
+                # Non-DDx MedRAG: KG-aware direct-answer prompt.
+                # Unlike Standard RAG, this tells the LLM to use the KG Clinical Context
+                # block (injected in the user prompt) to enrich its clinical interpretation.
+                system_prompt = """You are a clinical AI assistant (powered by MedRAG) helping healthcare professionals interpret patient data.
+
+You have access to:
+  1. The patient's EHR records retrieved by semantic search
+  2. A KG Clinical Context block (when present) summarizing which condition profiles the patient's labs match
+
+CORE RULES:
+- ONLY use values that appear verbatim in the context. Never invent or estimate.
+- NEVER use bold (**text**) or asterisks (*). Use plain numbered lists.
+- Complete every sentence. Do not truncate.
+
+ANSWERING RULES:
+- Answer the specific question directly. Cite the retrieved value with its [O-N] or [C-N] label.
+- After answering, add 1-2 sentences of clinical interpretation using the KG Clinical Context — connect the finding to the patient's broader condition profile.
+- Example: "[O-13] Creatinine: 2.2 mg/dL — HIGH. This is consistent with the patient's CKD Stage 3b profile (75% evidence match), alongside elevated BUN and low hemoglobin indicating CKD-related anemia."
+- If the queried value is absent from the records: say so in one sentence, then stop.
+- Do NOT list every lab value — answer what was asked, then add clinical context.
+
+MEDICAL TERM MAPPING:
+- "Hypertensive disorder" = hypertension | "Diabetes mellitus" = diabetes | "CKD" = chronic kidney disease
+- Map all LOINC/SNOMED codes to plain clinical terms.
+
+All clinical decisions must be made by qualified healthcare providers.
+Cite [O-N] or [C-N] for patient-specific facts. Reasoning does not need citation labels."""
         
         # =====================================================================
         # [STANDARD RAG — STEP 4b] User Prompt (no KG injection)
-        # Active when USE_MEDRAG = False.
+        # Active when USE_MEDRAG = True.
         # =====================================================================
         # user_prompt = f"""Patient Query: "{query}"
         #
@@ -1155,36 +1221,53 @@ All clinical decisions must be made by qualified healthcare providers.
             # ─────────────────────────────────────────────────────────────────
             # [STANDARD RAG — STEP 4b] User prompt — patient EHR context only.
             # No KG differential diagnosis. Flat retrieval → LLM.
-            # Activate: set USE_MEDRAG = False at top of file.
+            # Activate: set USE_MEDRAG = True at top of file.
             # ─────────────────────────────────────────────────────────────────
             user_prompt = f"""Patient Query: "{query}"
-
-DIRECT ANSWER FIRST:
-Before anything else, check: does the data below contain what was asked?
-- Found: present it clearly (value, unit, date). That is your opening sentence.
-- Not found: write ONE sentence only — "No [X] data is present in the retrieved records." — then stop. Do NOT enumerate other missing items.
-- Partially found: one sentence noting the absence, then list only the related data that IS in the context.
 
 Patient Data Context:
 {context}
 
-RESPONSE RULES:
-1. Answer the specific question asked — nothing more, nothing less.
-2. For diagnosis questions: state the most likely diagnosis FIRST, then supporting evidence.
-3. For specific value questions: if not found, say so in one sentence and stop.
-4. Do NOT list unrelated vital signs or observations that don't answer the question.
-5. Do NOT repeat the same value multiple times.
-6. Do NOT use asterisks (*) or bold formatting (**text**).
-7. Use clean numbered lists with line breaks between items.
-8. Format: "Observation Name: Value unit (recorded on YYYY-MM-DD)".
-9. Complete every sentence — do not truncate mid-list.
+Before answering: identify the relevant [O-N] and [C-N] items in the data above.
+When you state a specific patient value or condition, include its label.
+
+FORMAT:
+- Lead with the specific retrieved value: "[O-N] [Observation]: [Value] [Unit] (Date: YYYY-MM-DD) — [HIGH/LOW/normal]"
+- Follow naturally with 1-2 sentences of clinical interpretation. Interpretation sentences do not need labels.
+- If the asked-about value does NOT appear in any record: state "No [test name] found in retrieved data." once, then stop.
+- Do NOT repeat the same value. If multiple records show the same test, report only the most recent non-null entry.
+- Do NOT open with an absence — always list present values first.
+- Do NOT use asterisks (*) or bold formatting (**text**).
+- Complete every sentence — do not truncate mid-list.
 
 CLINICAL REFERENCE RANGES:
-- Blood Pressure: Normal systolic 90-120 mmHg, diastolic 60-80 mmHg
-- Heart Rate: Normal resting 60-100 bpm
-- Glucose: Normal fasting <100 mg/dL, random <140 mg/dL
-- Creatinine: Normal 0.6-1.2 mg/dL
-- Hemoglobin: Normal 12-16 g/dL (women), 14-18 g/dL (men)
+  Glucose (fasting): <100 normal | 100-125 pre-diabetes | >=126 diabetes
+  HbA1c: <5.7% normal | 5.7-6.4% pre-diabetes | >=6.5% diabetes | >9% poorly controlled
+  Creatinine: 0.6-1.2 mg/dL (M) | 0.5-1.1 (F) | >1.5 renal concern
+  BUN: 7-25 mg/dL | BUN/Cr >20 pre-renal | <10 hepatic/malnutrition
+  eGFR: >=60 normal | 45-59 CKD 3a | 30-44 CKD 3b | 15-29 CKD 4 | <15 failure
+  Troponin I: <0.04 ng/mL normal | >0.4 MI
+  BNP: <100 pg/mL normal | >400 CHF likely
+  Total cholesterol: <200 desirable | >=240 high
+  LDL: <100 optimal | >=160 high | >=190 very high
+  HDL: >60 protective | <40 (M)/<50 (F) low
+  Triglycerides: <150 normal | >=500 pancreatitis risk
+  Hemoglobin: 13.5-17.5 g/dL (M) | 12-15.5 (F) | <12 anemia
+  WBC: 4.5-11.0 x10^3/uL | >11 infection | <4.5 immunosuppression
+  Sodium: 136-145 mEq/L | <130 severe hyponatremia
+  Potassium: 3.5-5.0 mEq/L | <3.0 arrhythmia risk | >5.5 hyperkalemia
+  ALT: 7-56 U/L | AST: 10-40 U/L | >3x ULN = liver injury
+  TSH: 0.4-4.0 mIU/L | <0.4 hyperthyroid | >4.0 hypothyroid
+  Blood Pressure: <120/80 normal | >=130/80 HTN stage 1 | >=140/90 HTN stage 2
+  Heart Rate: 60-100 bpm | <60 bradycardia | >100 tachycardia
+  O2 Saturation: >=95% normal | <90% severe hypoxia
+  BMI: <18.5 underweight | 18.5-24.9 normal | 25-29.9 overweight | >=30 obese
+  Platelets: 150-400 x10^3/uL | <150 thrombocytopenia
+  MCV: 80-100 fL | <80 microcytic | >100 macrocytic
+  Albumin: 3.5-5.0 g/dL | <3.5 malnutrition/liver disease
+  Uric acid: 3.5-7.2 mg/dL (M) | 2.6-6.0 (F) | >7.2 gout risk
+
+All clinical decisions must be made by qualified healthcare providers.
 """
         else:
             # ─────────────────────────────────────────────────────────────────
@@ -1194,50 +1277,34 @@ CLINICAL REFERENCE RANGES:
             # Active when USE_MEDRAG = True (default).
             # ─────────────────────────────────────────────────────────────────
 
-            # Run the MedRAG KG pipeline on the retrieved patient data
-            kg_result = kg_service.run_kg_pipeline(query, retrieved_data)
-            kg_context_block = kg_result.get("kg_context", "")
-            kg_candidates = kg_result.get("candidate_diseases", [])
+            # DDx intent was detected above (before system prompt) — reuse result.
+            _apply_ddx = _apply_ddx_early
 
-            if kg_candidates:
-                logger.info(f"[MedRAG] KG found {len(kg_candidates)} candidate diseases: {kg_candidates}")
-            else:
-                logger.info("[MedRAG] KG found no candidate diseases — using patient EHR context only")
-
-            # ── Query-type detection ─────────────────────────────────────────
-            # _apply_ddx = True  → full KG DDx structure injected (5-step)
-            # _apply_ddx = False → compact KG summary only, direct-answer format
-            #
-            # DECISION: require EXPLICIT DDx-intent keywords to enable DDx mode.
-            # Value-interpretation queries ("what do X values indicate?") are NOT
-            # DDx requests — they should use the compact direct-answer format.
-            _query_lower = query.lower()
-            _has_ddx_intent = any(kw in _query_lower for kw in DDX_INTENT_KEYWORDS)
-            _is_value_lookup = any(kw in _query_lower for kw in VALUE_LOOKUP_OVERRIDES)
-            # Full DDx only when: explicit DDx keyword AND NOT a simple value lookup.
-            # DDx intent takes priority if the query contains BOTH signals.
-            _apply_ddx = bool(kg_candidates) and _has_ddx_intent and not _is_value_lookup
-
-            # ── Fix B: cap retrieved docs for non-DDx queries ────────────────
-            # DDx queries need the full context to reason across all conditions.
-            # Non-DDx (value lookup / specific clinical question) queries only
-            # need the top-scoring hits — trimming to 15 prevents irrelevant
-            # blood-count observations from burying the answer.
-            if not _apply_ddx:
-                retrieved_data = sorted(
-                    retrieved_data,
-                    key=lambda x: x.get("_score", 0),
-                    reverse=True
-                )[:15]
-
-            # Choose which KG block to inject based on query type
+            # ── Gate KG pipeline: run ONLY for DDx queries ─────────────────────
+            kg_context_block = ""
+            kg_candidates: list = []
             if _apply_ddx:
-                _kg_inject = kg_context_block  # full DDx block with ranking
-            elif kg_candidates:
-                matched_evidence = kg_result.get("matched_evidence", {})
-                _kg_inject = kg_service.build_kg_summary(kg_candidates, matched_evidence)
+                kg_result = kg_service.run_kg_pipeline(query, retrieved_data)
+                kg_context_block = kg_result.get("kg_context", "")
+                kg_candidates = kg_result.get("candidate_diseases", [])
+                kg_chart_hints = kg_result.get("chart_observation_hints", [])
+                if kg_chart_hints:
+                    intent["ddx_chart_hints"] = kg_chart_hints
+                logger.info(f"[MedRAG DDx] KG found {len(kg_candidates)} candidates: {kg_candidates}")
             else:
-                _kg_inject = ""
+                # Non-DDx: run KG to get compact clinical context (build_kg_summary)
+                # This adds clinical interpretation value even for value-lookup queries.
+                kg_result = kg_service.run_kg_pipeline(query, retrieved_data)
+                kg_context_block = kg_result.get("kg_summary", "")
+                kg_candidates = kg_result.get("candidate_diseases", [])
+                logger.info(f"[MedRAG] Non-DDx query — KG summary for {len(kg_candidates)} candidates")
+
+            # retrieved_data is used in OOM fallback (line ~1440). Keep full list
+            # so that OOM retry has the same data as the primary attempt.
+            # ES already caps at 150 docs upstream — no need to truncate further.
+
+            # ── Select KG block to inject ───────────────────────────────────────
+            _kg_inject = kg_context_block  # always inject: full DDx block or compact summary
 
             # Build the MedRAG user prompt
             if _apply_ddx:
@@ -1250,59 +1317,106 @@ PATIENT EHR RECORDS (retrieved via Elasticsearch)
 
 {_kg_inject}
 
-MEDRAG DIFFERENTIAL DIAGNOSIS — answer in PLAIN TEXT using exactly this numbered structure:
-1. Most likely diagnosis: [name it and state the single strongest piece of supporting evidence]
-2. Supporting evidence: [list 2-4 specific observations or conditions from the records]
-3. Alternative diagnoses: [1-2 other conditions that cannot yet be ruled out, with brief reason]
-4. Missing data: [name at most 1 test absent from the records that would confirm the top diagnosis]
-5. Clinical recommendation: [one actionable next step for the clinician]
+DIFFERENTIAL DIAGNOSIS (based only on the retrieved values above):
+Use the KG section above as a REASONING GUIDE — it tells you which disease families fit the pattern.
+The KG "Key features" are clinical guideline thresholds, not patient records — do not cite them as patient findings.
 
-STRICT RULES — failure to follow ANY of these will be marked as incorrect:
-- PLAIN TEXT ONLY. No asterisks (*). No double-asterisks (**). No bold. No markdown headers.
-- Use ONLY data explicitly present in the EHR records and KG context above.
-- Do NOT fabricate or assume any data.
-- Do NOT open with an absence — always lead with what IS present.
-- Complete every sentence — do not truncate mid-list.
-- KG "?" gaps are clinical guideline criteria, NOT confirmed absences in this patient's records.
+1. Most likely diagnosis: [name]
+   Support with specific retrieved values — cite [O-N] or [C-N] for each patient finding.
+
+2. Supporting evidence: 2-4 retrieved findings that most strongly support this diagnosis.
+
+3. Alternative diagnoses: 1-2 conditions the KG identified as possible. State what retrieved evidence rules each in or out.
+
+4. Missing data: At most 1 test absent from records that would confirm or exclude the top diagnosis.
+
+5. Clinical recommendation: One actionable step based on the most abnormal retrieved finding.
+
+RULES:
+- For patient-specific facts (lab values, conditions): cite [O-N] or [C-N].
+- Interpretation, reasoning, and KG-derived alternatives do NOT require citation labels.
+- PLAIN TEXT ONLY — no asterisks, no bold, no markdown.
+- Do not fabricate values. Do not reference tests not in the retrieved data.
 
 CLINICAL REFERENCE RANGES:
-- Blood Pressure: Normal systolic 90-120 mmHg, diastolic 60-80 mmHg
-- Heart Rate: Normal resting 60-100 bpm
-- Glucose: Normal fasting <100 mg/dL
-- Creatinine: Normal 0.6-1.2 mg/dL
-- HbA1c: Normal <5.7%, Pre-diabetes 5.7-6.4%, Diabetes ≥6.5%
+  Glucose (fasting): <100 normal | 100-125 pre-diabetes | >=126 diabetes
+  HbA1c: <5.7% normal | 5.7-6.4% pre-diabetes | >=6.5% diabetes | >9% poorly controlled
+  Creatinine: 0.6-1.2 mg/dL (M) | 0.5-1.1 (F) | >1.5 renal concern
+  BUN: 7-25 mg/dL | BUN/Cr >20 pre-renal | <10 hepatic/malnutrition
+  eGFR: >=60 normal | 45-59 CKD 3a | 30-44 CKD 3b | 15-29 CKD 4 | <15 failure
+  Troponin I: <0.04 ng/mL normal | >0.4 MI
+  BNP: <100 pg/mL normal | >400 CHF likely
+  Total cholesterol: <200 desirable | >=240 high
+  LDL: <100 optimal | >=160 high | >=190 very high
+  HDL: >60 protective | <40 (M)/<50 (F) low
+  Triglycerides: <150 normal | >=500 pancreatitis risk
+  Hemoglobin: 13.5-17.5 g/dL (M) | 12-15.5 (F) | <12 anemia
+  WBC: 4.5-11.0 x10^3/uL | >11 infection | <4.5 immunosuppression
+  Sodium: 136-145 mEq/L | <130 severe hyponatremia
+  Potassium: 3.5-5.0 mEq/L | <3.0 arrhythmia risk | >5.5 hyperkalemia
+  ALT: 7-56 U/L | AST: 10-40 U/L | >3x ULN = liver injury
+  TSH: 0.4-4.0 mIU/L | <0.4 hyperthyroid | >4.0 hypothyroid
+  Blood Pressure: <120/80 normal | >=130/80 HTN stage 1 | >=140/90 HTN stage 2
+  Heart Rate: 60-100 bpm | <60 bradycardia | >100 tachycardia
+  O2 Saturation: >=95% normal | <90% severe hypoxia
+  BMI: <18.5 underweight | 18.5-24.9 normal | 25-29.9 overweight | >=30 obese
+  Platelets: 150-400 x10^3/uL | <150 thrombocytopenia
+  MCV: 80-100 fL | <80 microcytic | >100 macrocytic
+  Albumin: 3.5-5.0 g/dL | <3.5 malnutrition/liver disease
+  Uric acid: 3.5-7.2 mg/dL (M) | 2.6-6.0 (F) | >7.2 gout risk
 
 All clinical decisions must be made by qualified healthcare providers.
 """
             else:
                 # Non-DDx: value lookup or specific clinical question
-                # Inject only the compact KG summary (no ? gaps, no ranking)
-                kg_section = f"\n{_kg_inject}\n" if _kg_inject else ""
+                # Inject KG compact summary above EHR context for clinical context
+                _kg_hint = f"\n{_kg_inject}\n" if _kg_inject else ""
                 user_prompt = f"""Patient Query: "{query}"
-
+{_kg_hint}
 {'=' * 70}
 PATIENT EHR RECORDS (retrieved via Elasticsearch)
 {'=' * 70}
 {context}
-{kg_section}
-Answer the specific question above directly using the records.
+
+Before answering: identify the relevant [O-N] and [C-N] items in the data above.
+When you state a specific patient value or condition, include its label.
 
 FORMAT:
-- List each relevant value with its date (e.g. "Creatinine: 2.3 mg/dL (2025-07-29)")
-- After listing values, give a 1-2 sentence clinical interpretation (normal / elevated / low and why it matters)
-- If the KG clinical context above is relevant, add 1 sentence of clinical note
-- If the asked-about value is genuinely absent from the records, say so in ONE sentence and stop
-- Do NOT open with an absence — always list present values first
-- Do NOT use bold formatting (**text**) or asterisks (*)
-- Do NOT repeat values already listed
-- Keep the response concise and factual
+- Lead with the specific retrieved value: "[O-N] [Observation]: [Value] [Unit] (Date: YYYY-MM-DD) — [HIGH/LOW/normal]"
+- Follow with 1-2 sentences of clinical interpretation. Use the KG Clinical Context block above to connect the finding to the patient's condition profile. Interpretation sentences do not need labels.
+- If a KG Clinical Context block is present above: synthesize it into your interpretation (e.g. "This is consistent with the patient's CKD Stage 3b profile (75% match)."). Do NOT copy the KG block verbatim.
+- If the asked-about value does NOT appear in any record: state "No [test name] found in retrieved data." once, then stop.
+- Do NOT list every lab value — answer the specific question, then add context.
+- Do NOT open with an absence — always list present values first.
+- Do NOT use bold formatting (**text**) or asterisks (*).
+- Do NOT repeat the same value more than once.
 
 CLINICAL REFERENCE RANGES:
-- Blood Pressure: Normal systolic 90-120 mmHg, diastolic 60-80 mmHg
-- Heart Rate: Normal resting 60-100 bpm
-- Glucose: Normal fasting <100 mg/dL
-- Creatinine: Normal 0.6-1.2 mg/dL
-- HbA1c: Normal <5.7%, Pre-diabetes 5.7-6.4%, Diabetes ≥6.5%
+  Glucose (fasting): <100 normal | 100-125 pre-diabetes | >=126 diabetes
+  HbA1c: <5.7% normal | 5.7-6.4% pre-diabetes | >=6.5% diabetes | >9% poorly controlled
+  Creatinine: 0.6-1.2 mg/dL (M) | 0.5-1.1 (F) | >1.5 renal concern
+  BUN: 7-25 mg/dL | BUN/Cr >20 pre-renal | <10 hepatic/malnutrition
+  eGFR: >=60 normal | 45-59 CKD 3a | 30-44 CKD 3b | 15-29 CKD 4 | <15 failure
+  Troponin I: <0.04 ng/mL normal | >0.4 MI
+  BNP: <100 pg/mL normal | >400 CHF likely
+  Total cholesterol: <200 desirable | >=240 high
+  LDL: <100 optimal | >=160 high | >=190 very high
+  HDL: >60 protective | <40 (M)/<50 (F) low
+  Triglycerides: <150 normal | >=500 pancreatitis risk
+  Hemoglobin: 13.5-17.5 g/dL (M) | 12-15.5 (F) | <12 anemia
+  WBC: 4.5-11.0 x10^3/uL | >11 infection | <4.5 immunosuppression
+  Sodium: 136-145 mEq/L | <130 severe hyponatremia
+  Potassium: 3.5-5.0 mEq/L | <3.0 arrhythmia risk | >5.5 hyperkalemia
+  ALT: 7-56 U/L | AST: 10-40 U/L | >3x ULN = liver injury
+  TSH: 0.4-4.0 mIU/L | <0.4 hyperthyroid | >4.0 hypothyroid
+  Blood Pressure: <120/80 normal | >=130/80 HTN stage 1 | >=140/90 HTN stage 2
+  Heart Rate: 60-100 bpm | <60 bradycardia | >100 tachycardia
+  O2 Saturation: >=95% normal | <90% severe hypoxia
+  BMI: <18.5 underweight | 18.5-24.9 normal | 25-29.9 overweight | >=30 obese
+  Platelets: 150-400 x10^3/uL | <150 thrombocytopenia
+  MCV: 80-100 fL | <80 microcytic | >100 macrocytic
+  Albumin: 3.5-5.0 g/dL | <3.5 malnutrition/liver disease
+  Uric acid: 3.5-7.2 mg/dL (M) | 2.6-6.0 (F) | >7.2 gout risk
 
 All clinical decisions must be made by qualified healthcare providers.
 """
@@ -1353,19 +1467,27 @@ All clinical decisions must be made by qualified healthcare providers.
                             
                             for item in items:
                                 metadata = item.get("metadata", {})
-                                code = metadata.get("code", "")
-                                display = metadata.get("display", "")
+                                code = item.get("code") or metadata.get("code", "")
+                                display = (item.get("display")
+                                           or item.get("content")
+                                           or metadata.get("display", ""))
+                                if display:
+                                    display = re.sub(
+                                        r'\s*\((?:disorder|finding|situation|observable entity|procedure|body structure|qualifier value)\)\s*$',
+                                        '', display, flags=re.IGNORECASE
+                                    ).strip()
                                 normalized_display = display.lower().strip() if display else ""
                                 unique_key = f"{code}_{normalized_display}"
-                                
+
                                 if unique_key in seen_conditions:
                                     continue
                                 seen_conditions.add(unique_key)
-                                
+
                                 condition_data = {
                                     "code": code,
                                     "display": display,
-                                    "clinicalStatus": metadata.get("clinicalStatus", "unknown"),
+                                    "clinicalStatus": (item.get("clinical_status")
+                                                       or metadata.get("clinicalStatus", "unknown")),
                                     "content": item.get("content", "")
                                 }
                                 if "category" in metadata:
@@ -1574,7 +1696,7 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
         
         return options[:6]  # Limit to 6 options
     
-    def process_chat_query(self, patient_id: str, query: str) -> Dict[str, Any]:
+    def process_chat_query(self, patient_id: str, query: str, context_hint: str = "") -> Dict[str, Any]:
         """Main method to process chat query and generate response"""
         
         # Log query received
@@ -1700,19 +1822,24 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
                     sources_by_type[data_type] = []
                 
                 metadata = item.get("metadata", {})
+                # Read from top-level ES fields first (current schema); fall back to legacy metadata.*
+                _raw_num = item.get("value_numeric")
                 source_info = {
                     "data_type": data_type,
-                    "display": metadata.get("display", ""),
-                    "value": metadata.get("value", ""),
-                    "unit": metadata.get("unit", ""),
-                    "date": metadata.get("date", ""),
-                    "code": metadata.get("code", ""),
+                    "display": item.get("display") or metadata.get("display", ""),
+                    "value": (str(_raw_num) if _raw_num is not None
+                              else item.get("value_string") or metadata.get("value", "")),
+                    "unit": item.get("unit") or metadata.get("unit", ""),
+                    "date": (item.get("effective_datetime") or item.get("effective_date")
+                             or item.get("note_date") or item.get("timestamp")
+                             or metadata.get("date", "")),
+                    "code": item.get("code") or metadata.get("code", ""),
                     "score": item.get("score", 0),
                     "timestamp": item.get("timestamp", ""),
-                    "filename": metadata.get("filename", ""),  # For notes
-                    "source_type": metadata.get("source_type", ""),  # For notes
-                    "content": item.get("content", ""),  # Full content for reference
-                    "metadata": metadata  # Store full metadata for detailed retrieval
+                    "filename": item.get("note_filename") or metadata.get("filename", ""),
+                    "source_type": item.get("source_hospital") or metadata.get("source_type", ""),
+                    "content": item.get("content", ""),
+                    "metadata": metadata
                 }
                 sources_by_type[data_type].append(source_info)
             
@@ -1786,7 +1913,8 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
                     source_entry = {
                         "id": source_id,
                         "type": data_type,
-                        "description": self._format_source_description(item)
+                        "description": self._format_source_description(item),
+                        "content": (item.get("content", "") or "")[:400],
                     }
                     sources.append(source_entry)
         else:
@@ -1818,7 +1946,7 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
             log_info("Pipeline", "Standard RAG (Elasticsearch → LLM)" if not USE_MEDRAG else "MedRAG (Elasticsearch → KG → LLM)")
             log_info("Status", "Generating response...")
             print()
-            response_text = self.generate_contextual_response(patient_id, query, retrieved_data, intent)
+            response_text = self.generate_contextual_response(patient_id, query, retrieved_data, intent, context_hint=context_hint)
             log_info("Response Generated", "✓ Success")
             log_data("Response Preview", response_text[:150] + "..." if len(response_text) > 150 else response_text)
         else:
@@ -1879,56 +2007,58 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
         log_info("Should Generate", f"{should_generate}", Colors.CYAN)
         log_info("Chart Types", f"{chart_types}", Colors.CYAN)
         
+        multi_charts: list = []  # additional DDx evidence charts (MedRAG only)
+
         if should_generate and chart_types:
             log_info("Visualization Detected", "✓ Yes")
-            chart_type = chart_types[0] if isinstance(chart_types, list) else chart_types
-            log_info("Chart Types", ", ".join(chart_types) if isinstance(chart_types, list) else str(chart_types))
+            all_types = chart_types if isinstance(chart_types, list) else [chart_types]
+            log_info("Chart Types", ", ".join(all_types))
             log_info("Status", "Generating visualization from retrieved_data...")
             print()
-            
-            try:
-                # CRITICAL: Pass answer text to chart generation so it can extract values from the answer
-                logger.info(f"Attempting to generate chart: chart_types={chart_types}, patient_id={patient_id}, intent_type={intent.get('type')}")
-                auto_chart = intelligent_viz_service.generate_smart_visualization(
-                    patient_id, query, intent, retrieved_data, answer_text=response_text
-                )
-                logger.info(f"Chart generation result: {auto_chart is not None}, type={auto_chart.get('type') if auto_chart else None}")
-                
-                if auto_chart:
-                    log_info("Chart Generated", "✓ Success")
-                    log_data("Chart Type", auto_chart.get("type", "unknown"))
-                    log_data("Data Points", len(auto_chart.get("data", {}).get("datasets", [{}])[0].get("data", [])) if auto_chart.get("data", {}).get("datasets") else 0)
-                    log_data("Generation Reason", auto_chart.get("generation_reason", "N/A"))
-                    
-                    # Enhance response text to mention the visualization
-                    response_text = intelligent_viz_service.enhance_response_with_visualization_context(
-                        response_text, auto_chart
+
+            # For MedRAG DDx hints, generate all hinted charts (primary + extras).
+            # For all other cases, generate only the first chart type.
+            ddx_hints = intent.get("ddx_chart_hints", [])
+            types_to_generate = all_types if ddx_hints else all_types[:1]
+
+            for idx, ct in enumerate(types_to_generate):
+                try:
+                    single_intent = dict(intent)
+                    single_intent["ddx_chart_hints"] = [ct.split(":", 1)[1]] if ct.startswith("observation_trend:") and ddx_hints else []
+                    logger.info(f"Attempting chart {idx+1}/{len(types_to_generate)}: {ct}")
+                    chart_candidate = intelligent_viz_service.generate_smart_visualization(
+                        patient_id, query, single_intent, retrieved_data, answer_text=response_text
                     )
-                    
-                    # If showing available observations (requested one not found), enhance LLM response
-                    if auto_chart.get("type") == "available_observations":
-                        obs_names = auto_chart.get("generation_reason", "").split(": ")[-1] if ":" in auto_chart.get("generation_reason", "") else ""
-                        if obs_names:
-                            response_text = f"I couldn't find the specific observation you asked about. However, I've found and visualized the following available observations for this patient: {obs_names}. The chart below shows these values over time."
-                else:
-                    log_info("Chart Generated", "✗ Failed (no data or error)")
-                    logger.warning(f"Chart generation returned None or empty for chart_types={chart_types}, patient_id={patient_id}, intent_type={intent.get('type')}")
-                    # For analysis intent, this is critical - log more details
-                    if intent.get("type") == "analysis":
-                        logger.error(f"CRITICAL: Analysis intent chart generation failed! Query: {query}, Chart types: {chart_types}")
-            except Exception as e:
-                log_info("Chart Generated", f"✗ Error: {str(e)}")
-                logger.error(f"Failed to generate intelligent visualization: {e}", exc_info=True)
-                # For analysis intent, ensure we still try to generate chart even if there's an error
-                if intent.get("type") == "analysis" and chart_types and "abnormal_values" in chart_types:
-                    logger.warning(f"Retrying abnormal_values chart generation after error for analysis intent")
-                    try:
-                        # Try direct chart generation without retrieved_data
-                        auto_chart = intelligent_viz_service.viz_service._generate_abnormal_values_chart(patient_id, use_llm_detection=False)
-                        if auto_chart:
-                            logger.info(f"Successfully generated abnormal_values chart on retry")
-                    except Exception as retry_error:
-                        logger.error(f"Retry also failed: {retry_error}", exc_info=True)
+                    if chart_candidate:
+                        if idx == 0:
+                            auto_chart = chart_candidate
+                            log_info("Primary Chart", f"✓ {chart_candidate.get('type', 'unknown')}")
+                            log_data("Data Points", len(chart_candidate.get("data", {}).get("datasets", [{}])[0].get("data", [])) if chart_candidate.get("data", {}).get("datasets") else 0)
+                            log_data("Generation Reason", chart_candidate.get("generation_reason", "N/A"))
+                            response_text = intelligent_viz_service.enhance_response_with_visualization_context(
+                                response_text, auto_chart
+                            )
+                            if auto_chart.get("type") == "available_observations":
+                                obs_names = auto_chart.get("generation_reason", "").split(": ")[-1] if ":" in auto_chart.get("generation_reason", "") else ""
+                                if obs_names:
+                                    response_text = f"I couldn't find the specific observation you asked about. However, I've found and visualized the following available observations for this patient: {obs_names}. The chart below shows these values over time."
+                        else:
+                            multi_charts.append(chart_candidate)
+                            log_info(f"Extra Chart {idx}", f"✓ {chart_candidate.get('type', 'unknown')}")
+                    else:
+                        logger.warning(f"Chart generation returned None for type={ct}")
+                        if idx == 0 and intent.get("type") == "analysis":
+                            logger.error(f"CRITICAL: Analysis intent chart generation failed! Query: {query}, Chart types: {chart_types}")
+                except Exception as e:
+                    logger.error(f"Failed to generate chart type={ct}: {e}", exc_info=True)
+                    if idx == 0 and intent.get("type") == "analysis" and "abnormal_values" in ct:
+                        logger.warning("Retrying abnormal_values chart after error")
+                        try:
+                            auto_chart = intelligent_viz_service.viz_service._generate_abnormal_values_chart(patient_id, use_llm_detection=False)
+                            if auto_chart:
+                                logger.info("Successfully generated abnormal_values chart on retry")
+                        except Exception as retry_error:
+                            logger.error(f"Retry also failed: {retry_error}", exc_info=True)
         else:
             log_info("Visualization Detected", "✗ No (not needed for this query)")
             logger.info(f"Visualization not generated: should_generate={should_generate}, chart_types={chart_types}")
@@ -2023,25 +2153,27 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
         log_info("Visualization Included", "✓ Yes" if auto_chart else "✗ No")
         if auto_chart:
             log_data("Chart Type", auto_chart.get("type", "unknown"))
+        if multi_charts:
+            log_info("Extra DDx Charts", len(multi_charts))
         print(f"{Colors.GREEN}{'='*80}{Colors.ENDC}\n")
-        
+
         # Enhanced logging for research quality - ensure data integrity
         logger.info(f"Query complete for patient {patient_id}: retrieved_count={retrieved_count}, data_found={data_found}, sources={len(sources)}")
-        
+
         # Validate that retrieved_count matches actual data
         if retrieved_count != len(retrieved_data):
             logger.error(f"DATA INTEGRITY ERROR: retrieved_count ({retrieved_count}) != len(retrieved_data) ({len(retrieved_data)})")
-            # Fix the count to match actual data
             retrieved_count = len(retrieved_data)
-        
+
         return {
             "response": response_text,
             "follow_up_options": follow_up_options,
             "intent": intent,
             "data_found": data_found,
-            "retrieved_count": retrieved_count,  # Ensure this matches actual retrieved_data length
+            "retrieved_count": retrieved_count,
             "sources": sources,
-            "chart": auto_chart,  # Include auto-generated chart
+            "chart": auto_chart,                   # primary chart (always single dict or None)
+            "multi_chart": multi_charts or None,   # extra DDx evidence charts (MedRAG only)
             "pipeline_mode": "MedRAG + KG" if USE_MEDRAG else "Standard RAG"  # A/B comparison label
         }
     
@@ -2058,7 +2190,7 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
         # Build detailed proof description
         parts = []
         
-        if data_type == "observations":
+        if data_type in ("observation", "observations"):
             if display:
                 parts.append(f"Observation: {display}")
             if value:
@@ -2067,35 +2199,33 @@ CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
             if code:
                 parts.append(f"Code: {code}")
             if date:
-                parts.append(f"Date: {date[:10]}")
+                parts.append(f"Date: {str(date)[:10]}")
             if not parts:
-                parts.append("Observation data from ElasticSearch")
-                
-        elif data_type == "conditions":
+                parts.append("Observation data")
+
+        elif data_type in ("condition", "conditions"):
             if display:
                 parts.append(f"Condition: {display}")
             if code:
                 parts.append(f"Code: {code}")
             if date:
-                parts.append(f"Date: {date[:10]}")
+                parts.append(f"Date: {str(date)[:10]}")
             if not parts:
-                parts.append("Condition data from ElasticSearch")
-                
-        elif data_type == "notes":
+                parts.append("Condition data")
+
+        elif data_type in ("note", "notes"):
             parts.append("Clinical Note")
             if filename:
                 parts.append(f"File: {filename}")
             if date:
-                parts.append(f"Date: {date[:10]}")
-            if not parts:
-                parts.append("Clinical note from ElasticSearch")
-                
+                parts.append(f"Date: {str(date)[:10]}")
+
         elif data_type == "demographics":
             parts.append("Patient Demographics")
             if display:
                 parts.append(display)
         else:
-            parts.append(f"{data_type} data from ElasticSearch")
+            parts.append(f"{data_type} data")
         
         return " | ".join(parts)
     

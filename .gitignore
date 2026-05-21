@@ -80,6 +80,13 @@ data/
 *.json.gz
 *.csv.gz
 
+# Patient FHIR files (PHI - do not commit)
+FHIR_COMBINED/FHIR_LLM_UA/Converted_Data/
+
+# Large reference data files (download from official sources)
+FHIR_COMBINED/etl/reference_data/Loinc.csv
+FHIR_COMBINED/etl/reference_data/icd10cm_order_2026.txt
+
 # Patient data / SQL dumps (PHI - do not commit)
 *.sql
 *.sql.gz

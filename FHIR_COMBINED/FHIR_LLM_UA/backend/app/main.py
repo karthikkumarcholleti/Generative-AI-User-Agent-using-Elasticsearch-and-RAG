@@ -5,7 +5,25 @@ from starlette.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from .core.database import engine
 
-app = FastAPI(title="FHIR LLM_UA API")
+from contextlib import asynccontextmanager
+import threading
+
+@asynccontextmanager
+async def lifespan(app):
+    # Pre-load model at startup so the first user request isn't blocked by a 2-3 min load.
+    # This prevents concurrent requests from piling up during lazy load and causing OOM.
+    def _preload():
+        try:
+            from .core.llm import _load
+            print("🚀 Pre-loading LLM model at startup...")
+            _load()
+            print("✅ LLM model ready")
+        except Exception as e:
+            print(f"⚠️ LLM pre-load failed (will retry on first request): {e}")
+    threading.Thread(target=_preload, daemon=True).start()
+    yield
+
+app = FastAPI(title="FHIR LLM_UA API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

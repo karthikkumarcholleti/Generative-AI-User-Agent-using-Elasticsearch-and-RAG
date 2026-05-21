@@ -1,6 +1,6 @@
 # backend/app/api/chat_agent.py
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, validator
 from typing import List, Dict, Any, Optional
 import logging
@@ -21,6 +21,36 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat-agent", tags=["chat-agent"])
 
+
+def _write_audit_log(patient_id: str, query: str, pipeline_mode: str,
+                     intent_type: str, retrieved_count: int, data_found: bool,
+                     elapsed_ms: int, session_id: str = None,
+                     oom_triggered: bool = False) -> None:
+    """Write one record to clinical_audit_log. Never raises — audit must not block the query."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("""
+                INSERT INTO clinical_audit_log
+                  (patient_id, query, pipeline_mode, intent_type,
+                   retrieved_count, data_found, elapsed_ms, session_id, oom_triggered)
+                VALUES
+                  (:patient_id, :query, :pipeline_mode, :intent_type,
+                   :retrieved_count, :data_found, :elapsed_ms, :session_id, :oom_triggered)
+            """), {
+                "patient_id":     patient_id,
+                "query":          query[:10000],  # guard against enormous queries
+                "pipeline_mode":  pipeline_mode,
+                "intent_type":    intent_type,
+                "retrieved_count": retrieved_count,
+                "data_found":     int(data_found),
+                "elapsed_ms":     elapsed_ms,
+                "session_id":     session_id,
+                "oom_triggered":  int(oom_triggered),
+            })
+            conn.commit()
+    except Exception as exc:
+        logger.warning(f"Audit log write failed (non-blocking): {exc}")
+
 # Track current patient for chat queries
 _chat_current_patient_id: Optional[str] = None
 
@@ -29,10 +59,21 @@ chat_messages_cache: Dict[str, List[Dict[str, Any]]] = {}  # patient_id -> list 
 MAX_CHAT_CACHE_SIZE = int(os.getenv("LLM_MAX_CACHE_PATIENTS", "3"))  # Keep only last 3 patients
 
 # Request/Response Models
+
+class ChatContext(BaseModel):
+    """Structured UI context injected into the retrieval augmentation block only.
+    Never appended to the system prompt — prevents implicit prompt injection."""
+    observation_focus: Optional[str] = None   # LOINC code e.g. "2160-0"
+    active_panel: Optional[str] = None        # "ckd", "diabetes", "cardiac"
+    date_range_start: Optional[str] = None
+    date_range_end: Optional[str] = None
+
+
 class ChatQuery(BaseModel):
     patient_id: str
     query: str
     session_id: Optional[str] = None
+    context: Optional[ChatContext] = None
     
     class Config:
         # Validate on assignment for research quality
@@ -73,8 +114,9 @@ class ChatResponse(BaseModel):
     retrieved_count: int
     session_id: Optional[str] = None
     sources: Optional[List[Dict[str, str]]] = []
-    chart: Optional[Dict[str, Any]] = None  # Auto-generated chart data (single chart or categorized charts)
-    pipeline_mode: Optional[str] = None    # "MedRAG + KG" or "Standard RAG" — A/B comparison label
+    chart: Optional[Dict[str, Any]] = None       # Primary auto-generated chart
+    multi_chart: Optional[List[Dict[str, Any]]] = None  # Extra DDx evidence charts (MedRAG)
+    pipeline_mode: Optional[str] = None          # "MedRAG + KG" or "Standard RAG"
 
 class VisualizationRequest(BaseModel):
     patient_id: str
@@ -140,10 +182,11 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
         
         # Get conditions
         sql_c = """
-        SELECT c.code, c.display, c.clinical_status, c.effectiveDateTime AS recordedDate
+        SELECT c.icd_code AS code, c.display, c.clinical_status,
+               COALESCE(c.onset_datetime, c.recorded_date) AS recordedDate
         FROM conditions c
         WHERE c.patient_id = :pid
-        ORDER BY COALESCE(c.effectiveDateTime, '1000-01-01') DESC, c.id DESC
+        ORDER BY COALESCE(c.onset_datetime, c.recorded_date, '1000-01-01') DESC, c.db_id DESC
         LIMIT :limit
         """
         rows_c = conn.execute(text(sql_c), {"pid": patient_id, "limit": max_conditions}).mappings().all()
@@ -157,11 +200,11 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
         # Get observations
         sql_o = """
         SELECT o.code, o.display, o.value_numeric AS valueNumber, o.value_string AS valueString,
-               o.unit, o.effectiveDateTime
+               o.unit, COALESCE(o.effective_datetime, o.effective_date) AS effectiveDateTime
         FROM observations o
         WHERE o.patient_id = :pid
           AND (o.value_numeric IS NOT NULL OR o.value_string IS NOT NULL)
-        ORDER BY COALESCE(o.effectiveDateTime, '1000-01-01') DESC, o.id DESC
+        ORDER BY COALESCE(o.effective_datetime, o.effective_date, '1000-01-01') DESC, o.db_id DESC
         LIMIT :limit
         """
         rows_o = conn.execute(text(sql_o), {"pid": patient_id, "limit": max_observations}).mappings().all()
@@ -178,15 +221,14 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
         # First try cocm_db, then try llm_ua_reader if available
         notes = []
         
-        # Try cocm_db first
+        # Try primary DB first
         try:
             sql_n = """
-            SELECT COALESCE(n.note_datetime, n.created_at) AS created,
-                   n.note_text AS text, n.source_type AS sourceType,
-                   n.filename_txt AS fileName, n.base_key AS baseKey
+            SELECT n.note_date AS created, n.content AS text,
+                   n.source_hospital AS sourceType, n.note_filename AS fileName
             FROM notes n
             WHERE n.patient_id = :pid
-            ORDER BY COALESCE(n.note_datetime, n.created_at) DESC, n.id DESC
+            ORDER BY n.note_date DESC, n.db_id DESC
             LIMIT :limit
             """
             rows_n = conn.execute(text(sql_n), {"pid": patient_id, "limit": max_notes}).mappings().all()
@@ -195,7 +237,7 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
                 "text": r["text"],
                 "sourceType": r["sourceType"],
                 "fileName": r["fileName"],
-                "baseKey": r["baseKey"],
+                "baseKey": None,
             } for r in rows_n]
         except Exception as e:
             # Table doesn't exist in cocm_db - try llm_ua_reader
@@ -205,25 +247,23 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
         # If no notes found in cocm_db, try llm_ua_reader database
         if not notes:
             try:
-                # Create separate connection to llm_ua_reader
                 import pymysql
-                from app.core.database import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
-                
+                from app.core.database import DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+
                 llm_conn = pymysql.connect(
                     host=DB_HOST,
                     port=DB_PORT,
                     user=DB_USER,
                     password=DB_PASSWORD,
-                    database='llm_ua_reader'
+                    database=DB_NAME,
                 )
                 with llm_conn.cursor(pymysql.cursors.DictCursor) as cur:
                     cur.execute("""
-                        SELECT COALESCE(note_datetime, created_at) AS created,
-                               note_text AS text, source_type AS sourceType,
-                               filename_txt AS fileName, base_key AS baseKey
+                        SELECT note_date AS created, content AS text,
+                               source_hospital AS sourceType, note_filename AS fileName
                         FROM notes
                         WHERE patient_id = %s
-                        ORDER BY COALESCE(note_datetime, created_at) DESC, id DESC
+                        ORDER BY note_date DESC, db_id DESC
                         LIMIT %s
                     """, (patient_id, max_notes))
                     rows_n = cur.fetchall()
@@ -232,7 +272,7 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
                         "text": r["text"],
                         "sourceType": r["sourceType"],
                         "fileName": r["fileName"],
-                        "baseKey": r["baseKey"],
+                        "baseKey": None,
                     } for r in rows_n]
                 llm_conn.close()
                 if notes:
@@ -247,10 +287,10 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
         try:
             sql_e = """
             SELECT e.class_code, e.class_display, e.type_code, e.type_display,
-                   e.date, e.admission_reason, e.source_type
+                   e.period_start AS date, e.reason_text AS admission_reason, e.source_type
             FROM encounters e
             WHERE e.patient_id = :pid
-            ORDER BY COALESCE(e.date, '1000-01-01') DESC, e.id DESC
+            ORDER BY COALESCE(e.period_start, '1000-01-01') DESC, e.db_id DESC
             LIMIT :limit
             """
             rows_e = conn.execute(text(sql_e), {"pid": patient_id, "limit": max_encounters}).mappings().all()
@@ -286,7 +326,7 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
 
 # API Endpoints
 @router.post("/query", response_model=ChatResponse)
-def process_chat_query(request: ChatQuery):
+def process_chat_query(request: ChatQuery, http_request: Request):
     """
     Process a chat query for a specific patient using RAG.
     
@@ -310,6 +350,10 @@ def process_chat_query(request: ChatQuery):
     print(f"🔍 Patient ID: {request.patient_id}")
     print(f"🔍 Query: {request.query}")
     print(f"🔍 Session ID: {request.session_id}")
+    print(f"🔍 Source IP: {http_request.client.host if http_request.client else 'unknown'}")
+    print(f"🔍 User-Agent: {http_request.headers.get('user-agent', 'unknown')}")
+    print(f"🔍 Origin: {http_request.headers.get('origin', 'unknown')}")
+    print(f"🔍 Referer: {http_request.headers.get('referer', 'unknown')}")
     
     logger.info(f"Chat agent query received for patient: {request.patient_id}")
     logger.info(f"Query: {request.query}")
@@ -330,6 +374,7 @@ def process_chat_query(request: ChatQuery):
         logger.error("Empty query received")
         raise HTTPException(status_code=400, detail="query is required and cannot be empty")
     
+    _query_start = time.time()
     try:
         # Check if this is a grouped visualization request
         # Safely handle None query
@@ -339,9 +384,24 @@ def process_chat_query(request: ChatQuery):
             "by group", "by type", "grouped visualization", "show all by"
         ])
         
+        # Build structured context hint for retrieval augmentation block (P6 ChatContext)
+        retrieval_context_hint = ""
+        if request.context and request.context.observation_focus:
+            loinc = request.context.observation_focus
+            try:
+                from .loinc_code_mapper import get_observation_display_from_code
+                display = get_observation_display_from_code(loinc) or loinc
+            except Exception:
+                display = loinc
+            retrieval_context_hint = f"CLINICIAN CONTEXT: Currently viewing {display} ({loinc}).\n"
+        if request.context and request.context.active_panel:
+            retrieval_context_hint += f"ACTIVE PANEL: {request.context.active_panel}\n"
+
         # Process the query using RAG service
         print(f"🔍 Processing query with RAG service...")
-        result = rag_service.process_chat_query(request.patient_id, request.query)
+        result = rag_service.process_chat_query(
+            request.patient_id, request.query, context_hint=retrieval_context_hint
+        )
         
         # Validate result structure for research quality
         if not isinstance(result, dict):
@@ -382,7 +442,19 @@ def process_chat_query(request: ChatQuery):
         
         logger.info(f"Query processed: patient={request.patient_id}, retrieved={retrieved_count}, data_found={data_found}")
         print(f"✅ Response sent to client\n")
-        
+
+        _elapsed_ms = int((time.time() - _query_start) * 1000)
+        _write_audit_log(
+            patient_id=request.patient_id,
+            query=request.query,
+            pipeline_mode=result.get("pipeline_mode", "unknown"),
+            intent_type=result.get("intent", {}).get("type", "unknown"),
+            retrieved_count=retrieved_count,
+            data_found=bool(data_found),
+            elapsed_ms=_elapsed_ms,
+            session_id=request.session_id,
+        )
+
         return ChatResponse(
             response=result["response"],
             follow_up_options=result["follow_up_options"],
@@ -391,8 +463,9 @@ def process_chat_query(request: ChatQuery):
             retrieved_count=result["retrieved_count"],
             session_id=request.session_id,
             sources=result.get("sources", []),
-            chart=result.get("chart"),  # Include auto-generated chart
-            pipeline_mode=result.get("pipeline_mode")  # "MedRAG + KG" or "Standard RAG"
+            chart=result.get("chart"),
+            multi_chart=result.get("multi_chart"),
+            pipeline_mode=result.get("pipeline_mode"),
         )
         
     except HTTPException:
@@ -974,9 +1047,17 @@ def get_chat_messages(patient_id: str):
     """
     try:
         messages = chat_messages_cache.get(patient_id, [])
+        # Resolve any stale loading messages left over from a previous server session.
+        # isLoading=True can never be resolved after a restart — replace with an error notice.
+        cleaned = []
+        for msg in messages:
+            if msg.get("isLoading"):
+                cleaned.append({**msg, "isLoading": False, "text": "⚠️ This response was interrupted by a server restart. Please resend your question."})
+            else:
+                cleaned.append(msg)
         return ChatMessagesResponse(
             patient_id=patient_id,
-            messages=messages
+            messages=cleaned
         )
     except Exception as e:
         logger.error(f"Failed to get chat messages: {e}")

@@ -1,11 +1,58 @@
 """
 LOINC Code Mapper Service
-Provides code-to-name mappings for common clinical observations when display names are NULL.
-This is essential for research-quality data handling where 28.8% of observations have NULL display names.
+Provides code-to-name mappings for clinical observations when display names are NULL.
+Falls back to full LoincTableCore.csv (109k codes) when a code is not in the
+hardcoded fast-path dict below.
 """
 
+import csv
+import os
+import logging
 from typing import Dict, Optional, List
 
+_logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Full LOINC table loader — populated once at import time
+# ---------------------------------------------------------------------------
+_LOINC_FULL: Dict[str, Dict[str, str]] = {}
+
+def _load_loinc_csv() -> None:
+    candidates = [
+        os.path.join(os.path.dirname(__file__),
+                     "../../../../etl/reference_data/LoincTableCore.csv"),
+        "/mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED"
+        "/etl/reference_data/LoincTableCore.csv",
+        "/mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED"
+        "/FHIR_LLM_UA/Converted_Data/All_Patients_Data/LoincTableCore.csv",
+    ]
+    for path in candidates:
+        path = os.path.normpath(path)
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    code = row.get("LOINC_NUM", "").strip()
+                    if not code:
+                        continue
+                    _LOINC_FULL[code] = {
+                        "name":    row.get("SHORTNAME", "").strip() or row.get("COMPONENT", "").strip(),
+                        "display": row.get("LONG_COMMON_NAME", "").strip(),
+                        "class":   row.get("CLASS", "").strip(),
+                    }
+            _logger.info("Loaded %d LOINC codes from %s", len(_LOINC_FULL), path)
+            return
+        except Exception as exc:
+            _logger.warning("Failed to load LOINC CSV from %s: %s", path, exc)
+    _logger.warning("LoincTableCore.csv not found — falling back to hardcoded 54-code mapper only")
+
+_load_loinc_csv()
+
+
+# ---------------------------------------------------------------------------
+# Hardcoded fast-path mappings (54 common codes with extra metadata / keywords)
+# ---------------------------------------------------------------------------
 # Comprehensive LOINC code mappings for common observations
 # Based on standard LOINC codes used in clinical practice
 LOINC_CODE_MAPPINGS: Dict[str, Dict[str, str]] = {
@@ -631,32 +678,42 @@ def get_observation_name_from_code(code: Optional[str]) -> Optional[str]:
     
     # Handle codes with suffixes (e.g., "2160-0.1" -> "2160-0")
     base_code = code.split('.')[0].split('-')[0] + '-' + code.split('-')[1] if '-' in code else code
-    
+
     mapping = LOINC_CODE_MAPPINGS.get(code) or LOINC_CODE_MAPPINGS.get(base_code)
     if mapping:
         return mapping["name"]
-    
+
+    # Fall through to full LOINC CSV
+    full = _LOINC_FULL.get(code) or _LOINC_FULL.get(base_code)
+    if full:
+        return full["name"] or full["display"] or None
+
     return None
 
 def get_observation_display_from_code(code: Optional[str]) -> Optional[str]:
     """
     Get full display name from LOINC code.
-    
+
     Args:
         code: LOINC code (e.g., "2160-0")
-    
+
     Returns:
         Full display name or None if not found
     """
     if not code:
         return None
-    
+
     base_code = code.split('.')[0].split('-')[0] + '-' + code.split('-')[1] if '-' in code else code
-    
+
     mapping = LOINC_CODE_MAPPINGS.get(code) or LOINC_CODE_MAPPINGS.get(base_code)
     if mapping:
         return mapping["display"]
-    
+
+    # Fall through to full LOINC CSV
+    full = _LOINC_FULL.get(code) or _LOINC_FULL.get(base_code)
+    if full:
+        return full["display"] or None
+
     return None
 
 def get_observation_keywords_from_code(code: Optional[str]) -> List[str]:
@@ -766,6 +823,231 @@ def enhance_observation_content(observation: Dict[str, any]) -> str:
     
     # Last resort: just value with semantic context
     return f"Observation: Unknown - Value: {value_str}. Clinical observation measurement."
+
+# ---------------------------------------------------------------------------
+# Canonical UCUM units by LOINC code (for unit display when unit="unit")
+# Values confirmed from LOINC 2.82 EXAMPLE_UCUM_UNITS column
+# ---------------------------------------------------------------------------
+LOINC_CANONICAL_UNITS: Dict[str, str] = {
+    # Kidney function
+    "2160-0": "mg/dL",   # Creatinine serum
+    "33914-3": "mg/dL",  # Creatinine blood (also used for GFR in some systems)
+    "48642-3": "mL/min/{1.73_m2}",  # eGFR non-Black
+    "48643-1": "mL/min/{1.73_m2}",  # eGFR Black
+    "3094-0":  "mg/dL",  # BUN
+    # Glucose / Diabetes
+    "2339-0":  "mg/dL",  # Glucose serum
+    "2345-7":  "mg/dL",  # Glucose serum alt
+    "4548-4":  "%",       # HbA1c
+    "27353-2": "mg/dL",  # eAG
+    # Lipids
+    "2093-3":  "mg/dL",  # Total cholesterol
+    "2085-9":  "mg/dL",  # HDL
+    "2089-1":  "mg/dL",  # LDL
+    "2089-2":  "mg/dL",  # LDL alt
+    "2571-8":  "mg/dL",  # Triglycerides
+    # Liver function
+    "1751-7":  "g/dL",   # Albumin
+    "1975-2":  "mg/dL",  # Bilirubin total
+    "1920-8":  "U/L",    # AST
+    "1742-6":  "U/L",    # ALT
+    "6768-6":  "U/L",    # Alkaline phosphatase
+    "2157-6":  "U/L",    # Creatine kinase
+    # CBC
+    "718-7":   "g/dL",   # Hemoglobin
+    "786-4":   "%",       # Hematocrit
+    "6690-2":  "10*3/uL",# WBC
+    "789-8":   "10*6/uL",# RBC
+    "777-3":   "10*3/uL",# Platelets
+    "4544-3":  "%",       # MCV alt / Hematocrit
+    "787-2":   "fL",      # MCV
+    # Electrolytes
+    "2951-2":  "mmol/L", # Sodium
+    "5902-2":  "mmol/L", # Sodium alt
+    "2823-3":  "mmol/L", # Potassium
+    "2075-0":  "mmol/L", # Chloride
+    "2028-9":  "mmol/L", # CO2/bicarbonate
+    "17861-6": "mg/dL",  # Calcium
+    "19123-9": "mg/dL",  # Magnesium
+    "2777-1":  "mg/dL",  # Phosphate
+    # Cardiac markers
+    "10839-9": "ng/mL",  # Troponin I
+    "33762-6": "pg/mL",  # NT-proBNP
+    "30522-7": "mg/L",   # hsCRP
+    "1988-5":  "mg/L",   # CRP
+    # Thyroid
+    "11579-0": "mIU/L",  # TSH
+    "3024-7":  "ng/dL",  # Free T4
+    # Vitals
+    "8480-6":  "mm[Hg]", # Systolic BP
+    "8462-4":  "mm[Hg]", # Diastolic BP
+    "8867-4":  "/min",   # Heart rate
+    "9279-1":  "/min",   # Respiratory rate
+    "2708-6":  "%",       # O2 saturation
+    "59408-5": "%",       # SpO2 pulse ox
+    "8310-5":  "Cel",    # Body temperature
+    "29463-7": "kg",     # Body weight
+    "8302-2":  "cm",     # Body height
+    "39156-5": "kg/m2",  # BMI
+    # Coagulation
+    "3173-2":  "s",      # aPTT
+    "5964-2":  "s",      # PT
+    "6301-6":  "[iU]",   # INR
+    # Urine
+    "2965-2":  "mg/dL",  # Urine protein
+    "14682-9": "mg/dL",  # Creatinine urine
+    "5804-0":  "mg/dL",  # Urine protein
+    "2161-8":  "mg/dL",  # Creatinine urine alt
+}
+
+
+def get_clean_display_for_code(code: Optional[str], raw_display: str = "") -> str:
+    """
+    Return a human-readable observation name, given a LOINC code and/or raw display string.
+
+    Priority:
+      1. LOINC_CODE_MAPPINGS name  (e.g., "Creatinine")   — 54 hand-curated codes
+      2. LONG_COMMON_NAME from full Loinc.csv, stripped    (e.g., "Creatinine")
+      3. First token of raw LOINC technical string         (e.g., "CREATININE" → "Creatinine")
+      4. raw_display unchanged (already human-readable)
+
+    Call this when display looks like a raw LOINC axis string
+    (contains ':' and is mostly uppercase).
+    """
+    import re as _re
+
+    # 1. Hand-curated fast-path
+    if code and code in LOINC_CODE_MAPPINGS:
+        name = LOINC_CODE_MAPPINGS[code].get("name", "")
+        if name:
+            return name
+
+    # 2. Full LOINC CSV — use LONG_COMMON_NAME, strip qualifier in brackets/after "in "
+    if code and code in _LOINC_FULL:
+        long_name = _LOINC_FULL[code].get("display", "")
+        if long_name:
+            # Strip " [qualifier]" suffixes: "Creatinine [Mass/volume] in Serum..." → "Creatinine"
+            cleaned = _re.sub(r'\s*\[.*', '', long_name).strip()
+            # Also strip " in <system>" if still present
+            cleaned = _re.sub(r'\s+in\s+\S.*', '', cleaned, flags=_re.IGNORECASE).strip()
+            if cleaned:
+                return cleaned
+
+    # 3. Extract first axis token from raw LOINC long name
+    #    "CREATININE:MCNC:PT:SER/PLAS:QN::" → "Creatinine"
+    if raw_display and ':' in raw_display:
+        component = raw_display.split(':')[0].strip()
+        if component:
+            # Title-case ALLCAPS component (e.g., "HEMOGLOBIN A1C" → "Hemoglobin A1c")
+            # Preserve known acronyms: HbA1c, BUN, HDL, LDL, WBC, RBC, TSH, ALT, AST
+            _KEEP_UPPER = {"BUN", "HDL", "LDL", "WBC", "RBC", "TSH", "ALT", "AST",
+                           "CRP", "INR", "HIV", "HCV", "HBV", "DNA", "RNA", "CO2"}
+            words = component.split()
+            cleaned_words = []
+            for w in words:
+                if w.upper() in _KEEP_UPPER:
+                    cleaned_words.append(w.upper())
+                else:
+                    cleaned_words.append(w.capitalize())
+            return " ".join(cleaned_words)
+
+    return raw_display  # already readable
+
+
+def get_canonical_unit_for_code(code: Optional[str]) -> str:
+    """Return canonical UCUM unit for a LOINC code, or '' if unknown."""
+    if not code:
+        return ""
+    return LOINC_CANONICAL_UNITS.get(code, "")
+
+
+# ---------------------------------------------------------------------------
+# Reference ranges by LOINC code — fallback when ES has no ref_range_low/high
+# Tuple: (low, high) using the canonical unit for that code.
+# Using MALE reference ranges as default; for Hgb a wider combined range is used
+# since patient sex is not always in the retrieved context.
+# Source: standard clinical laboratory reference intervals
+# ---------------------------------------------------------------------------
+LOINC_REFERENCE_RANGES: Dict[str, tuple] = {
+    # Kidney function
+    "2160-0": (0.6,  1.2),    # Creatinine serum mg/dL
+    "33914-3":(0.6,  1.2),    # Creatinine blood mg/dL
+    "3094-0":  (7.0,  25.0),  # BUN mg/dL
+    "48642-3": (60.0, 999.0), # eGFR mL/min — ≥60 = normal; no upper clinical cutoff
+    "48643-1": (60.0, 999.0), # eGFR Black
+    # Glucose / Diabetes
+    "2339-0":  (70.0, 99.0),  # Fasting glucose mg/dL
+    "2345-7":  (70.0, 99.0),  # Fasting glucose alt
+    "4548-4":  (4.0,  5.6),   # HbA1c % normal (5.7-6.4 pre-diabetes, ≥6.5 diabetes)
+    # CBC
+    "718-7":   (12.0, 17.5),  # Hemoglobin g/dL (wide range covers both sexes)
+    "786-4":   (36.0, 52.0),  # Hematocrit %
+    "6690-2":  (4.5,  11.0),  # WBC 10*3/uL
+    "789-8":   (4.0,  5.5),   # RBC 10*6/uL
+    "777-3":   (150.0,400.0), # Platelets 10*3/uL
+    "787-2":   (80.0, 100.0), # MCV fL
+    # Electrolytes
+    "2951-2":  (136.0,145.0), # Sodium mmol/L
+    "5902-2":  (136.0,145.0), # Sodium alt
+    "2823-3":  (3.5,  5.0),   # Potassium mmol/L
+    "2075-0":  (98.0, 106.0), # Chloride mmol/L
+    "2028-9":  (22.0, 29.0),  # CO2/bicarbonate mmol/L
+    "17861-6": (8.5,  10.5),  # Calcium mg/dL
+    "19123-9": (1.7,  2.2),   # Magnesium mg/dL
+    "2777-1":  (2.5,  4.5),   # Phosphate mg/dL
+    # Liver function
+    "1751-7":  (3.5,  5.0),   # Albumin g/dL
+    "1975-2":  (0.1,  1.2),   # Bilirubin total mg/dL
+    "1920-8":  (10.0, 40.0),  # AST U/L
+    "1742-6":  (7.0,  56.0),  # ALT U/L
+    "6768-6":  (44.0, 147.0), # Alkaline phosphatase U/L
+    # Lipids
+    "2093-3":  (0.0,  200.0), # Total cholesterol mg/dL (<200 desirable)
+    "2085-9":  (40.0, 999.0), # HDL mg/dL (>40 M, >50 F; using lower bound)
+    "2089-1":  (0.0,  100.0), # LDL mg/dL (<100 optimal)
+    "2571-8":  (0.0,  150.0), # Triglycerides mg/dL
+    # Cardiac
+    "10839-9": (0.0,  0.04),  # Troponin I ng/mL
+    "1988-5":  (0.0,  10.0),  # CRP mg/L (high-sensitivity: <1 low risk)
+    # Thyroid
+    "11579-0": (0.4,  4.0),   # TSH mIU/L
+    "3024-7":  (0.8,  1.8),   # Free T4 ng/dL
+}
+
+
+def get_reference_range_for_code(code: Optional[str]) -> tuple:
+    """Return (low, high) reference range for a LOINC code, or (None, None) if unknown."""
+    if not code:
+        return (None, None)
+    rng = LOINC_REFERENCE_RANGES.get(code)
+    if rng is None:
+        return (None, None)
+    return rng
+
+
+# Reverse map: keyword → set of LOINC codes (built once at module load)
+_KEYWORD_TO_LOINC: Dict[str, List[str]] = {}
+for _code, _entry in LOINC_CODE_MAPPINGS.items():
+    for _kw in _entry.get("keywords", []):
+        _KEYWORD_TO_LOINC.setdefault(_kw.lower(), []).append(_code)
+    # Also map the display name words
+    for _word in _entry.get("name", "").lower().split():
+        if len(_word) > 3:  # Skip short words like "in", "of"
+            _KEYWORD_TO_LOINC.setdefault(_word, []).append(_code)
+
+
+def get_loinc_codes_for_query(query: str) -> List[str]:
+    """Return LOINC codes whose keywords appear in the query (for ES code boosting)."""
+    if not query:
+        return []
+    q = query.lower()
+    matched: Dict[str, bool] = {}
+    for kw, codes in _KEYWORD_TO_LOINC.items():
+        if kw in q:
+            for c in codes:
+                matched[c] = True
+    return list(matched.keys())
+
 
 def get_search_terms_for_code(code: Optional[str], query: str) -> List[str]:
     """

@@ -1,0 +1,1030 @@
+{
+  "metadata": {
+    "patient_id": "000000509",
+    "generated_at": "20260518_182322",
+    "backend_url": "http://localhost:8001",
+    "query_set": "ddx",
+    "query_count": 7,
+    "runs_per_mode": 3,
+    "random_seed": 42,
+    "rouge_available": true,
+    "scipy_available": true
+  },
+  "global_stats": {
+    "wilcoxon_latency": {
+      "n_pairs": 1,
+      "statistic": null,
+      "p_value": null,
+      "significant_at_05": null,
+      "note": "Need \u22655 paired observations; got 1"
+    },
+    "n_paired_samples": 1,
+    "overall_latency": {
+      "standard_rag_median": 78.784,
+      "medrag_kg_median": 59.117
+    },
+    "mean_rouge_l": 0.0186,
+    "mean_consistency_rag": 1.0,
+    "mean_consistency_medrag": 1.0,
+    "mean_faithfulness_rag": 0.0,
+    "mean_faithfulness_medrag": 0.0
+  },
+  "query_results": [
+    {
+      "query_index": 0,
+      "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "Found: present it clearly (value, unit, date).\n\nThe most likely diagnosis is Chronic Kidney Disease (CKD) stage 3.\n\nEvidence from the records includes:\n1. CREATININE: 2.3 mg/dL, which is [HIGH] and indicates impaired kidney function.\n2. UREA NITROGEN: 71.0 mg/dL, which is [HIGH] and suggests impaired kidney function.\n3. NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, which is [HIGH] and indicates possible kidney damage.\n4. ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, which is [HIGH] and may indicate inflammation or infection.\n5. C REACTIVE PROTEIN: 2.5 mg/dL, which is [HIGH] and suggests inflammation or infection.\n6. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7%, which is [HIGH] and indicates possible diabetes mellitus.\n7. GLUCOSE: 140.0 mg/dL, which is [HIGH] and suggests possible diabetes mellitus.\n8. CALCIUM.IONIZED: 1.36 mmol/L, which is [LOW] and may indicate hypocalcemia.\n9. POTASSIUM: 3.6 mmol/L, which is [LOW] and may indicate hypokalemia.\n\nAlternatives to consider include:\n1. Diabetes mellitus type 2, given the high glucose and HbA1c levels.\n2. Infection or inflammation, given the high CRP and ESR levels.\n3. Cardiovascular disease, given the high troponin I level.\n4. Other conditions listed in the medical conditions section, such as hypertension and hyperlipidemia.",
+            "elapsed_seconds": 78.784,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "f8cb09b4-d082-455b-96a4-c90b68a1a3bb",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "70b65bf3-99a4-4e9c-992f-364f72ff40e8",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "bde8d859-88a7-4f90-a384-c9b6632df493",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f8183de6-4d3b-4545-848b-11cb32e6f36a",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "4bce172c-172c-4962-8ed6-9f0cc7421ef9",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ce5bff24-9223-4470-acc3-d52d8598fe10",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "4cb0988e-a1a4-462b-8f0d-05fb4c796648",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0f0af80f-13c4-45a3-91d4-f64849755b80",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "c13dcced-edb7-45d6-ab68-9207ac160563",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "2d239272-06cb-4015-9559-827914227d7c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "608a2843-fa72-4767-8dc2-f4bcfd52ec73",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5a5b89c7-876b-481f-a625-66b346609e2b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d28b786a-9434-4726-bae0-6798ba848227",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c94a6034-53d4-4ab0-85b6-9ed6b2fe2bdb",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ee08ceb3-1381-48fb-a498-aea3f9ae4611",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "497e27da-48eb-4f64-a94c-245306084b6d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a2897490-ea72-4c1e-9529-21678a311203",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "59f59a72-8d3a-45da-906e-a17c7ea1a00d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "381a0ca6-a68d-4660-abed-d3a2979027c4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2eb820d2-0ca8-452b-afcc-7ec04108ce98",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "Found: present it clearly (value, unit, date).\n\nThe most likely diagnosis is Chronic Kidney Disease (CKD) stage 3.\n\nEvidence from the records includes:\n1. CREATININE: 2.3 mg/dL, which is [HIGH] and indicates impaired kidney function.\n2. UREA NITROGEN: 71.0 mg/dL, which is [HIGH] and suggests impaired kidney function.\n3. NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, which is [HIGH] and indicates possible kidney damage.\n4. ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, which is [HIGH] and may indicate inflammation or infection.\n5. C REACTIVE PROTEIN: 2.5 mg/dL, which is [HIGH] and suggests inflammation or infection.\n6. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7%, which is [HIGH] and indicates possible diabetes mellitus.\n7. GLUCOSE: 140.0 mg/dL, which is [HIGH] and suggests possible diabetes mellitus.\n8. CALCIUM.IONIZED: 1.36 mmol/L, which is [LOW] and may indicate hypocalcemia.\n9. POTASSIUM: 3.6 mmol/L, which is [LOW] and may indicate hypokalemia.\n\nAlternatives to consider include:\n1. Diabetes mellitus type 2, given the high glucose and HbA1c levels.\n2. Infection or inflammation, given the high CRP and ESR levels.\n3. Cardiovascular disease, given the high troponin I level.\n4. Other conditions listed in the medical conditions section, such as hypertension and hyperlipidemia.",
+            "elapsed_seconds": 79.581,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "f2b2cdf7-4af7-4b08-872b-df9439d572b8",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a0c53a21-cfdb-4802-ab75-46ba5caf902c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e76ecfe5-796f-4888-aed7-21028610c15e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a60d652a-3e31-4c96-81a5-a4a54b8edcc2",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "24e01631-071d-42a1-8bbb-0c89245dee92",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "9bd6877c-6724-45bd-9828-92f769fdaf27",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "2563e0a0-3bcc-436e-9fe2-896836a6128f",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ba4d2aca-ba77-434c-9d61-c743720b2163",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1f0591ef-3e2b-4649-aaba-74ad5e11ec56",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "92fdea6c-dcbf-48e7-90c4-fa9ec722a934",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "80d037fd-a689-489a-9429-3e54d7af5b3f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2718fdaa-c498-42cd-b648-c97248da5865",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "6c3f9173-9bc4-4732-9762-e7f751f5da31",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b5b113dd-81c1-4c23-8f85-03ed70bb1d6e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "3e30ec92-2eec-4d37-bafa-ef0dfe768c89",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "067332dd-4c2a-4c00-820c-c63a5c90392f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7970a4c8-26fc-4562-94c6-5523ae610a89",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "171b1fb4-9fc0-4c66-9998-181abcdfc51f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "259e4bee-dae1-4ed6-b1a5-78b50b950385",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c4874979-0f89-4784-b214-20b604523bd8",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2030>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   - Type 1 Diabetes Mellitus: distinguished by autoimmune: positive anti-GAD, anti-islet cell antibodies\n   - No other alternative diagnoses from the same disease family are supported by the patient's evidence.\n4. Missing data: The absence of corticosteroid use information would help confirm the diagnosis of Type 2 Diabetes Mellitus over Type 1 Diabetes Mellitus.\n5. Clinical recommendation: Order a corticosteroid use history to rule out steroid-induced diabetes and confirm the diagnosis of Type 2 Diabetes Mellitus.",
+            "elapsed_seconds": 59.117,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "58102b41-a2d7-4221-84b4-034ba0163880",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "18918c8c-c015-4c8c-aca9-c0995b6a4a1b",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "4b95d9ae-d00b-4508-a6dc-3fe97dd41d03",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0711c81d-824d-44fb-944a-dee45279343d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "10ac324a-11c8-4788-b8ad-106b03d1be4a",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "92494e4f-2378-44c0-9e3d-6e0376708bd5",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8024f992-ed87-4b9b-b4e4-052ca6e8cb3e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "28af5cb6-f970-4b92-a9ef-a291dd9e34e7",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "6bd0bee3-8344-4f43-847d-8f3bf2ec4532",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f039df8f-6569-4f31-969b-4224cad4f0e3",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "5f46778e-8e0a-4bda-b61a-20692f8d709f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "3519009f-8723-407b-9604-c2d156069c4e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d1718f4c-0745-48fa-9e1e-cbfa83d2e269",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5f964120-f12a-4c3d-84b2-ad9b0d833ad7",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7d20bd92-0fdf-4b98-a787-4a3e971bf78e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b3ee7df4-14fa-4752-aa6f-fc83a0a2953e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "efc835cd-3051-4def-b30c-ed6f2ce62c63",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "baeb2049-fa00-4d57-a00e-8b9721b61136",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "4d3381f3-41f2-47df-96c0-0f9d7cd6d06f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9a365af2-4fd2-4bdd-b9b6-ee80d00d8ba4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a0af0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a19d0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "Found: present it clearly (value, unit, date).\n\nThe most likely diagnosis is Chronic Kidney Disease (CKD) stage 3.\n\nEvidence from the records includes:\n1. CREATININE: 2.3 mg/dL, which is [HIGH] and indicates impaired kidney function.\n2. UREA NITROGEN: 71.0 mg/dL, which is [HIGH] and suggests impaired kidney function.\n3. NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, which is [HIGH] and indicates possible kidney damage.\n4. ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, which is [HIGH] and may indicate inflammation or infection.\n5. C REACTIVE PROTEIN: 2.5 mg/dL, which is [HIGH] and suggests inflammation or infection.\n6. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7%, which is [HIGH] and indicates possible diabetes mellitus.\n7. GLUCOSE: 140.0 mg/dL, which is [HIGH] and suggests possible diabetes mellitus.\n8. CALCIUM.IONIZED: 1.36 mmol/L, which is [LOW] and may indicate hypocalcemia.\n9. POTASSIUM: 3.6 mmol/L, which is [LOW] and may indicate hypokalemia.\n\nAlternatives to consider include:\n1. Diabetes mellitus type 2, given the high glucose and HbA1c levels.\n2. Infection or inflammation, given the high CRP and ESR levels.\n3. Cardiovascular disease, given the high troponin I level.\n4. Other conditions listed in the medical conditions section, such as hypertension and hyperlipidemia.",
+        "medrag_kg": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   - Type 1 Diabetes Mellitus: distinguished by autoimmune: positive anti-GAD, anti-islet cell antibodies\n   - No other alternative diagnoses from the same disease family are supported by the patient's evidence.\n4. Missing data: The absence of corticosteroid use information would help confirm the diagnosis of Type 2 Diabetes Mellitus over Type 1 Diabetes Mellitus.\n5. Clinical recommendation: Order a corticosteroid use history to rule out steroid-induced diabetes and confirm the diagnosis of Type 2 Diabetes Mellitus."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 79.183,
+            "iqr": 0.797,
+            "values": [
+              78.784,
+              79.581
+            ]
+          },
+          "medrag_kg": {
+            "median": 59.117,
+            "iqr": 0.0,
+            "values": [
+              59.117
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.1303,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 1,
+      "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2690>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a3350>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a3570>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2cf0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "",
+            "elapsed_seconds": 0.003,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a39b0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2f10>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "",
+        "medrag_kg": ""
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          },
+          "medrag_kg": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          }
+        },
+        "rouge_l_vs_each_other": 0.0,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 2,
+      "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a28b0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1bf0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "",
+            "elapsed_seconds": 0.002,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff5459986b0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2250>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1590>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1480>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "",
+        "medrag_kg": ""
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          },
+          "medrag_kg": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          }
+        },
+        "rouge_l_vs_each_other": 0.0,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 3,
+      "query": "What do the patient's creatinine and kidney-related observations tell us?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1370>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1ae0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a27a0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a07c0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2140>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2e00>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "",
+        "medrag_kg": ""
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          },
+          "medrag_kg": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          }
+        },
+        "rouge_l_vs_each_other": 0.0,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 4,
+      "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a3460>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a38a0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2be0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "",
+            "elapsed_seconds": 0.013,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff5459986b0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a3240>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2470>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "",
+        "medrag_kg": ""
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          },
+          "medrag_kg": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          }
+        },
+        "rouge_l_vs_each_other": 0.0,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 5,
+      "query": "What are the risk values in this patient's observations that could affect their health?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1f20>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "",
+            "elapsed_seconds": 0.002,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff5459986b0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a3bd0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a18c0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a16a0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1150>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "",
+        "medrag_kg": ""
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          },
+          "medrag_kg": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          }
+        },
+        "rouge_l_vs_each_other": 0.0,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 6,
+      "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a1e10>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2ad0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a3130>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a0f30>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "",
+            "elapsed_seconds": 0.001,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff4ee3a2580>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 1
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "",
+            "elapsed_seconds": 0.002,
+            "retrieved_count": 0,
+            "sources": [],
+            "error": "HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /chat-agent/query (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7ff5459986b0>: Failed to establish a new connection: [Errno 111] Connection refused'))",
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "",
+        "medrag_kg": ""
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          },
+          "medrag_kg": {
+            "median": null,
+            "iqr": 0.0,
+            "values": []
+          }
+        },
+        "rouge_l_vs_each_other": 0.0,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    }
+  ]
+}

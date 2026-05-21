@@ -6,6 +6,14 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy import text
 import os
 import time
+import math
+from datetime import datetime
+
+try:
+    from scipy.stats import linregress as _linregress
+    _SCIPY_AVAILABLE = True
+except ImportError:
+    _SCIPY_AVAILABLE = False
 
 from ..core.database import engine
 from ..core.llm import generate_chat, model_name
@@ -114,6 +122,102 @@ def _parse_numeric_date(n: Any) -> Optional[str]:
     except Exception:
         pass
     return None
+
+def _parse_date_safe(date_str: Optional[str]) -> Optional[datetime]:
+    """Parse ISO date or date-range string to datetime. For ranges ('A to B') uses B (latest)."""
+    if not date_str:
+        return None
+    s = date_str.strip()
+    if " to " in s:
+        s = s.split(" to ")[-1].strip()
+    try:
+        return datetime.strptime(s[:10], "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+
+
+def _abnormality_score(value: Optional[float], display: str) -> float:
+    """Return 0.0 (normal) – 1.0 (critical) using REFERENCE_RANGES as single source of truth."""
+    if value is None:
+        return 0.1
+    try:
+        from .visualization_service import REFERENCE_RANGES
+    except ImportError:
+        return 0.2
+    display_lower = (display or "").lower()
+    ref = None
+    for key, ranges in REFERENCE_RANGES.items():
+        if key in display_lower:
+            ref = ranges
+            break
+    if ref is None:
+        return 0.2
+    if ref.get("critical_high") and value > ref["critical_high"]:
+        return 1.0
+    if ref.get("critical_low") and value < ref["critical_low"]:
+        return 1.0
+    if ref.get("high") and value > ref["high"]:
+        return 0.7
+    if ref.get("low") and value < ref["low"]:
+        return 0.7
+    return 0.0
+
+
+def _clinical_priority_score(obs: Dict[str, Any]) -> float:
+    """Score 0–1 for observation importance: abnormal + recent + frequently measured = higher."""
+    display = obs.get("display") or obs.get("code") or ""
+    value = obs.get("valueNumber")
+    date_str = obs.get("effectiveDateTime") or ""
+    measurement_count = obs.get("measurement_count", 1) or 1
+
+    abnormality = _abnormality_score(value, display)
+
+    latest_date = _parse_date_safe(date_str)
+    if latest_date:
+        days_ago = max((datetime.now() - latest_date).days, 0)
+        recency = math.exp(-days_ago / 90.0)
+    else:
+        recency = 0.5
+
+    frequency = min(math.log1p(measurement_count) / 5.0, 1.0)
+
+    return (abnormality * 0.50) + (recency * 0.30) + (frequency * 0.20)
+
+
+def _compute_trend(obs_list: List[Dict[str, Any]]) -> str:
+    """Statistical trend via scipy linregress (gate: p<0.05, R²≥0.5, n≥3).
+    Falls back to 'stable' when data are insufficient or not significant.
+    obs_list is newest-first; we reverse for chronological regression.
+    """
+    pairs = []
+    for o in reversed(obs_list):
+        val = o.get("valueNumber")
+        dt = _parse_date_safe(o.get("effectiveDateTime"))
+        if val is not None and dt is not None:
+            pairs.append((dt, val))
+
+    if len(pairs) < 3 or not _SCIPY_AVAILABLE:
+        return "stable"
+
+    t0 = pairs[0][0]
+    x = [(p[0] - t0).days for p in pairs]
+    y = [p[1] for p in pairs]
+
+    try:
+        slope, _, r_value, p_value, _ = _linregress(x, y)
+    except Exception:
+        return "stable"
+
+    r_squared = r_value ** 2
+    # Standard gate: p<0.05 AND R²≥0.5
+    # Exception: n=3 has only 1 residual df — p<0.05 requires t>12.7, unreachable for most
+    # real clinical series. With n=3, trust R²≥0.8 alone (nearly perfect linear fit).
+    if r_squared < 0.5:
+        return "stable"
+    if p_value >= 0.05 and not (len(pairs) == 3 and r_squared >= 0.8):
+        return "stable"
+    return "increasing" if slope > 0 else "decreasing"
+
 
 def _clean_demographics(demo: Dict[str, Any]) -> Dict[str, Any]:
     """Remove null/empty values from demographics to reduce token usage"""
@@ -395,21 +499,20 @@ def _get_patient_data(patient_id: str, category: str = "default"):
     if es_conds:
         seen = set()
         for doc in es_conds:
-            meta = doc.get("metadata", {})
-            key = f"{meta.get('code', '')}|{meta.get('display', '')}"
+            # ES condition docs use top-level fields (icd_code, content — no metadata wrapper)
+            code = doc.get("icd_code") or doc.get("code") or ""
+            display = doc.get("display") or doc.get("content") or ""
+            key = f"{code}|{display}"
             if key in seen:
                 continue
             seen.add(key)
-            categorized = categorize_condition(
-                code=meta.get("code"),
-                display=meta.get("display"),
-                clinical_status=meta.get("clinicalStatus"),
-            )
+            clinical_status = doc.get("clinical_status") or ""
+            recorded = doc.get("onset_datetime") or doc.get("recorded_date") or doc.get("effective_date") or ""
+            categorized = categorize_condition(code=code, display=display, clinical_status=clinical_status)
             conditions.append({
-                "code": meta.get("code"),
-                "display": meta.get("display"),
-                "clinicalStatus": meta.get("clinicalStatus"),
-                "recordedDate": meta.get("date"),
+                "code": code, "display": display,
+                "clinicalStatus": clinical_status,
+                "recordedDate": str(recorded)[:10] if recorded else None,
                 "category": categorized["category"],
                 "priority": categorized["priority"],
                 "normalizedName": categorized["name"],
@@ -417,13 +520,14 @@ def _get_patient_data(patient_id: str, category: str = "default"):
             if len(conditions) >= max_conditions:
                 break
     else:
-        # MySQL fallback when ES not connected / patient not indexed
+        # MySQL fallback — llm_ua_ai schema uses icd_code, onset_datetime, recorded_date, db_id
         with engine.connect() as conn:
             sql_c = """
-            SELECT c.code, c.display, c.clinical_status, c.effectiveDateTime AS recordedDate
+            SELECT c.icd_code AS code, c.display, c.clinical_status,
+                   COALESCE(c.onset_datetime, c.recorded_date) AS recordedDate
             FROM conditions c
             WHERE c.patient_id = :pid
-            ORDER BY COALESCE(c.effectiveDateTime, '1000-01-01') DESC, c.id DESC
+            ORDER BY COALESCE(c.onset_datetime, c.recorded_date, '1000-01-01') DESC, c.db_id DESC
             """
             rows_c = conn.execute(text(sql_c), {"pid": patient_id}).mappings().all()
         seen = set()
@@ -452,14 +556,14 @@ def _get_patient_data(patient_id: str, category: str = "default"):
     es_obs = es_client.get_all_patient_data_by_type(patient_id, "observations", size=300)
     if es_obs:
         for doc in es_obs:
-            meta = doc.get("metadata", {})
-            display = meta.get("display") or meta.get("name") or None
-            code = meta.get("code") or ""
+            # ES observation docs use top-level fields (no metadata wrapper)
+            display = doc.get("display") or None
+            code = doc.get("code") or ""
             if not display and code:
                 display = get_observation_display_from_code(code)
             display_key = (display or code or "Unknown").strip()
 
-            raw_val = meta.get("value")
+            raw_val = doc.get("value_numeric")
             value_number = None
             value_string = None
             if raw_val is not None:
@@ -467,6 +571,11 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                     value_number = float(raw_val)
                 except (ValueError, TypeError):
                     value_string = str(raw_val)
+            if value_number is None:
+                value_string = doc.get("value_string") or value_string
+
+            eff = doc.get("effective_datetime") or doc.get("effective_date")
+            eff_str = str(eff)[:10] if eff else None  # keep as "YYYY-MM-DD"
 
             if display_key not in obs_groups:
                 obs_groups[display_key] = []
@@ -475,19 +584,21 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                 "display": display or display_key,
                 "valueNumber": value_number,
                 "valueString": value_string,
-                "unit": meta.get("unit"),
-                "effectiveDateTime": meta.get("date"),
+                "unit": doc.get("unit"),
+                "effectiveDateTime": eff_str,
             })
     else:
-        # MySQL fallback with LOINC resolution for NULL displays
+        # MySQL fallback — llm_ua_ai schema uses effective_datetime/effective_date, db_id
         with engine.connect() as conn:
             sql_o = """
             SELECT o.code, o.display, o.value_numeric AS valueNumber, o.value_string AS valueString,
-                   o.unit, o.effectiveDateTime, o.value_numeric AS raw_num
+                   o.unit,
+                   COALESCE(o.effective_datetime, o.effective_date) AS effectiveDateTime,
+                   o.value_numeric AS raw_num
             FROM observations o
             WHERE o.patient_id = :pid
               AND (o.value_numeric IS NOT NULL OR o.value_string IS NOT NULL)
-            ORDER BY COALESCE(o.effectiveDateTime, '1000-01-01') DESC, o.id DESC
+            ORDER BY COALESCE(o.effective_datetime, o.effective_date, '1000-01-01') DESC, o.db_id DESC
             LIMIT :limit
             """
             rows_o = conn.execute(text(sql_o), {"pid": patient_id, "limit": max_observations}).mappings().all()
@@ -501,7 +612,6 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                     value_number = float(value_number)
                 except (ValueError, TypeError):
                     value_number = None
-            # Resolve NULL display via LOINC mapper (prevents all-Unknown collapse)
             display = r["display"]
             if not display and r["code"]:
                 display = get_observation_display_from_code(r["code"])
@@ -528,17 +638,9 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                 avg_value = sum(numeric_values) / len(numeric_values)
                 min_value = min(numeric_values)
                 max_value = max(numeric_values)
-                latest_value = obs_list[0]["valueNumber"]
-                oldest_value = obs_list[-1]["valueNumber"]
-                if latest_value is not None and oldest_value is not None:
-                    if latest_value > oldest_value * 1.1:
-                        trend = "increasing"
-                    elif latest_value < oldest_value * 0.9:
-                        trend = "decreasing"
-                    else:
-                        trend = "stable"
-                else:
-                    trend = "stable"
+                latest_value = numeric_values[0]
+                oldest_value = numeric_values[-1]
+                trend = _compute_trend(obs_list)  # P5: scipy linregress, p<0.05, R²≥0.5, n≥3
                 dates = [o["effectiveDateTime"] for o in obs_list if o["effectiveDateTime"]]
                 date_range = f"{dates[-1]} to {dates[0]}" if len(dates) >= 2 else (dates[0] if dates else "unknown")
                 measurement_count = len(numeric_values)
@@ -553,6 +655,7 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                     "valueString": trend_desc,
                     "unit": obs_list[0]["unit"],
                     "effectiveDateTime": date_range,
+                    "measurement_count": measurement_count,
                 })
             else:
                 observations.append(obs_list[0])
@@ -567,29 +670,35 @@ def _get_patient_data(patient_id: str, category: str = "default"):
             deduplicated_observations.append(obs)
     observations = deduplicated_observations
 
+    # P3: Sort by clinical priority — abnormal, recent, frequently-measured first.
+    # This same sorted list is used for both the full LLM call and the OOM-fallback
+    # slice (observations[:30]), ensuring both paths see the most important data.
+    observations.sort(key=lambda o: -_clinical_priority_score(o))
+
     # ── Notes: ES first, MySQL fallback ──────────────────────────────────────
     es_notes = es_client.get_all_patient_data_by_type(patient_id, "notes", size=max_notes + 2)
     if es_notes:
         notes = []
         for doc in es_notes[:max_notes]:
-            meta = doc.get("metadata", {})
+            # ES note docs use top-level fields (note_date, content, source_hospital)
             text_val = doc.get("content", "")
             notes.append({
-                "created": meta.get("date"),
+                "created": doc.get("note_date") or doc.get("effective_date"),
                 "text": text_val[:max_note_chars] if text_val else None,
-                "sourceType": meta.get("sourceType"),
-                "fileName": meta.get("fileName"),
-                "baseKey": meta.get("baseKey"),
+                "sourceType": doc.get("source_hospital") or doc.get("source_type"),
+                "fileName": doc.get("note_filename") or doc.get("ccda_filename"),
+                "baseKey": None,
             })
     else:
+        # MySQL fallback — llm_ua_ai notes schema: note_date, content, note_filename, db_id
         with engine.connect() as conn:
             sql_n = """
-            SELECT COALESCE(n.note_datetime, n.created_at) AS created,
-                   n.note_text AS text, n.source_type AS sourceType,
-                   n.filename_txt AS fileName, n.base_key AS baseKey
+            SELECT n.note_date AS created, n.content AS text,
+                   n.source_hospital AS sourceType,
+                   n.note_filename AS fileName
             FROM notes n
             WHERE n.patient_id = :pid
-            ORDER BY COALESCE(n.note_datetime, n.created_at) DESC, n.id DESC
+            ORDER BY n.note_date DESC, n.db_id DESC
             LIMIT :limit
             """
             rows_n = conn.execute(text(sql_n), {"pid": patient_id, "limit": max_notes}).mappings().all()
@@ -598,7 +707,7 @@ def _get_patient_data(patient_id: str, category: str = "default"):
             "text": r["text"][:max_note_chars] if r["text"] else None,
             "sourceType": r["sourceType"],
             "fileName": r["fileName"],
-            "baseKey": r["baseKey"],
+            "baseKey": None,
         } for r in rows_n]
 
     # Compact demographics for prompt
@@ -662,7 +771,8 @@ def generate_all_summaries(patient_id: str):
     print(f"🔍 Cache miss - generating all summaries...")
     categories = ["patient_summary", "conditions", "observations", "demographics", "notes", "care_plans"]
     summaries = {}
-    
+    context_counts = {}  # initialised here so it's defined even if all _get_patient_data calls fail
+
     for category in categories:
         try:
             print(f"Generating {category} summary for patient {patient_id}...")
@@ -989,12 +1099,13 @@ def get_patient_summary(patient_id: str):
             postalCode=p["postal_code"] or None,
         )
 
-        # Conditions (dedupe, newest first)
+        # Conditions (dedupe, newest first) — llm_ua_ai uses icd_code, onset_datetime, db_id
         sql_c = """
-        SELECT c.code, c.display, c.clinical_status, c.effectiveDateTime AS recordedDate
+        SELECT c.icd_code AS code, c.display, c.clinical_status,
+               COALESCE(c.onset_datetime, c.recorded_date) AS recordedDate
         FROM conditions c
         WHERE c.patient_id = :pid
-        ORDER BY COALESCE(c.effectiveDateTime, '1000-01-01') DESC, c.id DESC
+        ORDER BY COALESCE(c.onset_datetime, c.recorded_date, '1000-01-01') DESC, c.db_id DESC
         """
         rows_c = conn.execute(text(sql_c), {"pid": patient_id}).mappings().all()
         seen = set()
@@ -1012,12 +1123,14 @@ def get_patient_summary(patient_id: str):
             if len(conditions) >= 30:
                 break
 
-        # Observations: latest per code with fallback for 67723-7
+        # Observations — llm_ua_ai uses effective_datetime/effective_date, db_id
         sql_o = """
-        SELECT o.code, o.display, o.value_numeric, o.value_string, o.unit, o.effectiveDateTime, o.value_numeric AS raw_num
+        SELECT o.code, o.display, o.value_numeric, o.value_string, o.unit,
+               COALESCE(o.effective_datetime, o.effective_date) AS effectiveDateTime,
+               o.value_numeric AS raw_num
         FROM observations o
         WHERE o.patient_id = :pid
-        ORDER BY COALESCE(o.effectiveDateTime, '1000-01-01') DESC, o.id DESC
+        ORDER BY COALESCE(o.effective_datetime, o.effective_date, '1000-01-01') DESC, o.db_id DESC
         """
         rows_o = conn.execute(text(sql_o), {"pid": patient_id}).mappings().all()
         latest_by_code: Dict[str, SummaryObservation] = {}

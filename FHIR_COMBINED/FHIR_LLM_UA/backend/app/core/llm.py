@@ -59,7 +59,6 @@ def _load():
         _load_attempted = True
 
         try:
-            # If the model repo already stores a quantization_config, HF will ignore this safely.
             bnb_config = BitsAndBytesConfig(
                 load_in_4bit=True,
                 bnb_4bit_compute_dtype=torch.bfloat16 if torch.cuda.is_available() else None,
@@ -67,75 +66,36 @@ def _load():
                 bnb_4bit_quant_type="nf4",
             )
 
-            # Use device_map="auto" but restrict to GPU only (4-bit quantization doesn't support CPU offloading)
-            # If GPU memory is insufficient, we'll get an error and can handle it gracefully
-            if os.path.exists(MODEL_PATH) and os.path.isdir(MODEL_PATH):
-                print(f"📦 Loading model from local path: {MODEL_PATH}")
-                print(f"📦 Using device_map='auto' (GPU only - 4-bit doesn't support CPU offloading)")
-                # Load tokenizer (allow HuggingFace cache for compatibility)
-                _tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, use_fast=True)
-                # Try GPU-only first (4-bit quantization works best on GPU)
-                try:
-                    _model = AutoModelForCausalLM.from_pretrained(
-                        MODEL_PATH,
-                        device_map="auto",  # Let HuggingFace handle GPU allocation automatically
-                        quantization_config=bnb_config,
-                        trust_remote_code=True,
-                    )
-                except ValueError as ve:
-                    # If GPU memory error, try with explicit GPU allocation
-                    if "CPU" in str(ve) or "disk" in str(ve).lower():
-                        print(f"⚠️ GPU memory issue detected, trying explicit GPU allocation...")
-                        # Force all layers to GPU 0 (or split across GPUs if available)
-                        if torch.cuda.device_count() >= 2:
-                            _model = AutoModelForCausalLM.from_pretrained(
-                                MODEL_PATH,
-                                device_map="balanced",  # Split across available GPUs
-                                quantization_config=bnb_config,
-                                trust_remote_code=True,
-                            )
-                        else:
-                            # Single GPU - try to fit everything
-                            _model = AutoModelForCausalLM.from_pretrained(
-                                MODEL_PATH,
-                                device_map={"": 0},  # All on GPU 0
-                                quantization_config=bnb_config,
-                                trust_remote_code=True,
-                            )
-                    else:
-                        raise  # Re-raise if it's a different error
+            # Explicit balanced split across both T4 GPUs.
+            # GPU 0 loses ~200 MiB to Xorg/GNOME display; leave headroom on both.
+            num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
+            if num_gpus >= 2:
+                load_kwargs = dict(
+                    device_map="auto",
+                    quantization_config=bnb_config,
+                    trust_remote_code=True,
+                )
+                print(f"📦 Loading model — auto device_map across {num_gpus} GPUs")
+            elif num_gpus == 1:
+                load_kwargs = dict(
+                    device_map={"": 0},
+                    quantization_config=bnb_config,
+                    trust_remote_code=True,
+                )
+                print("📦 Loading model on single GPU 0")
             else:
-                print(f"📦 Loading model from HuggingFace or path: {MODEL_PATH}")
-                print(f"📦 Using device_map='auto' (GPU only - 4-bit doesn't support CPU offloading)")
-                _tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, use_fast=True)
-                try:
-                    _model = AutoModelForCausalLM.from_pretrained(
-                        MODEL_PATH,
-                        device_map="auto",  # Let HuggingFace handle GPU allocation automatically
-                        quantization_config=bnb_config,
-                        trust_remote_code=True,
-                    )
-                except ValueError as ve:
-                    # If GPU memory error, try with explicit GPU allocation
-                    if "CPU" in str(ve) or "disk" in str(ve).lower():
-                        print(f"⚠️ GPU memory issue detected, trying explicit GPU allocation...")
-                        if torch.cuda.device_count() >= 2:
-                            _model = AutoModelForCausalLM.from_pretrained(
-                                MODEL_PATH,
-                                device_map="balanced",
-                                quantization_config=bnb_config,
-                                trust_remote_code=True,
-                            )
-                        else:
-                            _model = AutoModelForCausalLM.from_pretrained(
-                                MODEL_PATH,
-                                device_map={"": 0},
-                                quantization_config=bnb_config,
-                                trust_remote_code=True,
-                            )
-                    else:
-                        raise
-            print(f"✅ Model loaded successfully with device_map='auto'")
+                load_kwargs = dict(
+                    device_map="cpu",
+                    quantization_config=bnb_config,
+                    trust_remote_code=True,
+                )
+                print("⚠️ No GPU detected — loading on CPU (slow)")
+
+            model_source = MODEL_PATH if (os.path.exists(MODEL_PATH) and os.path.isdir(MODEL_PATH)) else MODEL_PATH
+            print(f"📦 Source: {model_source}")
+            _tokenizer = AutoTokenizer.from_pretrained(model_source, use_fast=True)
+            _model = AutoModelForCausalLM.from_pretrained(model_source, **load_kwargs)
+            print(f"✅ Model loaded — device map: {_model.hf_device_map if hasattr(_model, 'hf_device_map') else 'N/A'}")
         except Exception as e:
             error_msg = f"❌ Failed to load model: {type(e).__name__}: {str(e)[:500]}"
             print(error_msg)
@@ -383,15 +343,30 @@ def generate_chat(system_prompt: str, user_prompt: str, category: str = "default
             # here; per-category limits are calibrated for content completeness.
             # The global cap is only the default returned when category is unknown.
             max_tokens = _get_category_token_limit(user_prompt, category)
-            
-            # Check memory usage and reduce further if needed
-            # For research quality, we use less aggressive reduction to ensure complete responses
+
+            # OOM safety: if input sequence is very long, cap generation tokens.
+            # Long EHR contexts (150 docs assembled) can be 4000-8000 input tokens.
+            # Each output token needs KV cache memory; cap aggressively for huge inputs.
+            input_token_count = inputs.shape[-1]
+            if input_token_count > 6000:
+                max_tokens = min(max_tokens, 300)
+                logger.warning(f"Very long input ({input_token_count} tokens) — capping generation to 300 to avoid OOM")
+            elif input_token_count > 4000:
+                max_tokens = min(max_tokens, 600)
+                logger.warning(f"Long input ({input_token_count} tokens) — capping generation to 600")
+            elif input_token_count > 3000:
+                max_tokens = min(max_tokens, 900)
+
+            # Check memory usage across all GPUs — use the most-loaded GPU as the signal
             if torch.cuda.is_available():
-                memory_allocated = torch.cuda.memory_allocated() / 1024**3  # GB
-                memory_reserved = torch.cuda.memory_reserved() / 1024**3   # GB
-                total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3  # GB
-                
-                memory_usage = (memory_allocated + memory_reserved) / total_memory if total_memory > 0 else 0
+                _n = torch.cuda.device_count()
+                memory_usage = 0.0
+                for _gi in range(_n):
+                    _alloc = torch.cuda.memory_allocated(_gi) / 1024**3
+                    _resv  = torch.cuda.memory_reserved(_gi)  / 1024**3
+                    _total = torch.cuda.get_device_properties(_gi).total_memory / 1024**3
+                    if _total > 0:
+                        memory_usage = max(memory_usage, (_alloc + _resv) / _total)
                 
                 # Progressive token reduction based on memory usage with category-aware minimums
                 # Same thresholds as working version for reliability
@@ -407,13 +382,22 @@ def generate_chat(system_prompt: str, user_prompt: str, category: str = "default
                     max_tokens = min(max_tokens, 900)  # Moderate shared pressure
                 # Below 72%: use full category budget — normal operation
 
-            outputs = _model.generate(
-                inputs,
-                max_new_tokens=max_tokens,
-                do_sample=False,  # Disable sampling for consistency and memory efficiency
-                temperature=0.1,  # Very low temperature
-                pad_token_id=_tokenizer.eos_token_id,
-            )
+            # Summaries: greedy decoding — same input → same output every run.
+            # Chat: light sampling for natural responses.
+            if is_query:
+                gen_kwargs = {
+                    "do_sample": True,
+                    "temperature": 0.3,
+                    "top_p": 0.9,
+                    "pad_token_id": _tokenizer.eos_token_id,
+                }
+            else:
+                gen_kwargs = {
+                    "do_sample": False,   # greedy — deterministic for clinical summaries
+                    "pad_token_id": _tokenizer.eos_token_id,
+                }
+
+            outputs = _model.generate(inputs, max_new_tokens=max_tokens, **gen_kwargs)
 
         text = _tokenizer.decode(outputs[0][inputs.shape[-1]:], skip_special_tokens=True)
         

@@ -1,0 +1,349 @@
+{
+  "metadata": {
+    "patient_id": "000000509",
+    "generated_at": "20260519_164658",
+    "backend_url": "http://localhost:8001",
+    "query_set": "ddx",
+    "query_count": 1,
+    "runs_per_mode": 1,
+    "random_seed": 42,
+    "rouge_available": true,
+    "scipy_available": true
+  },
+  "global_stats": {
+    "wilcoxon_latency": {
+      "n_pairs": 1,
+      "statistic": null,
+      "p_value": null,
+      "significant_at_05": null,
+      "note": "Need \u22655 paired observations; got 1"
+    },
+    "n_paired_samples": 1,
+    "overall_latency": {
+      "standard_rag_median": 300.156,
+      "medrag_kg_median": 182.602
+    },
+    "mean_rouge_l": 0.2207,
+    "mean_consistency_rag": 1.0,
+    "mean_consistency_medrag": 1.0,
+    "mean_faithfulness_rag": 0.0,
+    "mean_faithfulness_medrag": 0.3333,
+    "mean_grounded_recall_rag": 1.0,
+    "mean_grounded_recall_medrag": 1.0
+  },
+  "query_results": [
+    {
+      "query_index": 0,
+      "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "Based on the retrieved data, the following observations and conditions are relevant to the query:\n\n1. [O-13] GLUCOSE: 140.0 mg/dL \u2014 normal\n   The patient's glucose level is within the normal range, indicating no evidence of diabetes or pre-diabetes at this time.\n\n2. [O-14] HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7% \u2014 normal\n   The patient's HbA1c level is within the normal range, indicating no evidence of diabetes or pre-diabetes at this time.\n\n3. [O-10] CREATININE: 2.3 mg/dL \u2014 normal\n   The patient's creatinine level is within the normal range, indicating no evidence of renal concern at this time.\n\n4. [O-22] UREA NITROGEN: 71.0 mg/dL \u2014 normal\n   The patient's BUN level is within the normal range, indicating no evidence of hepatic or malnutrition issues at this time.\n\n5. [O-21] TROPONIN I.CARDIAC: 0.04 ng/mL \u2014 normal\n   The patient's troponin I level is within the normal range, indicating no evidence of myocardial infarction at this time.\n\n6. [O-18] POTASSIUM: 3.6 mEq/L \u2014 normal\n   The patient's potassium level is within the normal range, indicating no evidence of arrhythmia risk or hyperkalemia at this time.\n\n7. [C-11] Chronic kidney disease stage 3 (disorder) | Status: unknown | Onset: unknown\n   The patient has a history of chronic kidney disease stage 3, which may be relevant to their overall health and potential kidney function.\n\n8. [C-17] Essential hypertension (disorder) | Status: unknown | Onset: unknown\n   The patient has a history of essential hypertension, which may be relevant to their overall cardiovascular health.\n\nConsidering the retrieved data, the most likely diagnosis is a complex condition that may involve multiple comorbidities. However, based on the available information, the patient's conditions and observations suggest a possible diagnosis of chronic kidney disease stage 3 with possible hypertension.\n\nAlternatives to consider:\n\n- Diabetes mellitus type 2 (disorder) | Status: unknown | Onset: unknown\n- Hyperlipidemia (disorder) | Status: unknown | Onset: unknown\n- Hyperparathyroidism (disorder) | Status: unknown | Onset: unknown\n- Hypomagnesemia (disorder) | Status: unknown | Onset: unknown\n- Obesity (disorder) | Status: unknown | Onset: unknown\n\nThese conditions may be relevant to the patient's overall health and may require further evaluation and management.",
+            "elapsed_seconds": 300.156,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "1f51847c-75df-4d57-bb8a-ecb0d08a0e55",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Constipation (disorder)"
+              },
+              {
+                "id": "4cf5f7d9-57d5-49a3-866a-7e762bac95c4",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Chronic constipation (disorder)"
+              },
+              {
+                "id": "90080a4d-2a50-4b83-a22f-17225784e383",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Peripheral arterial disease"
+              },
+              {
+                "id": "37a03e83-4626-4781-899a-4cf7d0816012",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Bilateral stenosis of carotid arteries"
+              },
+              {
+                "id": "3aa4b715-f1a6-4523-a6e7-f1b82f40fa5c",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Carotid artery stenosis (disorder)"
+              },
+              {
+                "id": "fa4ede97-9950-417b-8ee7-2e4e705f2c83",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Gait problem (finding)"
+              },
+              {
+                "id": "2e23c502-4902-439a-9c5a-814ecd4d465b",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Actinic keratosis (disorder)"
+              },
+              {
+                "id": "6724fe24-4271-400c-a3b6-4f4db97b1411",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Acute ST segment elevation myocardial infarction (disorder)"
+              },
+              {
+                "id": "82fb113e-ff25-45b5-93f3-8ce118c4ac91",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Carpal tunnel syndrome (disorder)"
+              },
+              {
+                "id": "f120a690-c7fd-40bb-8200-e982d2cd8d9b",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Chronic diastolic heart failure (disorder)"
+              },
+              {
+                "id": "b963e0c5-db75-4a03-8dd9-eb7b6165ea2f",
+                "type": "observation",
+                "description": "Observation: Severity Observation | Code: SEV",
+                "content": "Severity Observation"
+              },
+              {
+                "id": "057e44e0-9534-4f9a-80c2-a9ebddfc3e69",
+                "type": "observation",
+                "description": "Observation: BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | Value: 1.4 | Code: 19237-7",
+                "content": "BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | 1.400000 unit"
+              },
+              {
+                "id": "b0cb8fea-e37e-44c8-a770-71918167a622",
+                "type": "observation",
+                "description": "Observation: BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | Value: 1.7 | Code: 19237-7",
+                "content": "BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | 1.700000 unit"
+              },
+              {
+                "id": "54409533-1e4f-4c07-a967-febd05a3bdf2",
+                "type": "observation",
+                "description": "Observation: Diagnosis | Code: 282291009",
+                "content": "Diagnosis"
+              },
+              {
+                "id": "71e7306c-2676-44bc-852d-bff106b33fb2",
+                "type": "observation",
+                "description": "Observation: Diagnosis Status | Code: 33999-4",
+                "content": "Diagnosis Status"
+              },
+              {
+                "id": "bea705ea-50c5-4e71-8b1a-b1a118e90884",
+                "type": "observation",
+                "description": "Observation: Assertion | Code: ASSERTION",
+                "content": "Assertion"
+              },
+              {
+                "id": "ac815920-8f80-426c-9dc9-a09c87a75089",
+                "type": "observation",
+                "description": "Observation: Criticality | Code: 82606-5",
+                "content": "Criticality"
+              },
+              {
+                "id": "27b751f3-f4d3-41bd-86f6-28d3b6e6e1c2",
+                "type": "observation",
+                "description": "Code: ASSERTION",
+                "content": ""
+              },
+              {
+                "id": "c9d70ff5-bb0e-49f2-8d75-a2288d65e22d",
+                "type": "observation",
+                "description": "Observation: Problem | Code: 55607006",
+                "content": "Problem"
+              },
+              {
+                "id": "2f0094a5-ce1d-4216-b7ae-f5e06d69d255",
+                "type": "observation",
+                "description": "Observation: TROPONIN I.CARDIAC:MCNC:PT:SER/PLAS:QN: | Value: 0.04 | Code: 10839-9",
+                "content": "TROPONIN I.CARDIAC:MCNC:PT:SER/PLAS:QN: | 0.040000 unit"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n\n   The patient's glucose level is 140.0 mg/dL, which is within the pre-diabetes range according to the clinical reference ranges provided. However, the patient's HbA1c level is 5.7%, which is at the upper limit of the normal range. This suggests that the patient may be at risk for developing diabetes. The patient's family history of diabetes and obesity also support this diagnosis.\n\n2. Supporting evidence:\n\n   - Glucose level: 140.0 mg/dL ([O-13])\n   - HbA1c level: 5.7% ([O-14])\n   - Family history of diabetes\n   - Obesity (BMI not explicitly mentioned, but implied by the presence of conditions such as hypertension and CKD)\n\n3. Alternative diagnoses:\n\n   - Type 1 Diabetes Mellitus: The patient's glucose level and HbA1c level do not suggest an autoimmune component, which is typically seen in Type 1 diabetes.\n   - Steroid-Induced Hyperglycemia: There is no evidence of corticosteroid medication or a history of steroid use.\n\n4. Missing data:\n\n   - Fasting glucose test to confirm the diagnosis of diabetes\n   - Insulin levels to rule out Type 1 diabetes\n   - Cortisol levels to rule out Cushing's syndrome\n\n5. Clinical recommendation:\n\n   - Perform a fasting glucose test to confirm the diagnosis of diabetes and to assess the patient's risk for developing complications.\n\nNote: The patient's CKD stage 3 and hypertension also need to be addressed, but the primary concern is the patient's hyperglycemia.",
+            "elapsed_seconds": 182.602,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "584f4af9-e522-401a-9488-699ed9af1f13",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Constipation (disorder)"
+              },
+              {
+                "id": "098478a7-8b4b-44af-b0d4-0cbdbabef332",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Chronic constipation (disorder)"
+              },
+              {
+                "id": "4fb3aa0d-013d-4fc5-9f4a-f2775e93d799",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Peripheral arterial disease"
+              },
+              {
+                "id": "6c466f40-0c60-4a2c-9ffc-616dbe030589",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Bilateral stenosis of carotid arteries"
+              },
+              {
+                "id": "1cc70ec6-9566-48e0-969c-87b964325e32",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Carotid artery stenosis (disorder)"
+              },
+              {
+                "id": "bba512e8-58f0-454c-96e8-bc80b7dba574",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Gait problem (finding)"
+              },
+              {
+                "id": "0d6cff0b-526f-4a0b-9a61-3c16df5351a9",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Actinic keratosis (disorder)"
+              },
+              {
+                "id": "fb7d9cef-38e1-4e3f-9e97-423783e898f2",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Acute ST segment elevation myocardial infarction (disorder)"
+              },
+              {
+                "id": "97b681f6-7b59-4dbe-808b-8da139a6162f",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Carpal tunnel syndrome (disorder)"
+              },
+              {
+                "id": "f147a9c8-3f3a-43b0-96c2-f410b261ea02",
+                "type": "condition",
+                "description": "Condition data",
+                "content": "Chronic diastolic heart failure (disorder)"
+              },
+              {
+                "id": "16b8fc00-1d1e-4a21-bce8-db98f98dc507",
+                "type": "observation",
+                "description": "Observation: Severity Observation | Code: SEV",
+                "content": "Severity Observation"
+              },
+              {
+                "id": "1d68fe43-2c1a-455d-ad39-abd9839987c5",
+                "type": "observation",
+                "description": "Observation: BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | Value: 1.4 | Code: 19237-7",
+                "content": "BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | 1.400000 unit"
+              },
+              {
+                "id": "4eb9d86c-36f3-4743-85d4-c6b284f80d37",
+                "type": "observation",
+                "description": "Observation: BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | Value: 1.7 | Code: 19237-7",
+                "content": "BASE EXCESS^^STANDARD:SCNC:PT:BLDV:QN: | 1.700000 unit"
+              },
+              {
+                "id": "5838e77b-b5e1-44ff-bfaf-0b7b9c603106",
+                "type": "observation",
+                "description": "Observation: Diagnosis | Code: 282291009",
+                "content": "Diagnosis"
+              },
+              {
+                "id": "08eef8a0-c6f4-4b6f-a696-2be6f2afbf81",
+                "type": "observation",
+                "description": "Observation: Diagnosis Status | Code: 33999-4",
+                "content": "Diagnosis Status"
+              },
+              {
+                "id": "c6393b31-ea2f-421a-9108-b76877891b23",
+                "type": "observation",
+                "description": "Observation: Assertion | Code: ASSERTION",
+                "content": "Assertion"
+              },
+              {
+                "id": "99b72abb-48e1-4702-8327-c3d1f45e4237",
+                "type": "observation",
+                "description": "Observation: Criticality | Code: 82606-5",
+                "content": "Criticality"
+              },
+              {
+                "id": "b81b1ed5-77c2-41f0-b2ee-8ef6128e503d",
+                "type": "observation",
+                "description": "Code: ASSERTION",
+                "content": ""
+              },
+              {
+                "id": "b4a7e100-9a22-4063-b201-70399d2ad52b",
+                "type": "observation",
+                "description": "Observation: Problem | Code: 55607006",
+                "content": "Problem"
+              },
+              {
+                "id": "8203fe82-f897-4d51-9b58-cfa8ff17e3cd",
+                "type": "observation",
+                "description": "Observation: TROPONIN I.CARDIAC:MCNC:PT:SER/PLAS:QN: | Value: 0.04 | Code: 10839-9",
+                "content": "TROPONIN I.CARDIAC:MCNC:PT:SER/PLAS:QN: | 0.040000 unit"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "Based on the retrieved data, the following observations and conditions are relevant to the query:\n\n1. [O-13] GLUCOSE: 140.0 mg/dL \u2014 normal\n   The patient's glucose level is within the normal range, indicating no evidence of diabetes or pre-diabetes at this time.\n\n2. [O-14] HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7% \u2014 normal\n   The patient's HbA1c level is within the normal range, indicating no evidence of diabetes or pre-diabetes at this time.\n\n3. [O-10] CREATININE: 2.3 mg/dL \u2014 normal\n   The patient's creatinine level is within the normal range, indicating no evidence of renal concern at this time.\n\n4. [O-22] UREA NITROGEN: 71.0 mg/dL \u2014 normal\n   The patient's BUN level is within the normal range, indicating no evidence of hepatic or malnutrition issues at this time.\n\n5. [O-21] TROPONIN I.CARDIAC: 0.04 ng/mL \u2014 normal\n   The patient's troponin I level is within the normal range, indicating no evidence of myocardial infarction at this time.\n\n6. [O-18] POTASSIUM: 3.6 mEq/L \u2014 normal\n   The patient's potassium level is within the normal range, indicating no evidence of arrhythmia risk or hyperkalemia at this time.\n\n7. [C-11] Chronic kidney disease stage 3 (disorder) | Status: unknown | Onset: unknown\n   The patient has a history of chronic kidney disease stage 3, which may be relevant to their overall health and potential kidney function.\n\n8. [C-17] Essential hypertension (disorder) | Status: unknown | Onset: unknown\n   The patient has a history of essential hypertension, which may be relevant to their overall cardiovascular health.\n\nConsidering the retrieved data, the most likely diagnosis is a complex condition that may involve multiple comorbidities. However, based on the available information, the patient's conditions and observations suggest a possible diagnosis of chronic kidney disease stage 3 with possible hypertension.\n\nAlternatives to consider:\n\n- Diabetes mellitus type 2 (disorder) | Status: unknown | Onset: unknown\n- Hyperlipidemia (disorder) | Status: unknown | Onset: unknown\n- Hyperparathyroidism (disorder) | Status: unknown | Onset: unknown\n- Hypomagnesemia (disorder) | Status: unknown | Onset: unknown\n- Obesity (disorder) | Status: unknown | Onset: unknown\n\nThese conditions may be relevant to the patient's overall health and may require further evaluation and management.",
+        "medrag_kg": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n\n   The patient's glucose level is 140.0 mg/dL, which is within the pre-diabetes range according to the clinical reference ranges provided. However, the patient's HbA1c level is 5.7%, which is at the upper limit of the normal range. This suggests that the patient may be at risk for developing diabetes. The patient's family history of diabetes and obesity also support this diagnosis.\n\n2. Supporting evidence:\n\n   - Glucose level: 140.0 mg/dL ([O-13])\n   - HbA1c level: 5.7% ([O-14])\n   - Family history of diabetes\n   - Obesity (BMI not explicitly mentioned, but implied by the presence of conditions such as hypertension and CKD)\n\n3. Alternative diagnoses:\n\n   - Type 1 Diabetes Mellitus: The patient's glucose level and HbA1c level do not suggest an autoimmune component, which is typically seen in Type 1 diabetes.\n   - Steroid-Induced Hyperglycemia: There is no evidence of corticosteroid medication or a history of steroid use.\n\n4. Missing data:\n\n   - Fasting glucose test to confirm the diagnosis of diabetes\n   - Insulin levels to rule out Type 1 diabetes\n   - Cortisol levels to rule out Cushing's syndrome\n\n5. Clinical recommendation:\n\n   - Perform a fasting glucose test to confirm the diagnosis of diabetes and to assess the patient's risk for developing complications.\n\nNote: The patient's CKD stage 3 and hypertension also need to be addressed, but the primary concern is the patient's hyperglycemia."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 300.156,
+            "iqr": 0.0,
+            "values": [
+              300.156
+            ]
+          },
+          "medrag_kg": {
+            "median": 182.602,
+            "iqr": 0.0,
+            "values": [
+              182.602
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.2207,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.3333
+        },
+        "grounded_recall": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,2927 @@
+{
+  "metadata": {
+    "patient_id": "000000509",
+    "generated_at": "20260518_161143",
+    "backend_url": "http://localhost:8001",
+    "query_set": "ddx",
+    "query_count": 7,
+    "runs_per_mode": 2,
+    "random_seed": 42,
+    "rouge_available": true,
+    "scipy_available": true
+  },
+  "global_stats": {
+    "wilcoxon_latency": {
+      "n_pairs": 14,
+      "statistic": 37.0,
+      "p_value": 0.357544,
+      "significant_at_05": false,
+      "note": "Wilcoxon signed-rank test (two-sided) on paired latency samples"
+    },
+    "n_paired_samples": 14,
+    "overall_latency": {
+      "standard_rag_median": 70.057,
+      "medrag_kg_median": 62.032
+    },
+    "mean_rouge_l": 0.1488,
+    "mean_consistency_rag": 1.0,
+    "mean_consistency_medrag": 1.0,
+    "mean_faithfulness_rag": 0.0,
+    "mean_faithfulness_medrag": 0.0
+  },
+  "query_results": [
+    {
+      "query_index": 0,
+      "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "Found: present it clearly (value, unit, date).\n\nThe most likely diagnosis is Chronic Kidney Disease (CKD) stage 3.\n\nEvidence from the records includes:\n1. CREATININE: 2.3 mg/dL, which is [HIGH] and indicates impaired kidney function.\n2. UREA NITROGEN: 71.0 mg/dL, which is [HIGH] and suggests impaired kidney function.\n3. NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, which is [HIGH] and indicates possible kidney damage.\n4. ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, which is [HIGH] and may indicate inflammation or infection.\n5. C REACTIVE PROTEIN: 2.5 mg/dL, which is [HIGH] and suggests inflammation or infection.\n6. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7%, which is [HIGH] and indicates possible diabetes mellitus.\n7. GLUCOSE: 140.0 mg/dL, which is [HIGH] and suggests possible diabetes mellitus.\n8. CALCIUM.IONIZED: 1.36 mmol/L, which is [LOW] and may indicate hypocalcemia.\n9. POTASSIUM: 3.6 mmol/L, which is [LOW] and may indicate hypokalemia.\n\nAlternatives to consider include:\n1. Diabetes mellitus type 2, given the high glucose and HbA1c levels.\n2. Infection or inflammation, given the high CRP and ESR levels.\n3. Cardiovascular disease, given the high troponin I level.\n4. Other conditions listed in the medical conditions section, such as hypertension and hyperlipidemia.",
+            "elapsed_seconds": 79.192,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "62fb5c50-1dee-4aed-8166-82fa477a6949",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "7c97ac0a-3e91-4050-aab6-bd285830e0f2",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "19626ea5-af02-4718-8ca4-9cba7f4f74ba",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "c3abf7fa-3bdf-42d9-b94b-28c7338e77d1",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "c95b7a70-7bbb-4ac9-a0d8-b6476dccbe17",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e4502869-4e34-470b-aade-8ed3ced26b12",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a006de77-718d-4f02-bd03-3a925296fc5c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "88a26a61-5408-4e75-bf47-2156a2e1c7fc",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a77f220b-7967-4fd1-9b7b-29949199a06b",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e2c1de41-761c-4367-9be2-a4bf88d818cd",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "7b4629e7-84e0-4fb9-9993-4789d0326152",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "219a8796-c662-4823-9e8b-208efdc4b139",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f38296b6-1926-492c-a8a3-99a5a2e0046f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d1bc32d7-bd2a-4567-82f8-5b1417a9e09c",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ea9d7898-d5ae-471e-8dff-633aec8c05da",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d4e3604d-6e4c-4ed5-93ec-606496616043",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "4d596166-c6c0-4008-8d44-d197eb5de7ae",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8b93ab26-9d7f-40a1-9d64-7b5beeb3a785",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "819ee0e0-0064-4f2c-be0d-9746e04bb2bb",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "6c0e3090-f783-42ca-bdaa-e87dace94ad1",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "Found: present it clearly (value, unit, date).\n\nThe most likely diagnosis is Chronic Kidney Disease (CKD) stage 3.\n\nEvidence from the records includes:\n1. CREATININE: 2.3 mg/dL, which is [HIGH] and indicates impaired kidney function.\n2. UREA NITROGEN: 71.0 mg/dL, which is [HIGH] and suggests impaired kidney function.\n3. NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, which is [HIGH] and indicates possible kidney damage.\n4. ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, which is [HIGH] and may indicate inflammation or infection.\n5. C REACTIVE PROTEIN: 2.5 mg/dL, which is [HIGH] and suggests inflammation or infection.\n6. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7%, which is [HIGH] and indicates possible diabetes mellitus.\n7. GLUCOSE: 140.0 mg/dL, which is [HIGH] and suggests possible diabetes mellitus.\n8. CALCIUM.IONIZED: 1.36 mmol/L, which is [LOW] and may indicate hypocalcemia.\n9. POTASSIUM: 3.6 mmol/L, which is [LOW] and may indicate hypokalemia.\n\nAlternatives to consider include:\n1. Diabetes mellitus type 2, given the high glucose and HbA1c levels.\n2. Infection or inflammation, given the high CRP and ESR levels.\n3. Cardiovascular disease, given the high troponin I level.\n4. Other conditions listed in the medical conditions section, such as hypertension and hyperlipidemia.",
+            "elapsed_seconds": 80.299,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "a57407c8-961d-4f14-8217-b25c03749aec",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1c8bdb0c-94ac-4676-b85e-3c216af6a3f4",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "878e8866-d1b2-4479-b523-4b911270a9a0",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "38694a95-7b07-45c7-8de5-acff3b439a24",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "9b66f7bf-57f7-4ddd-88e4-971662ced7b7",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1bb01afd-f8b1-439d-aeeb-3df19f269f41",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "5ad11d4a-2f92-4338-8a3b-26cc1d3ad81c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0c8e25b9-b540-4c11-a72e-254f271ab2a4",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "dc4af165-53f8-417b-9b7e-dd15e3f84071",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "931c57d3-6c58-4e89-81cd-5045091acc01",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "9dadec55-1853-4605-af54-7468d8bb7bad",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "035a01bb-c59b-42f9-9023-1dab9b2d9f1d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "32853f15-3f2c-42de-a4df-f702aa0bf2bd",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8b43d844-73d9-4b59-8671-002f82cced1a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "11738f63-89ff-4b16-b68f-36cbec058552",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a680e161-efde-4b4b-a943-c7327465b50a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "daf3bb3a-bf50-45bb-aa0a-75104f796e4f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1093b1d1-6639-457a-a3d5-5e4e4b121e00",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "4fb7f093-4078-4ec8-a951-e1124b1017a2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ece159ec-c3ea-45ac-aa34-d957033c7695",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune: positive anti-GAD, anti-islet cell antibodies\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: corticosteroid medication use (to confirm or rule out Steroid-Induced Hyperglycemia)\n5. Clinical recommendation: Order a corticosteroid medication use history and review the patient's medication list to determine if any corticosteroids are being used, which would support or rule out Steroid-Induced Hyperglycemia.",
+            "elapsed_seconds": 66.416,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "21051dc2-d5af-4abb-bd38-cd39de30c611",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "436d7980-1dae-4afe-b402-b74a7c488679",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "09dee210-2419-492b-adca-8a5313b9b749",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "687f49c5-2dea-4c4b-91f1-d062a48e34f7",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "b8bf858e-009a-4363-8ea3-44f5d52e20aa",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "61e3788a-c7a2-4b83-acef-1366098a88d8",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0a593749-74b9-4afb-9c38-bad2b94e1539",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "9314618e-94b2-47be-a3ef-949d952aadd5",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a6c13911-8029-4186-882f-449bd2325cde",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "339bd947-1c21-4b3a-9bb9-091e3fb31eda",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "b16db58b-fb57-4430-a87d-e5d7863f0365",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b18c811a-31fc-414a-939b-5135f51eceec",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a47c7ec5-794f-42d1-b934-98dbd8c2afa2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9b7ccea3-389a-42e1-ad39-7499bfef0187",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "29bc845a-ac90-485e-973d-d7bdf96ed0cd",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d9609f59-6469-446d-b58c-46344c44b737",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "99ddc33a-37e3-47c0-bfc2-d425c5681cf2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "181881fc-36c2-4d19-83f1-29a3e027ab90",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b7208b6a-999e-4c7c-a611-f91f83be3ae8",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c0e56146-d873-44df-ae55-1d646e9b9409",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Based on this patient's conditions and observations, what is the most likely diagnosis and what alternatives should be considered?",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune: positive anti-GAD, anti-islet cell antibodies\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: corticosteroid medication use (to confirm or rule out Steroid-Induced Hyperglycemia)\n5. Clinical recommendation: Order a corticosteroid medication use history and review the patient's medication list to determine if any corticosteroids are being used, which would support or rule out Steroid-Induced Hyperglycemia.",
+            "elapsed_seconds": 65.211,
+            "retrieved_count": 79,
+            "sources": [
+              {
+                "id": "ce9c691a-daba-4712-a6ec-0a39d2c39680",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8850a1e4-cafa-4490-8750-94c4ae05f748",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "12fda086-70b4-401c-a167-00449bf4c4d6",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "60cd1149-b259-4357-826b-39703e4f4acd",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "449e2917-5f3e-45f6-834e-0078288f9171",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0c45390e-ed46-425c-b0c6-5fcfb15b69f4",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "c22d3f59-05f6-4c47-b2de-4443547502da",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "278f6ed1-dbfe-469a-b6d5-c4c154788cfb",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "587d6927-1426-4d59-b8f4-dd68ce1f82f4",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "85e436ab-64f1-468d-9596-286c60314049",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "c2a079ab-0d3f-4e76-8607-2244dbb478bf",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "53f27ff3-6fbd-46a7-9c3c-d558e436df4b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b7c7c513-f731-488a-b322-40ca8b5e36cd",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b6b42b0c-efbd-4ecc-bdb3-3bf82cd8de81",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5441cfde-be9a-41cb-b9b7-48d4583c8fce",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f3971fdd-e95a-49b4-857b-5bb8d29f1baf",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2f035bb2-2503-4e19-ba1d-6f0fd5eccab5",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "82d47c9a-5907-4b61-9631-01a4cef7da52",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b828de0a-18c1-4cd9-b52c-ad8dbb608da6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7f6ec78c-0c1f-460d-941b-0ea1f5774dce",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "Found: present it clearly (value, unit, date).\n\nThe most likely diagnosis is Chronic Kidney Disease (CKD) stage 3.\n\nEvidence from the records includes:\n1. CREATININE: 2.3 mg/dL, which is [HIGH] and indicates impaired kidney function.\n2. UREA NITROGEN: 71.0 mg/dL, which is [HIGH] and suggests impaired kidney function.\n3. NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, which is [HIGH] and indicates possible kidney damage.\n4. ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, which is [HIGH] and may indicate inflammation or infection.\n5. C REACTIVE PROTEIN: 2.5 mg/dL, which is [HIGH] and suggests inflammation or infection.\n6. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7%, which is [HIGH] and indicates possible diabetes mellitus.\n7. GLUCOSE: 140.0 mg/dL, which is [HIGH] and suggests possible diabetes mellitus.\n8. CALCIUM.IONIZED: 1.36 mmol/L, which is [LOW] and may indicate hypocalcemia.\n9. POTASSIUM: 3.6 mmol/L, which is [LOW] and may indicate hypokalemia.\n\nAlternatives to consider include:\n1. Diabetes mellitus type 2, given the high glucose and HbA1c levels.\n2. Infection or inflammation, given the high CRP and ESR levels.\n3. Cardiovascular disease, given the high troponin I level.\n4. Other conditions listed in the medical conditions section, such as hypertension and hyperlipidemia.",
+        "medrag_kg": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune: positive anti-GAD, anti-islet cell antibodies\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: corticosteroid medication use (to confirm or rule out Steroid-Induced Hyperglycemia)\n5. Clinical recommendation: Order a corticosteroid medication use history and review the patient's medication list to determine if any corticosteroids are being used, which would support or rule out Steroid-Induced Hyperglycemia."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 79.745,
+            "iqr": 1.107,
+            "values": [
+              79.192,
+              80.299
+            ]
+          },
+          "medrag_kg": {
+            "median": 65.814,
+            "iqr": 1.205,
+            "values": [
+              66.416,
+              65.211
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.125,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 1,
+      "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "The patient's glucose and HbA1c values indicate about their metabolic status.\n\n1. GLUCOSE: 140.0 mg/dL\n2. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7 (recorded on unknown date)\n\nThe glucose level is [HIGH] (above the normal random value of <140 mg/dL), indicating hyperglycemia. The HbA1c level is within the normal range, suggesting that the patient's glucose control has been relatively good in the past few months.",
+            "elapsed_seconds": 46.332,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "812a2e3e-e140-49d4-91ac-3af70631fd68",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "95745c90-5e16-4131-98af-d27b5554bec9",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "bd7f6bc5-eb0e-4b22-b3a3-4da66903153a",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1598363f-984b-4c70-a214-692e0b1f9d75",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "39349abf-02da-4732-9c2c-9cae95de151f",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "7686e794-0b66-4d5a-96a9-ffd022bebce3",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "50a0aa21-dcd1-4b70-8050-209c615deee5",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "af16cd6b-17b9-4f23-848b-651e6664e813",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f18b825a-907b-488a-ba53-59664950c580",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "17abfae9-de22-4fac-beb1-6f24b76ec977",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "db03a709-3534-4ab6-a59a-62a4707f66ff",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "433ffd25-a686-40ed-8279-66f496812693",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "00e0d094-4aca-47d2-b2db-dc45f2e07034",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9cf86e5f-fd47-4424-8b96-6ef8c949e8a2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "cc5e9a37-daea-4c45-be78-15e08cb14058",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "30849e34-2e7d-469f-b3f9-0684c41066ef",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "de4e1a59-4ca8-4e2a-80e4-a2c78019620e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5d1d5253-2089-4b34-b60f-d1747f4c4746",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "3bffc14e-5588-496b-a64a-6149ac5891ff",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e00e019c-b3f7-465c-9614-a24496fc71aa",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "The patient's glucose and HbA1c values indicate about their metabolic status.\n\n1. GLUCOSE: 140.0 mg/dL\n2. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7 (recorded on unknown date)\n\nThe glucose level is [HIGH] (above the normal random value of <140 mg/dL), indicating hyperglycemia. The HbA1c level is within the normal range, suggesting that the patient's glucose control has been relatively good in the past few months.",
+            "elapsed_seconds": 46.319,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "2ae82667-e7ba-4315-b1ee-6535be5430ea",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "5ea14086-a826-44e5-b006-23408464807c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "314d8d93-b73c-4ad7-81cc-bc6cbe04eeea",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f76aa333-8764-46e4-b253-886e0e74861e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0b68fea3-a9fa-480a-b52e-37354c98672f",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8fbc3c1c-35bb-4384-9b80-44486db5f01c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "53bd78e3-69ab-46a9-ad2a-1cd18923c0f3",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "5000c2e1-6f46-476d-81d3-96a5c46074b7",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f99b4a21-1a9e-4deb-b141-69182eb6dc3a",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "cbb106ff-54f2-4f11-ad4b-6f6aa83de24e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a9d0273c-50ba-4386-acbf-eff204ef4678",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "15d8a2db-7058-49dc-a124-e2b24583e915",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "78a6f0b1-6cef-4fef-8d50-c2229bdc5fa5",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5c56478e-160d-41c4-ab7c-4e5519b99c0f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ccf8571e-c526-4eda-b8d8-28d714eeb7f0",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a8b7156b-6f74-4403-9a95-fc68a285cd0a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "181cd57b-377a-4835-9225-459aa0076155",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c6d32f84-482d-4011-ae84-a319710715ae",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "95295af1-df94-456a-a2ad-2c7aa87e8e58",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f43853f8-2337-4248-94ac-ad7c52ed18f8",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "**Relevant Values:**\n\n1. Glucose: 140.0 mg/dL\n2. HbA1c: 5.7%\n3. Creatinine: 2.3 mg/dL\n4. Erythrocyte Sedimentation Rate (ESR): 42.0 mm/hr\n5. Leukocytes: 560.0 cells/\u03bcL\n6. Potassium: 3.6 mEq/L\n7. Sodium: 139.0 mEq/L\n8. Urea Nitrogen: 71.0 mg/dL\n\n**Clinical Interpretation:**\n\n1. Glucose: Elevated (140.0 mg/dL). This value is above the normal fasting range (<100 mg/dL), indicating hyperglycemia.\n2. HbA1c: Normal (5.7%). This value falls within the normal range (<5.7%), but it is close to the pre-diabetes threshold (5.7-6.4%).\n3. Creatinine: Elevated (2.3 mg/dL). This value is above the normal range (0.6-1.2 mg/dL), indicating impaired renal function.\n4. ESR: Elevated (42.0 mm/hr). This value is above the normal range (0-20 mm/hr), indicating inflammation or infection.\n5. Leukocytes: Elevated (560.0 cells/\u03bcL). This value is above the normal range (4,000-11,000 cells/\u03bcL), indicating leukocytosis.\n6. Potassium: Low (3.6 mEq/L). This value is below the normal range (3.5-5.5 mEq/L), indicating hypokalemia.\n7. Sodium: Normal (139.0 mEq/L). This value falls within the normal range (135-145 mEq/L).\n8. Urea Nitrogen: Elevated (71.0 mg/dL). This value is above the normal range (7-20 mg/dL), indicating impaired renal function.\n\n**Clinical Note:**\n\nThe patient's glucose and HbA1c values are consistent with the KG clinical context for Type 2 Diabetes Mellitus, which is supported by the elevated glucose value and the normal but close-to-pre-diabetes HbA1c value.\n\n**Missing Data:**\n\nThe absence of specific data points, such as the patient's blood pressure, heart rate, and ketone levels, would help confirm or exclude a diagnosis of diabetes or other metabolic disorders.",
+            "elapsed_seconds": 98.887,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "ad872042-cfb8-45ce-9786-ba0e6deb364c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ce33a616-0997-4309-9fa3-4b1183d585d6",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "209521fc-ace1-4a64-8303-eb9e296e7e41",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "89211ddf-724e-42f1-8349-5378447a77d2",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "b50f94bc-193a-4042-8034-7bc18a50c260",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ae2b48f6-e940-4bdf-8bb2-f4d7af7955a3",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1c4d1d47-97a9-4278-98ca-f5dc827181e4",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "6aaf38e2-3f9c-4874-ac7c-e6f12dbd210f",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a048bdf9-f78b-494f-a1e4-82b023bbfeae",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "b85bd139-67ac-4fde-b494-11da6b09070f",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a0b7cbe4-6aa9-407e-9aa5-d1ba031fd8b2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1c0cbe14-72bf-467b-8884-2000786e3c09",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0fda630b-86db-46b9-b43c-c2972620671c",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a34c5331-2451-469f-bfe8-e37401a0fcaa",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "bdab39cd-3021-4e68-9661-01066f053420",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b60e1623-1699-41e6-b2b0-4972586f8359",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e67f7a1f-26c4-487f-aef9-0175332927d3",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ae6fbded-f924-407d-bacf-6efd36085fea",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2f5d85dc-7475-4643-bafc-d077e88b569a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c537c780-bbbe-4e70-8660-c70e73afa63a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's glucose and HbA1c values indicate about their metabolic status?",
+            "response": "**Relevant Values:**\n\n1. Glucose: 140.0 mg/dL\n2. HbA1c: 5.7%\n3. Creatinine: 2.3 mg/dL\n4. Erythrocyte Sedimentation Rate (ESR): 42.0 mm/hr\n5. Leukocytes: 560.0 cells/\u03bcL\n6. Potassium: 3.6 mEq/L\n7. Sodium: 139.0 mEq/L\n8. Urea Nitrogen: 71.0 mg/dL\n\n**Clinical Interpretation:**\n\n1. Glucose: Elevated (140.0 mg/dL). This value is above the normal fasting range (<100 mg/dL), indicating hyperglycemia.\n2. HbA1c: Normal (5.7%). This value falls within the normal range (<5.7%), but it is close to the pre-diabetes threshold (5.7-6.4%).\n3. Creatinine: Elevated (2.3 mg/dL). This value is above the normal range (0.6-1.2 mg/dL), indicating impaired renal function.\n4. ESR: Elevated (42.0 mm/hr). This value is above the normal range (0-20 mm/hr), indicating inflammation or infection.\n5. Leukocytes: Elevated (560.0 cells/\u03bcL). This value is above the normal range (4,000-11,000 cells/\u03bcL), indicating leukocytosis.\n6. Potassium: Low (3.6 mEq/L). This value is below the normal range (3.5-5.5 mEq/L), indicating hypokalemia.\n7. Sodium: Normal (139.0 mEq/L). This value falls within the normal range (135-145 mEq/L).\n8. Urea Nitrogen: Elevated (71.0 mg/dL). This value is above the normal range (7-20 mg/dL), indicating impaired renal function.\n\n**Clinical Note:**\n\nThe patient's glucose and HbA1c values are consistent with the KG clinical context for Type 2 Diabetes Mellitus, which is supported by the elevated glucose value and the normal but close-to-pre-diabetes HbA1c value.\n\n**Missing Data:**\n\nThe absence of specific data points, such as the patient's blood pressure, heart rate, and ketone levels, would help confirm or exclude a diagnosis of diabetes or other metabolic disorders.",
+            "elapsed_seconds": 98.704,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "6dc6f544-ea0d-4691-959e-1f05bdfd3546",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "646be8ed-af84-46b8-b1ff-10fe703b3ded",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "012d4f2c-b327-461e-b8a2-c648cdd88fe3",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "6a61aa1f-923b-40a8-a3ae-4dacd81ca176",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "42da21cd-1cd2-4f8f-acb9-c174791b6554",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0efb308b-ae14-45c2-ad6f-b80748598d4c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f9279da4-8f83-4604-996b-8a6135e092d7",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1b1cf6ce-bbde-4090-b2c1-5ebaa70d5c51",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "effa45dd-c7c8-48bb-a232-3e182457cf4d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "9956a38e-7454-4a20-b840-966bb4f4c019",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "cee4db7f-3c95-4e88-af29-525cbc9ae80d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "81e38ce3-de91-42fc-a880-3ddc89fe840d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "afcf9aab-6f15-4d93-98fe-0152774fa53d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "95ffb61f-9311-4fb1-9711-34443345c78d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "515ddd7a-0a99-43e7-940b-1906316d1a2b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f6023269-2b85-428a-883d-dc8d0bc791ef",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2573c5f2-fb60-4348-a6bc-e428eeea2081",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "74b3dc90-b314-41c3-b3ae-c07f4bdc4981",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "161328b3-fb10-431b-8d57-3e5c2ef27c71",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "276f547a-9cd8-4ce1-9391-80d7e23cfbd0",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "The patient's glucose and HbA1c values indicate about their metabolic status.\n\n1. GLUCOSE: 140.0 mg/dL\n2. HEMOGLOBIN A1C/HEMOGLOBIN.TOTAL: 5.7 (recorded on unknown date)\n\nThe glucose level is [HIGH] (above the normal random value of <140 mg/dL), indicating hyperglycemia. The HbA1c level is within the normal range, suggesting that the patient's glucose control has been relatively good in the past few months.",
+        "medrag_kg": "**Relevant Values:**\n\n1. Glucose: 140.0 mg/dL\n2. HbA1c: 5.7%\n3. Creatinine: 2.3 mg/dL\n4. Erythrocyte Sedimentation Rate (ESR): 42.0 mm/hr\n5. Leukocytes: 560.0 cells/\u03bcL\n6. Potassium: 3.6 mEq/L\n7. Sodium: 139.0 mEq/L\n8. Urea Nitrogen: 71.0 mg/dL\n\n**Clinical Interpretation:**\n\n1. Glucose: Elevated (140.0 mg/dL). This value is above the normal fasting range (<100 mg/dL), indicating hyperglycemia.\n2. HbA1c: Normal (5.7%). This value falls within the normal range (<5.7%), but it is close to the pre-diabetes threshold (5.7-6.4%).\n3. Creatinine: Elevated (2.3 mg/dL). This value is above the normal range (0.6-1.2 mg/dL), indicating impaired renal function.\n4. ESR: Elevated (42.0 mm/hr). This value is above the normal range (0-20 mm/hr), indicating inflammation or infection.\n5. Leukocytes: Elevated (560.0 cells/\u03bcL). This value is above the normal range (4,000-11,000 cells/\u03bcL), indicating leukocytosis.\n6. Potassium: Low (3.6 mEq/L). This value is below the normal range (3.5-5.5 mEq/L), indicating hypokalemia.\n7. Sodium: Normal (139.0 mEq/L). This value falls within the normal range (135-145 mEq/L).\n8. Urea Nitrogen: Elevated (71.0 mg/dL). This value is above the normal range (7-20 mg/dL), indicating impaired renal function.\n\n**Clinical Note:**\n\nThe patient's glucose and HbA1c values are consistent with the KG clinical context for Type 2 Diabetes Mellitus, which is supported by the elevated glucose value and the normal but close-to-pre-diabetes HbA1c value.\n\n**Missing Data:**\n\nThe absence of specific data points, such as the patient's blood pressure, heart rate, and ketone levels, would help confirm or exclude a diagnosis of diabetes or other metabolic disorders."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 46.326,
+            "iqr": 0.013,
+            "values": [
+              46.332,
+              46.319
+            ]
+          },
+          "medrag_kg": {
+            "median": 98.796,
+            "iqr": 0.183,
+            "values": [
+              98.887,
+              98.704
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.1609,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 2,
+      "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "1. The patient's blood pressure readings suggest clinically that they have low diastolic blood pressure readings.\n\n2. The diastolic blood pressure readings are:\n   1. Diastolic blood pressure: 54.0 mmHg\n   2. Diastolic blood pressure: 50.0 mmHg\n   3. Diastolic blood pressure: 40.0 mmHg\n   4. Diastolic blood pressure: 49.0 mmHg\n   5. Diastolic blood pressure: 39.0 mmHg\n   6. Diastolic blood pressure: 42.0 mmHg\n\n   These values are all below the normal range of 60-80 mmHg, indicating low diastolic blood pressure.\n\n3. The systolic blood pressure readings are:\n   1. Systolic blood pressure: 79.0 mmHg\n   2. Systolic blood pressure: 75.0 mmHg\n   3. Systolic blood pressure: 126.0 mmHg\n   4. Systolic blood pressure: 78.0 mmHg\n   5. Systolic blood pressure: 123.0 mmHg\n\n   These values are mostly within the normal range of 90-120 mmHg, but one reading is elevated.\n\n4. The mean blood pressure readings are:\n   1. Mean blood pressure: 61.0 mmHg\n   2. Mean blood pressure: 58.0 mmHg\n   3. Mean blood pressure: 70.0 mmHg\n   4. Mean blood pressure: 59.0 mmHg\n   5. Mean blood pressure: 69.0 mmHg\n   6. Mean blood pressure: 72.0 mmHg\n\n   These values are mostly within the normal range, but one reading is elevated.\n\n5. The patient's blood pressure readings suggest that they may have orthostatic hypotension, given the low diastolic blood pressure readings.",
+            "elapsed_seconds": 72.435,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "443a490b-eda4-4c3c-9e81-cb69bce12b22",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5b4e71e6-d044-4936-a3aa-5ff3d356d113",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0b7f1d09-cda6-4b9b-b8e2-56b6ab95714a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "edd96375-9cad-4d38-920d-928dfc3322c9",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9e1e3e74-f4e7-478c-b819-e6ce19d8e5f0",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "119afe63-86cc-4413-a652-2ee090e74223",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0498f8d2-f3e7-4d1b-b057-c2cce8c4a726",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d78a7ee2-b936-4d24-9903-a70355fbee74",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "15d2ff1a-60bd-41e3-bf42-3d50aca2eaec",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5954e38a-ae4a-4830-82fa-9ff5a5881781",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "1. The patient's blood pressure readings suggest clinically that they have low diastolic blood pressure readings.\n\n2. The diastolic blood pressure readings are:\n   1. Diastolic blood pressure: 54.0 mmHg\n   2. Diastolic blood pressure: 50.0 mmHg\n   3. Diastolic blood pressure: 40.0 mmHg\n   4. Diastolic blood pressure: 49.0 mmHg\n   5. Diastolic blood pressure: 39.0 mmHg\n   6. Diastolic blood pressure: 42.0 mmHg\n\n   These values are all below the normal range of 60-80 mmHg, indicating low diastolic blood pressure.\n\n3. The systolic blood pressure readings are:\n   1. Systolic blood pressure: 79.0 mmHg\n   2. Systolic blood pressure: 75.0 mmHg\n   3. Systolic blood pressure: 126.0 mmHg\n   4. Systolic blood pressure: 78.0 mmHg\n   5. Systolic blood pressure: 123.0 mmHg\n\n   These values are mostly within the normal range of 90-120 mmHg, but one reading is elevated.\n\n4. The mean blood pressure readings are:\n   1. Mean blood pressure: 61.0 mmHg\n   2. Mean blood pressure: 58.0 mmHg\n   3. Mean blood pressure: 70.0 mmHg\n   4. Mean blood pressure: 59.0 mmHg\n   5. Mean blood pressure: 69.0 mmHg\n   6. Mean blood pressure: 72.0 mmHg\n\n   These values are mostly within the normal range, but one reading is elevated.\n\n5. The patient's blood pressure readings suggest that they may have orthostatic hypotension, given the low diastolic blood pressure readings.",
+            "elapsed_seconds": 72.249,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "a9ca50e6-ace0-4553-a239-d0bb6cf67db4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a2ebd13d-1311-45e7-b286-18be2bbfba78",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "98ec48a4-0e3f-4df8-80d7-e4845e52606a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1b4a1968-45c3-425b-bf2c-ff15e19a30b7",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "baba787f-172a-4441-b44e-f5f3c688a00a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "94cd1bf8-8b9b-4f27-b7e1-e35faa8ac776",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "fa4a3733-7392-4dac-9dc6-7a6ac340f62d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0c2a3b2d-9d5a-4add-903f-c896987733f4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "eaf5d4c2-004a-4baf-acc1-54d8c99ce44b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "40c1a370-f499-4b9d-934f-6987ab56f4ee",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "Based on the patient's EHR records, the following blood pressure readings are noted:\n\n- Systolic blood pressure: 79.0, 75.0, 126.0, 78.0, 123.0 mmHg\n- Diastolic blood pressure: 54.0, 50.0, 40.0, 49.0, 39.0, 42.0 mmHg\n- Mean blood pressure: 61.0, 58.0, 70.0, 59.0, 69.0, 72.0 mmHg\n\nClinical interpretation: The patient's blood pressure readings are elevated, with systolic pressures ranging from 75.0 to 126.0 mmHg and diastolic pressures ranging from 39.0 to 54.0 mmHg. These values are above the normal range, indicating hypertension.\n\nClinical note: The patient's blood pressure readings are consistent with Essential Hypertension, as noted in the KG clinical context.\n\nNote: The absence of other relevant values such as heart rate, glucose, and creatinine is not addressed in this response, as the question specifically asked about blood pressure readings.",
+            "elapsed_seconds": 54.816,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "55e3a7eb-1b7b-430b-acfe-9ec1ebfa8cf6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ff3d6bd1-d875-47d7-8346-6a35ef6924d6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "4e8d3bf1-85c7-4fd1-9524-39bb91c94667",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ffda50bd-12e4-401b-a633-d4a6c25dfcca",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "02f7f490-5b32-4519-93b2-b70ffc4c16dd",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ffe6b2b8-d5a1-4b25-bfa9-1b5cc28c8086",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b3c9cb9b-c9f9-48d7-ad11-f9753370a75b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5a5a3107-6b0d-4eb6-9200-02e6327523e2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "3298f830-73a2-4944-a671-dd1579a1c112",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "71c4d036-3e27-4942-bfec-652b49a80d47",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Analyze the patient's blood pressure readings and explain what they suggest clinically.",
+            "response": "Based on the patient's EHR records, the following blood pressure readings are noted:\n\n- Systolic blood pressure: 79.0, 75.0, 126.0, 78.0, 123.0 mmHg\n- Diastolic blood pressure: 54.0, 50.0, 40.0, 49.0, 39.0, 42.0 mmHg\n- Mean blood pressure: 61.0, 58.0, 70.0, 59.0, 69.0, 72.0 mmHg\n\nClinical interpretation: The patient's blood pressure readings are elevated, with systolic pressures ranging from 75.0 to 126.0 mmHg and diastolic pressures ranging from 39.0 to 54.0 mmHg. These values are above the normal range, indicating hypertension.\n\nClinical note: The patient's blood pressure readings are consistent with Essential Hypertension, as noted in the KG clinical context.\n\nNote: The absence of other relevant values such as heart rate, glucose, and creatinine is not addressed in this response, as the question specifically asked about blood pressure readings.",
+            "elapsed_seconds": 54.917,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "b042d222-dc42-4405-af8d-042582b264ca",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8371a9bd-d465-4539-89f5-945178c0bd2f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "bf459fd8-0ff2-4e59-9b5f-4c9c3412ccfa",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d441b433-dd42-47b1-86f9-8bb8bc358a6c",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "dc7401d7-b2c3-4b93-b8f4-2c2c6673d93e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "998c7b9d-0aa5-44f0-9753-97ea1b28f78d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8584ea7d-a912-44e3-8872-0ee9837679dd",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "87324635-529a-4b55-9d57-4f42e8dc6750",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ec6adaca-5c94-4aa6-b205-2d4e905f43ff",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "179d0459-f13d-4572-a829-acb153864f74",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "1. The patient's blood pressure readings suggest clinically that they have low diastolic blood pressure readings.\n\n2. The diastolic blood pressure readings are:\n   1. Diastolic blood pressure: 54.0 mmHg\n   2. Diastolic blood pressure: 50.0 mmHg\n   3. Diastolic blood pressure: 40.0 mmHg\n   4. Diastolic blood pressure: 49.0 mmHg\n   5. Diastolic blood pressure: 39.0 mmHg\n   6. Diastolic blood pressure: 42.0 mmHg\n\n   These values are all below the normal range of 60-80 mmHg, indicating low diastolic blood pressure.\n\n3. The systolic blood pressure readings are:\n   1. Systolic blood pressure: 79.0 mmHg\n   2. Systolic blood pressure: 75.0 mmHg\n   3. Systolic blood pressure: 126.0 mmHg\n   4. Systolic blood pressure: 78.0 mmHg\n   5. Systolic blood pressure: 123.0 mmHg\n\n   These values are mostly within the normal range of 90-120 mmHg, but one reading is elevated.\n\n4. The mean blood pressure readings are:\n   1. Mean blood pressure: 61.0 mmHg\n   2. Mean blood pressure: 58.0 mmHg\n   3. Mean blood pressure: 70.0 mmHg\n   4. Mean blood pressure: 59.0 mmHg\n   5. Mean blood pressure: 69.0 mmHg\n   6. Mean blood pressure: 72.0 mmHg\n\n   These values are mostly within the normal range, but one reading is elevated.\n\n5. The patient's blood pressure readings suggest that they may have orthostatic hypotension, given the low diastolic blood pressure readings.",
+        "medrag_kg": "Based on the patient's EHR records, the following blood pressure readings are noted:\n\n- Systolic blood pressure: 79.0, 75.0, 126.0, 78.0, 123.0 mmHg\n- Diastolic blood pressure: 54.0, 50.0, 40.0, 49.0, 39.0, 42.0 mmHg\n- Mean blood pressure: 61.0, 58.0, 70.0, 59.0, 69.0, 72.0 mmHg\n\nClinical interpretation: The patient's blood pressure readings are elevated, with systolic pressures ranging from 75.0 to 126.0 mmHg and diastolic pressures ranging from 39.0 to 54.0 mmHg. These values are above the normal range, indicating hypertension.\n\nClinical note: The patient's blood pressure readings are consistent with Essential Hypertension, as noted in the KG clinical context.\n\nNote: The absence of other relevant values such as heart rate, glucose, and creatinine is not addressed in this response, as the question specifically asked about blood pressure readings."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 72.342,
+            "iqr": 0.186,
+            "values": [
+              72.435,
+              72.249
+            ]
+          },
+          "medrag_kg": {
+            "median": 54.867,
+            "iqr": 0.101,
+            "values": [
+              54.816,
+              54.917
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.336,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 3,
+      "query": "What do the patient's creatinine and kidney-related observations tell us?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "The patient's creatinine data is present.\n\n1. CREATININE: 2.3 mg/dL\n\nNo kidney-related observations are present in the retrieved records.",
+            "elapsed_seconds": 29.194,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "807d3a1d-e51c-449f-9997-e8b927c5d41d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0d07202c-a37d-4a77-aad6-026a13e4b973",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b121a9f8-53a0-4865-8e45-a8f9a1e5aca1",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "765c7096-aeb1-4f84-afee-e5e474aebc42",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "16e49fa8-1b8c-41f7-87a4-72ed7164dd1e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "cd0a0f6a-2caf-4c0c-8c23-6b062617fba3",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "4228be8f-de8b-4c65-b488-959fd3a16e08",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "83a76007-b196-4eb9-a109-f544a1a6de1e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7fa2bd0f-b450-41f7-87e6-9aea1d647c76",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1845674f-b905-4e2b-b4fe-28320e24a0f0",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "The patient's creatinine data is present.\n\n1. CREATININE: 2.3 mg/dL\n\nNo kidney-related observations are present in the retrieved records.",
+            "elapsed_seconds": 29.093,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "917b1427-352a-4c03-8f14-99a6993b651b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2dab9c47-2b3a-48a3-add4-97822bc70a95",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "97295711-cf38-45e5-8b94-af4932e30127",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "6015d572-6ca5-44b3-b47a-d9ddda83ca02",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c628fd8a-c5b9-45e3-be47-f28a10208b9c",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "39ca0144-09c2-4586-82b3-8c1fa312ce10",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0846b2b6-0f51-406f-9657-5be483abced6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5707a05f-afc8-4323-a032-ec1dde6d2b50",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e5f4775a-14da-46a5-9f2a-39ed9412b09f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "4a25b272-973b-48b0-84b0-b5685200ba10",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "Creatinine: 2.3 mg/dL (2025-07-29)\nGlucose: 140.0 mg/dL (2025-07-29)\nHemoglobin A1c: 5.7% (2025-07-29)\nHemoglobin A1c: 5.5% (2025-07-29)\n\nThese values indicate elevated creatinine and glucose levels, which are concerning for kidney function and potential diabetes. The hemoglobin A1c levels suggest a possible diagnosis of diabetes mellitus, with the higher value (5.7%) indicating pre-diabetes or diabetes.\n\nThe patient's creatinine level is elevated, which may indicate impaired kidney function or kidney disease. The glucose level is also elevated, which is consistent with a diagnosis of diabetes mellitus. The hemoglobin A1c levels provide further evidence for this diagnosis, with the higher value indicating pre-diabetes or diabetes.\n\nThe KG clinical context is relevant, as the patient's glucose and hemoglobin A1c levels match the criteria for Type 2 Diabetes Mellitus.",
+            "elapsed_seconds": 51.579,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "14491e33-90cc-4851-8f9a-4c7629a62bd6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "17a466e8-9fad-46bd-ae6b-7c41b29187ea",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0f775605-e674-4b5a-bfb3-fe047c088e44",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "aaf44302-a4da-4bec-bb16-2ebcdd7d138f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "3627a399-78c7-48b7-9bc3-08f1f4116c86",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "afe20704-0b99-4c49-9442-169bd997d842",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "49442fd3-dca3-4a9a-976f-2b628e707e67",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9d9078ba-b21b-42ac-bcfb-a02b020a9b0f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e543e76e-a615-4344-a759-764d932b3184",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a802bf2f-cf03-4642-934d-3b9d6b4cb780",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What do the patient's creatinine and kidney-related observations tell us?",
+            "response": "Creatinine: 2.3 mg/dL (2025-07-29)\nGlucose: 140.0 mg/dL (2025-07-29)\nHemoglobin A1c: 5.7% (2025-07-29)\nHemoglobin A1c: 5.5% (2025-07-29)\n\nThese values indicate elevated creatinine and glucose levels, which are concerning for kidney function and potential diabetes. The hemoglobin A1c levels suggest a possible diagnosis of diabetes mellitus, with the higher value (5.7%) indicating pre-diabetes or diabetes.\n\nThe patient's creatinine level is elevated, which may indicate impaired kidney function or kidney disease. The glucose level is also elevated, which is consistent with a diagnosis of diabetes mellitus. The hemoglobin A1c levels provide further evidence for this diagnosis, with the higher value indicating pre-diabetes or diabetes.\n\nThe KG clinical context is relevant, as the patient's glucose and hemoglobin A1c levels match the criteria for Type 2 Diabetes Mellitus.",
+            "elapsed_seconds": 51.417,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "cb64f447-ac46-433c-89bd-f74554b8da48",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1e7e4fc3-8175-4b00-a284-99851253e1ae",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "81b21ef2-8fcc-4b98-97e4-a326cc708c77",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "11c185a7-68d9-4322-a4a9-e25f788802b2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e682b561-77d0-443f-b798-38e601e19b9b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "dd071178-b199-4a55-97c3-8396edb25b04",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "3bc2f97a-1779-4432-9f0c-56db7aea1882",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7b42c009-6aa9-4477-8d84-f15374844ce9",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1a7cd17f-f808-46c4-a1c7-f398dfd6b785",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5298542b-d0f2-4b5a-a148-36d07b6fd3cd",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "The patient's creatinine data is present.\n\n1. CREATININE: 2.3 mg/dL\n\nNo kidney-related observations are present in the retrieved records.",
+        "medrag_kg": "Creatinine: 2.3 mg/dL (2025-07-29)\nGlucose: 140.0 mg/dL (2025-07-29)\nHemoglobin A1c: 5.7% (2025-07-29)\nHemoglobin A1c: 5.5% (2025-07-29)\n\nThese values indicate elevated creatinine and glucose levels, which are concerning for kidney function and potential diabetes. The hemoglobin A1c levels suggest a possible diagnosis of diabetes mellitus, with the higher value (5.7%) indicating pre-diabetes or diabetes.\n\nThe patient's creatinine level is elevated, which may indicate impaired kidney function or kidney disease. The glucose level is also elevated, which is consistent with a diagnosis of diabetes mellitus. The hemoglobin A1c levels provide further evidence for this diagnosis, with the higher value indicating pre-diabetes or diabetes.\n\nThe KG clinical context is relevant, as the patient's glucose and hemoglobin A1c levels match the criteria for Type 2 Diabetes Mellitus."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 29.143,
+            "iqr": 0.101,
+            "values": [
+              29.194,
+              29.093
+            ]
+          },
+          "medrag_kg": {
+            "median": 51.498,
+            "iqr": 0.162,
+            "values": [
+              51.579,
+              51.417
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.0848,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 4,
+      "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "The patient shows signs of cardiovascular disease.\n\n1. The patient has a history of myocardial infarction.\n2. The patient has essential hypertension.\n3. The patient has hyperlipidemia.\n4. The patient has a high level of triglyceride (82.0 mg/dL).\n5. The patient has a high level of cholesterol (65.0 mg/dL).\n6. The patient has a high level of urea nitrogen (71.0 mg/dL), which may indicate kidney disease, a risk factor for cardiovascular disease.\n7. The patient has a high level of C-reactive protein (2.8 mg/dL), which is associated with inflammation and cardiovascular disease.\n8. The patient has a high level of troponin I (0.04 ng/mL), which may indicate cardiac damage.\n9. The patient has a high level of NATRIURETIC PEPTIDE.B PROHORMONE (4460.0 pg/mL), which is associated with heart failure, a risk factor for cardiovascular disease.",
+            "elapsed_seconds": 55.514,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "72d97d58-1bd4-4959-b3ff-c220a1271490",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1d3e07f7-ac99-464a-b7f5-f401f84c0840",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "fa9fe152-9d88-4f9e-b392-13be0eabb60c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ff6701af-910a-439a-887d-52d73cfa6691",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "4b54b11c-6cd3-486b-94cb-dc2476b0b2a9",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "79d4a4ca-da61-4927-8fa0-f44ec7656366",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8725298f-44bb-4f22-b7d8-9b849faffa57",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "b7899b4a-fcbd-4504-8b02-ef11ebe14349",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "b54f618a-a083-4dff-b432-30eab5957f50",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "967921c7-25fc-413c-8707-2f21ec799cae",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8bc0ad57-f265-4b8a-8d78-7d67caf3985a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0fabec09-deb9-410a-b21d-86ef02b60592",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "cb278373-02d8-40d3-9e3d-61147949a90d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "854eab43-29d1-433a-a046-517452b94e09",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a9fd2e0c-d799-446d-9740-a1596189807a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "321c9dba-6f3d-4204-a34a-7f61a67259c6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5e66879d-9a14-40c9-b94c-94ae64622245",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "6e671fb3-a494-4266-810d-dd5dcf8f5841",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2f3696cb-2898-4011-a447-d334cf7397aa",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e8309761-fc9a-4941-834f-cc9dc2f19340",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "The patient shows signs of cardiovascular disease.\n\n1. The patient has a history of myocardial infarction.\n2. The patient has essential hypertension.\n3. The patient has hyperlipidemia.\n4. The patient has a high level of triglyceride (82.0 mg/dL).\n5. The patient has a high level of cholesterol (65.0 mg/dL).\n6. The patient has a high level of urea nitrogen (71.0 mg/dL), which may indicate kidney disease, a risk factor for cardiovascular disease.\n7. The patient has a high level of C-reactive protein (2.8 mg/dL), which is associated with inflammation and cardiovascular disease.\n8. The patient has a high level of troponin I (0.04 ng/mL), which may indicate cardiac damage.\n9. The patient has a high level of NATRIURETIC PEPTIDE.B PROHORMONE (4460.0 pg/mL), which is associated with heart failure, a risk factor for cardiovascular disease.",
+            "elapsed_seconds": 55.486,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "b850a6d7-16e4-4c57-b769-4b10dc04360a",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "38f2c908-c264-482c-98e6-50074ab6d4ef",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "898c48cc-157a-41ec-a77f-cef7b003d65b",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e12a62b0-49aa-4ce9-976b-3c85030105fa",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "3faa3258-a06e-41e4-a7c2-f71d3a452080",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "5c587b6a-81f3-496b-ad45-4d95088c3545",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e8e43e74-741b-4031-8e77-688838665464",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0cfc401f-c80b-4c55-a57f-d138d0114514",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "af7e770e-0b99-4f34-83be-f03967ce226e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f68a0df1-2a8c-4e68-b4b5-5ad811f10b3c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e532105b-3160-46c0-9b96-c839dcaa4b15",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1d5f4bf4-43ca-46da-ab68-b222db5893de",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b3a5c5cd-f81f-428c-9150-d1ac30ea1f44",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0c058c20-5515-48c2-bdb1-5c314e1f0466",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d391fc8c-9812-43bb-ae85-1762b12d2b86",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9b902240-11c6-45a8-bad0-4c9525d3c905",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "022d3926-f95d-4565-8658-1bc6109cf9c5",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8581df04-f593-4f58-aad5-2911329df78a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "87e26632-bdb1-4be1-ae70-71589bb4eaa9",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "6dfbea83-0741-4425-93a2-e6bac3721dc4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune markers (positive anti-GAD, anti-islet cell antibodies)\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: corticosteroid medication use (to confirm or rule out Steroid-Induced Hyperglycemia)\n5. Clinical recommendation: Order a corticosteroid medication use history and review the patient's medication list to determine if any corticosteroids are being used, which would support or rule out Steroid-Induced Hyperglycemia.",
+            "elapsed_seconds": 61.873,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "3416c5da-b7b2-4943-99c0-efdb141cbe4a",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8ee93bd1-9671-40c1-b42a-61a96459f32c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "c7e59468-69cb-4f96-9044-4430f99ef6dc",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "20f9ab18-fac4-454e-a0d5-fbea360735c1",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "807f981f-5999-4611-8fd6-432f763467e3",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "4c9b742d-2305-4d78-82a3-36bfb1c5e215",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a39069b4-4637-4ac3-b908-ff80075892ec",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1f8b3f44-f44a-49f4-b8ba-3333f41ef449",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "153967c4-e4f4-4568-80eb-54d806391031",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "47442ee7-35a8-4106-9671-695c93e8d9ec",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "045176b9-2b48-485d-bb0b-03757d94fcee",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "18224cfb-f1e3-49a2-85cf-cc64b88ea4de",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9cad84e9-ee23-472a-bc0b-e90f1526663e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "222b6558-6126-478d-8330-3f8589d7af6b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8cd9bed8-2b25-44c0-b4e0-2f19b27cb7c1",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c9777655-feff-41c2-b853-0d4fd37c0767",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c04e60ac-0376-4b04-962b-95aae74af266",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a1d45867-67ae-473d-8f68-560eb1a48a16",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e4846930-e14f-4c18-b0ab-a28aedb21eaa",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c3a6609e-0c36-4643-815d-897c36b3750f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Does this patient show signs of cardiovascular disease? What is the supporting evidence?",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune markers (positive anti-GAD, anti-islet cell antibodies)\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: corticosteroid medication use (to confirm or rule out Steroid-Induced Hyperglycemia)\n5. Clinical recommendation: Order a corticosteroid medication use history and review the patient's medication list to determine if any corticosteroids are being used, which would support or rule out Steroid-Induced Hyperglycemia.",
+            "elapsed_seconds": 62.192,
+            "retrieved_count": 84,
+            "sources": [
+              {
+                "id": "8ad1adf0-ed16-4868-80ab-81f5cb6e6784",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "d21d9893-b84e-41ca-afdf-5e5c89d24bb6",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8ee56bc2-515c-4d32-8cda-702076de11b7",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "09337239-5b39-42b1-b80c-7b69ce64e6e2",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "aa414a3c-fcbf-4a10-aa22-2022c0f8cd1b",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e7e0b3a2-d639-4e39-a008-ab2bbc06ce69",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "7bed4472-4551-4ff3-8261-968f59a4f3c0",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "eb1bdf30-f0f2-45a3-a8c0-5326d8a6978d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "2ce74209-e4b8-4720-bc14-8bf87059cada",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f551a1d1-aaa8-4d52-9886-1701a8c1116d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "11cbfe9d-87ce-434d-ab5a-2e97dd564d9e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "04d21490-7579-405d-a14c-b1cfc36e87a4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8158e8c2-9c60-482d-9e1d-bc6a197aa3c1",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "6b33e642-9092-447e-afd7-1b31034b8c49",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b5f0a188-538c-49be-8e00-168718a84d67",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ed2e574c-89fb-4003-ae36-d695a66d6417",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "34d4fdd6-129b-45a2-8967-404dc0d6581f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "3623cd9e-d75b-47d2-a072-1fb0acbc86e5",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "72d497de-5631-49b2-a681-4a0bc36673f3",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e376fc57-48fe-4e09-8ae7-f44ad2d016d9",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "The patient shows signs of cardiovascular disease.\n\n1. The patient has a history of myocardial infarction.\n2. The patient has essential hypertension.\n3. The patient has hyperlipidemia.\n4. The patient has a high level of triglyceride (82.0 mg/dL).\n5. The patient has a high level of cholesterol (65.0 mg/dL).\n6. The patient has a high level of urea nitrogen (71.0 mg/dL), which may indicate kidney disease, a risk factor for cardiovascular disease.\n7. The patient has a high level of C-reactive protein (2.8 mg/dL), which is associated with inflammation and cardiovascular disease.\n8. The patient has a high level of troponin I (0.04 ng/mL), which may indicate cardiac damage.\n9. The patient has a high level of NATRIURETIC PEPTIDE.B PROHORMONE (4460.0 pg/mL), which is associated with heart failure, a risk factor for cardiovascular disease.",
+        "medrag_kg": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune markers (positive anti-GAD, anti-islet cell antibodies)\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: corticosteroid medication use (to confirm or rule out Steroid-Induced Hyperglycemia)\n5. Clinical recommendation: Order a corticosteroid medication use history and review the patient's medication list to determine if any corticosteroids are being used, which would support or rule out Steroid-Induced Hyperglycemia."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 55.5,
+            "iqr": 0.028,
+            "values": [
+              55.514,
+              55.486
+            ]
+          },
+          "medrag_kg": {
+            "median": 62.032,
+            "iqr": 0.319,
+            "values": [
+              61.873,
+              62.192
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.0816,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 5,
+      "query": "What are the risk values in this patient's observations that could affect their health?",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "The risk values in this patient's observations that could affect their health are:\n\n1. Elevated C REACTIVE PROTEIN: 2.5 mg/dL and 2.8 mg/dL, indicating inflammation or infection.\n2. Elevated TRIGLYCERIDE: 82.0 mg/dL and 69.0 mg/dL, indicating potential cardiovascular risk.\n3. Elevated UREA NITROGEN: 71.0 mg/dL, indicating potential kidney function impairment.\n4. Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, indicating potential heart failure or kidney function impairment.\n5. Elevated LEUKOCYTES: 560.0 cells/\u03bcL, indicating potential infection or inflammation.\n6. Elevated ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, indicating potential inflammation or infection.\n7. Elevated GLUCOSE: 140.0 mg/dL, indicating potential diabetes or impaired glucose regulation.\n8. Elevated CREATININE: 2.3 mg/dL, indicating potential kidney function impairment.\n9. Low POTASSIUM: 3.6 mEq/L, indicating potential electrolyte imbalance.\n10. Low CALCIUM.IONIZED: 1.36 mmol/L, indicating potential electrolyte imbalance.\n11. Elevated CHOLESTEROL: 65.0 mg/dL and 73.0 mg/dL, indicating potential cardiovascular risk.\n12. Elevated ANION GAP: 9.0, indicating potential metabolic acidosis.\n13. Elevated CARBON DIOXIDE: 37.0 mmol/L, indicating potential respiratory or metabolic acidosis.\n14. Elevated SODIUM: 139.0 mmol/L, indicating potential electrolyte imbalance.\n15. Elevated HEMOGLOBIN A1C: 5.7% and 5.5%, indicating potential diabetes or impaired glucose regulation.\n\nNote: The values flagged [HIGH] or [LOW] are abnormal and require further investigation.",
+            "elapsed_seconds": 70.218,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "9c4fab9a-9c6e-4539-88f7-8c6fafcd80b3",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f73eac04-f670-4e96-8627-c571ef29d937",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "177e7984-5541-4052-a78c-1d778330db17",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "61158201-e824-467f-ba5d-0943c96d7d0b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "742c8e63-5cbe-40d3-b1e2-6eda1d3430ce",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e1c38534-bf42-4721-beef-ae9dd69cdde9",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f070c7fb-cc85-4164-8416-31f51534f850",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "15634813-a6be-4c4e-ba3f-d742983211b4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5e8479f7-b533-4acf-b69f-678b5e96973c",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9c4c209d-dd0f-4fe6-90bb-20510db98b0d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "The risk values in this patient's observations that could affect their health are:\n\n1. Elevated C REACTIVE PROTEIN: 2.5 mg/dL and 2.8 mg/dL, indicating inflammation or infection.\n2. Elevated TRIGLYCERIDE: 82.0 mg/dL and 69.0 mg/dL, indicating potential cardiovascular risk.\n3. Elevated UREA NITROGEN: 71.0 mg/dL, indicating potential kidney function impairment.\n4. Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, indicating potential heart failure or kidney function impairment.\n5. Elevated LEUKOCYTES: 560.0 cells/\u03bcL, indicating potential infection or inflammation.\n6. Elevated ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, indicating potential inflammation or infection.\n7. Elevated GLUCOSE: 140.0 mg/dL, indicating potential diabetes or impaired glucose regulation.\n8. Elevated CREATININE: 2.3 mg/dL, indicating potential kidney function impairment.\n9. Low POTASSIUM: 3.6 mEq/L, indicating potential electrolyte imbalance.\n10. Low CALCIUM.IONIZED: 1.36 mmol/L, indicating potential electrolyte imbalance.\n11. Elevated CHOLESTEROL: 65.0 mg/dL and 73.0 mg/dL, indicating potential cardiovascular risk.\n12. Elevated ANION GAP: 9.0, indicating potential metabolic acidosis.\n13. Elevated CARBON DIOXIDE: 37.0 mmol/L, indicating potential respiratory or metabolic acidosis.\n14. Elevated SODIUM: 139.0 mmol/L, indicating potential electrolyte imbalance.\n15. Elevated HEMOGLOBIN A1C: 5.7% and 5.5%, indicating potential diabetes or impaired glucose regulation.\n\nNote: The values flagged [HIGH] or [LOW] are abnormal and require further investigation.",
+            "elapsed_seconds": 69.896,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "d2df77a8-3079-4f06-8a40-d339f15e310d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "6057aa33-2d74-4721-89e4-1863bb8ff2ad",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f8843c8d-8a18-41e9-ae55-471b61c52a73",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "13eb95dd-c403-4d4e-ae06-d22e39f7d2e9",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "9794ec8b-fea4-4a7f-950e-c21feae70b86",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "1013bf51-c4c4-4c8d-88f5-439c8ee2ccf2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5b21cd4e-1a7f-4d59-93a2-1d1bd77ac43f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ec8f2366-e9e2-4995-b1e6-045e798f7b00",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7552a964-9019-4047-97fd-549ce42c693e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "09ac7ccd-b4ba-4526-957e-ecf8fe62ef7e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "1. Elevated Glucose: 140.0 mg/dL\n   Elevated Creatinine: 2.3 mg/dL\n   Elevated Urea Nitrogen: 71.0 mg/dL\n   Elevated Erythrocyte Sedimentation Rate: 42.0 WESTERGREN\n   Elevated Leukocytes: 560.0 AUTOMATED COUNT\n   Elevated C-Reactive Protein: 2.5 and 2.8 mg/dL\n   Elevated Triglyceride: 82.0 and 69.0 mg/dL\n   Elevated Cholesterol: 65.0 and 73.0 mg/dL\n   Elevated Potassium: 3.6 mEq/L\n   Elevated Sodium: 139.0 mEq/L\n   Elevated Chloride: 93.0 mEq/L\n   Elevated Carbon Dioxide: 37.0 mEq/L\n   Elevated HbA1c: 5.5 and 5.7%\n   Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL\n   Elevated TROPONIN I.CARDIAC: 0.04 ng/mL\n\nThese values indicate the presence of multiple risk factors for cardiovascular disease, including dyslipidemia, hypertension, and diabetes. The elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE level may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated TROPONIN I.CARDIAC level may indicate cardiac injury or muscle damage.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTILINE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTILINE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.",
+            "elapsed_seconds": 192.566,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "faae5481-089f-4cef-aabe-b501e18b3670",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "0b942d14-3e23-4209-9c82-db09eed65697",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "5ce13af3-10e5-4eae-a045-6762056f4993",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "69b1d422-54a1-41f4-a4ad-a74d4af844e9",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ca309a5b-18a8-4f81-ae8b-0b325ce1faec",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ed1b63cf-73ad-432e-83f2-e4ad826ab452",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "71532f2d-ecc7-407e-8233-551ad2e9fda7",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "b2706440-82f0-4167-b395-6577696264e6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "df1b7cca-e65c-4352-bc15-686eb41d0ad7",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e573fcf2-8422-4664-9084-3ad16cc2ed5d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "What are the risk values in this patient's observations that could affect their health?",
+            "response": "1. Elevated Glucose: 140.0 mg/dL\n   Elevated Creatinine: 2.3 mg/dL\n   Elevated Urea Nitrogen: 71.0 mg/dL\n   Elevated Erythrocyte Sedimentation Rate: 42.0 WESTERGREN\n   Elevated Leukocytes: 560.0 AUTOMATED COUNT\n   Elevated C-Reactive Protein: 2.5 and 2.8 mg/dL\n   Elevated Triglyceride: 82.0 and 69.0 mg/dL\n   Elevated Cholesterol: 65.0 and 73.0 mg/dL\n   Elevated Potassium: 3.6 mEq/L\n   Elevated Sodium: 139.0 mEq/L\n   Elevated Chloride: 93.0 mEq/L\n   Elevated Carbon Dioxide: 37.0 mEq/L\n   Elevated HbA1c: 5.5 and 5.7%\n   Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL\n   Elevated TROPONIN I.CARDIAC: 0.04 ng/mL\n\nThese values indicate the presence of multiple risk factors for cardiovascular disease, including dyslipidemia, hypertension, and diabetes. The elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE level may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated TROPONIN I.CARDIAC level may indicate cardiac injury or muscle damage.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTILINE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTILINE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.",
+            "elapsed_seconds": 191.784,
+            "retrieved_count": 100,
+            "sources": [
+              {
+                "id": "080b7663-fa69-43ff-a629-def167750998",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "32c96252-5aa6-462b-9202-8888610b4c9b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "033cdc6d-ab5d-4408-8f8a-b2458e6520b1",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "29fad9ce-e79b-42c8-97db-0c49af23ce83",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7125e2f2-ddc0-491d-869e-c6e184955c50",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ecbfdd1d-7b2b-455c-8238-2d68ff48c7b2",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ba975395-7c49-468e-bd98-e1a75bdb53eb",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "8ad2ab88-855f-450f-9291-10fc204c6af4",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e1c68b13-812b-423e-a000-99a1fd7c2745",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "f4107988-c77d-496e-b755-f9ee57a308a6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "analysis",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "The risk values in this patient's observations that could affect their health are:\n\n1. Elevated C REACTIVE PROTEIN: 2.5 mg/dL and 2.8 mg/dL, indicating inflammation or infection.\n2. Elevated TRIGLYCERIDE: 82.0 mg/dL and 69.0 mg/dL, indicating potential cardiovascular risk.\n3. Elevated UREA NITROGEN: 71.0 mg/dL, indicating potential kidney function impairment.\n4. Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL, indicating potential heart failure or kidney function impairment.\n5. Elevated LEUKOCYTES: 560.0 cells/\u03bcL, indicating potential infection or inflammation.\n6. Elevated ERYTHROCYTE SEDIMENTATION RATE: 42.0 mm/hr, indicating potential inflammation or infection.\n7. Elevated GLUCOSE: 140.0 mg/dL, indicating potential diabetes or impaired glucose regulation.\n8. Elevated CREATININE: 2.3 mg/dL, indicating potential kidney function impairment.\n9. Low POTASSIUM: 3.6 mEq/L, indicating potential electrolyte imbalance.\n10. Low CALCIUM.IONIZED: 1.36 mmol/L, indicating potential electrolyte imbalance.\n11. Elevated CHOLESTEROL: 65.0 mg/dL and 73.0 mg/dL, indicating potential cardiovascular risk.\n12. Elevated ANION GAP: 9.0, indicating potential metabolic acidosis.\n13. Elevated CARBON DIOXIDE: 37.0 mmol/L, indicating potential respiratory or metabolic acidosis.\n14. Elevated SODIUM: 139.0 mmol/L, indicating potential electrolyte imbalance.\n15. Elevated HEMOGLOBIN A1C: 5.7% and 5.5%, indicating potential diabetes or impaired glucose regulation.\n\nNote: The values flagged [HIGH] or [LOW] are abnormal and require further investigation.",
+        "medrag_kg": "1. Elevated Glucose: 140.0 mg/dL\n   Elevated Creatinine: 2.3 mg/dL\n   Elevated Urea Nitrogen: 71.0 mg/dL\n   Elevated Erythrocyte Sedimentation Rate: 42.0 WESTERGREN\n   Elevated Leukocytes: 560.0 AUTOMATED COUNT\n   Elevated C-Reactive Protein: 2.5 and 2.8 mg/dL\n   Elevated Triglyceride: 82.0 and 69.0 mg/dL\n   Elevated Cholesterol: 65.0 and 73.0 mg/dL\n   Elevated Potassium: 3.6 mEq/L\n   Elevated Sodium: 139.0 mEq/L\n   Elevated Chloride: 93.0 mEq/L\n   Elevated Carbon Dioxide: 37.0 mEq/L\n   Elevated HbA1c: 5.5 and 5.7%\n   Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 pg/mL\n   Elevated TROPONIN I.CARDIAC: 0.04 ng/mL\n\nThese values indicate the presence of multiple risk factors for cardiovascular disease, including dyslipidemia, hypertension, and diabetes. The elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE level may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated TROPONIN I.CARDIAC level may indicate cardiac injury or muscle damage.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTIDE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTILINE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus.\n\nThe patient's elevated ERYTHROCYTE SEDIMENTATION RATE and LEUKOCYTES may indicate inflammation or infection.\n\nThe patient's elevated C-REACTIVE PROTEIN and PREALBUMIN may indicate inflammation or infection.\n\nThe patient's elevated TRIGLYCERIDE and CHOLESTEROL levels may indicate dyslipidemia.\n\nThe patient's elevated POTASSIUM and SODIUM levels may indicate electrolyte imbalances.\n\nThe patient's elevated CHLORIDE and CARBON DIOXIDE levels may indicate electrolyte imbalances.\n\nThe patient's elevated NATRIURETIC PEPTILINE.B PROHORMONE and TROPONIN I.CARDIAC levels may indicate cardiac dysfunction or kidney disease.\n\nThe patient's elevated HbA1c and glucose levels also suggest the presence of diabetes mellitus."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 70.057,
+            "iqr": 0.322,
+            "values": [
+              70.218,
+              69.896
+            ]
+          },
+          "medrag_kg": {
+            "median": 192.175,
+            "iqr": 0.782,
+            "values": [
+              192.566,
+              191.784
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.172,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    },
+    {
+      "query_index": 6,
+      "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+      "runs": {
+        "standard_rag": [
+          {
+            "mode": "Standard RAG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "Found: present it clearly (value, unit, date).\n\nThe patient's overall health status is complex, with multiple chronic conditions and abnormal laboratory findings.\n\n1. Chronic conditions:\n   1. Diabetes mellitus type 2 (disorder)\n   2. Essential hypertension (disorder)\n   3. Chronic kidney disease stage 3 (disorder)\n   4. Chronic obstructive lung disease (disorder)\n   5. Chronic pain syndrome (disorder)\n   6. Osteoarthritis of hip (disorder)\n   7. Osteoarthritis of knee (disorder)\n   8. Osteoporosis (disorder)\n   9. Peripheral arterial disease (Status: unknown)\n   10. Restless legs (disorder)\n\n2. Abnormal laboratory findings:\n   1. Elevated C REACTIVE PROTEIN: 2.5 (recorded on unknown date)\n   2. Elevated C REACTIVE PROTEIN: 2.8 (recorded on unknown date)\n   3. Elevated UREA NITROGEN: 71.0 (recorded on unknown date)\n   4. Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 (recorded on unknown date)\n   5. Elevated LEUKOCYTES: 560.0 (recorded on unknown date)\n   6. Elevated ANION GAP: 9.0 (recorded on unknown date)\n   7. Elevated CARBON DIOXIDE: 37.0 (recorded on unknown date)\n   8. Elevated CHLORIDE: 93.0 (recorded on unknown date)\n   9. Elevated CHOLESTEROL: 65.0 (recorded on unknown date)\n   10. Elevated GLUCOSE: 140.0 (recorded on unknown date)\n   11. Elevated ERYTHROCYTE SEDIMENTATION RATE: 42.0 (recorded on unknown date)\n   12. Elevated ERYTHROCYTES: 212.0 (recorded on unknown date)\n   13. Elevated POTASSIUM: 3.6 (recorded on unknown date)\n   14. Elevated SODIUM: 139.0 (recorded on unknown date)\n   15. Elevated CALCIUM: 10.7 (recorded on unknown date)\n   16. LOW CREATININE: 2.3 (recorded on unknown date)\n   17. LOW CALCIUM: 1.36 (recorded on unknown date)\n\n3. Other observations:\n   1. Heart rate: 100.0 (recorded on unknown date)\n   2. Heart rate: 105.0 (recorded on unknown date)\n\nThe most clinically significant findings are the elevated laboratory values, which suggest inflammation, kidney dysfunction, and cardiovascular disease.",
+            "elapsed_seconds": 105.139,
+            "retrieved_count": 81,
+            "sources": [
+              {
+                "id": "5da770b3-3b40-4f74-be59-9127c5c28d3e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f18fae46-b2c6-4b0e-b0c1-7933ed576cc0",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "2d3731b6-9056-4094-af84-78bd99ea1441",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ba9953f0-56ed-458c-892c-671d6e2b4443",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ec6a1848-f880-484f-882b-aa2a46ae7652",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "45a3a9e6-78c8-48d7-90aa-e12d7257716e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "a210dd17-d59a-4fbf-ad11-fa43e19f29d5",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "79ca3d58-5e2b-422a-9e38-764d3ccff4a6",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "26b9ff75-850c-4714-aa60-74058817546d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "31845434-8117-421c-984e-fba6fe91d6de",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ff929704-d767-4681-a49b-8dd2fb9a32bb",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "19101bb9-291c-4859-b570-2870c000db9d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "30e9fd00-e951-48ba-9f1c-013188b69514",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "fc6f39ad-3365-45fb-adec-43bbab875a02",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "646c10a3-36f9-4894-aa86-62e18010e96a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "55c7c0ac-341c-4ec8-bcbf-0600d876485a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "31e0c451-5835-46ac-a808-a7f12244be48",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c5147540-0151-4b77-89d0-c10520ce1352",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e97e1b57-4b32-45ff-b861-e13a89673d7d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2fca69f4-330a-480f-996a-611218342d78",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          },
+          {
+            "mode": "Standard RAG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "Found: present it clearly (value, unit, date).\n\nThe patient's overall health status is complex, with multiple chronic conditions and abnormal laboratory findings.\n\n1. Chronic conditions:\n   1. Diabetes mellitus type 2 (disorder)\n   2. Essential hypertension (disorder)\n   3. Chronic kidney disease stage 3 (disorder)\n   4. Chronic obstructive lung disease (disorder)\n   5. Chronic pain syndrome (disorder)\n   6. Osteoarthritis of hip (disorder)\n   7. Osteoarthritis of knee (disorder)\n   8. Osteoporosis (disorder)\n   9. Peripheral arterial disease (Status: unknown)\n   10. Restless legs (disorder)\n\n2. Abnormal laboratory findings:\n   1. Elevated C REACTIVE PROTEIN: 2.5 (recorded on unknown date)\n   2. Elevated C REACTIVE PROTEIN: 2.8 (recorded on unknown date)\n   3. Elevated UREA NITROGEN: 71.0 (recorded on unknown date)\n   4. Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 (recorded on unknown date)\n   5. Elevated LEUKOCYTES: 560.0 (recorded on unknown date)\n   6. Elevated ANION GAP: 9.0 (recorded on unknown date)\n   7. Elevated CARBON DIOXIDE: 37.0 (recorded on unknown date)\n   8. Elevated CHLORIDE: 93.0 (recorded on unknown date)\n   9. Elevated CHOLESTEROL: 65.0 (recorded on unknown date)\n   10. Elevated GLUCOSE: 140.0 (recorded on unknown date)\n   11. Elevated ERYTHROCYTE SEDIMENTATION RATE: 42.0 (recorded on unknown date)\n   12. Elevated ERYTHROCYTES: 212.0 (recorded on unknown date)\n   13. Elevated POTASSIUM: 3.6 (recorded on unknown date)\n   14. Elevated SODIUM: 139.0 (recorded on unknown date)\n   15. Elevated CALCIUM: 10.7 (recorded on unknown date)\n   16. LOW CREATININE: 2.3 (recorded on unknown date)\n   17. LOW CALCIUM: 1.36 (recorded on unknown date)\n\n3. Other observations:\n   1. Heart rate: 100.0 (recorded on unknown date)\n   2. Heart rate: 105.0 (recorded on unknown date)\n\nThe most clinically significant findings are the elevated laboratory values, which suggest inflammation, kidney dysfunction, and cardiovascular disease.",
+            "elapsed_seconds": 104.939,
+            "retrieved_count": 81,
+            "sources": [
+              {
+                "id": "a17083a5-3673-4f88-91c0-0f246689ac5d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "688a5cc5-6441-4454-8c5c-7bbb2bfe9c0d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "bbcdd438-fb7a-4e79-9af0-2cf9b16e09f2",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "3df454ea-4c45-46ab-a448-791d616580af",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "635ac609-7873-48f2-89ed-85cbfb4a109d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "adba4e35-3143-4ee2-982e-3376ed14a694",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "40d819a2-da95-45ec-ae5e-a8ae193a7d85",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "ed57b8c1-de02-45d0-9865-5f1267acf8e7",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "676e7c45-4271-4222-8ee2-277d9144b4b3",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "55d27c1b-ed62-4713-baac-d9ddb1766c3d",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "7189bc49-0b8b-4def-bdab-ee9da1b873d3",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "c20a3fe8-6211-4453-b3fa-871d9748a4f5",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "e777c97d-912d-4b60-a8cc-f5ee21e3c22d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "51a956ab-10dd-4f44-86bc-7f12f9426417",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "acd3d0aa-297e-4773-92ac-9bb071fdff0a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d66e8f77-09eb-48d3-8c93-6ac45d23da87",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "dac4f702-3b43-4b13-a26c-8fe204e09d58",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "bb45ed70-a7d5-4760-8274-0e7b547dad02",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ed2eb420-67aa-441f-b5d8-fed47a4c1c85",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "90d5bae3-292e-49aa-8ad0-478c3cf9474a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "Standard RAG",
+            "error": null,
+            "execution_order": 1
+          }
+        ],
+        "medrag_kg": [
+          {
+            "mode": "MedRAG + KG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune markers (positive anti-GAD, anti-islet cell antibodies)\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: cortisol levels to confirm the absence of Cushing's Syndrome\n5. Clinical recommendation: Order a fasting cortisol test to rule out Cushing's Syndrome and further evaluate the patient's hyperglycemic condition.",
+            "elapsed_seconds": 59.37,
+            "retrieved_count": 81,
+            "sources": [
+              {
+                "id": "54a41c21-5208-45b9-a2a8-2b5cb348381a",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "68eafe96-051a-4286-8a8d-a251fa68c3ab",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "7f00b15a-c00e-4140-beef-d028d9c1af56",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "e39074cf-76f0-4ebb-aac9-d3bd459da079",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "8442121e-61ef-4c18-8a9c-deb5bf8a612e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "cf4f1271-a256-470e-a2d2-a03b9a08ab52",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f8d6c398-6872-4017-a364-a42048cf487e",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "42ffcf35-72df-4d4f-b821-3e6ccf011c65",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0e79ebd0-0eb1-4dc8-9f6c-cc3349a0ed33",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "0810e1a6-890c-4f15-ae03-ad9389c2e291",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "7b2669cd-931d-4658-be41-05ee6f9c8162",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "32e1a040-c943-4e59-9aec-3d8254e0e87b",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ab07ed8d-f877-4ad3-9909-ca7afcbe643e",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "036c5d54-a8b8-40d1-b8c9-e96029f9d58d",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "d2afe928-1d90-4554-b7c9-61e4f6bce5cf",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2123fa4e-5f33-4e91-85bb-c3a81ca1339f",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "61ad180d-4902-45e7-8059-3660581e9fdd",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "071f31bf-60d6-4fb7-94d3-0cd2c75ae0f8",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "ff1f4993-9860-411b-b489-33ac14664b9c",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "abc1aab6-6e5c-479a-8082-690365179fe5",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          },
+          {
+            "mode": "MedRAG + KG",
+            "query": "Summarize this patient's overall health status and highlight the most clinically significant findings.",
+            "response": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune markers (positive anti-GAD, anti-islet cell antibodies)\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: cortisol levels to confirm the absence of Cushing's Syndrome\n5. Clinical recommendation: Order a fasting cortisol test to rule out Cushing's Syndrome and further evaluate the patient's hyperglycemic condition.",
+            "elapsed_seconds": 59.113,
+            "retrieved_count": 81,
+            "sources": [
+              {
+                "id": "6af189d9-0890-4e7b-a1a1-29dd2e0ef196",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "fa036898-5824-4afa-b197-a3aad10c2a13",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "6c50f885-81a9-4635-baf5-9b8fc8d925e2",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "47c40941-57c3-49a6-a73f-e393c7b385f8",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "d5cbbe9c-038f-406a-abef-842f22cc3d1f",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "f5a24a95-b9c0-44a5-ade7-9d867d6915b5",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "6918a142-e7f9-42c8-9649-7d74c1e8dc0c",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "917efb2f-625c-4f88-9c0e-ec98b2e09661",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "335e3f03-2fa7-4b65-8499-7b1c2ed11032",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "1fe86533-c500-475f-8220-8d36169ebcd0",
+                "type": "condition",
+                "description": "condition data from ElasticSearch"
+              },
+              {
+                "id": "38817d2f-d235-455a-b018-a014d0f1e953",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "fa68a9e4-3c72-4c02-b34a-e665a2fa1e6a",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "274303a3-548c-42c7-a0dd-460fec88b078",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a29bc430-6a9e-4be8-9927-98085d698717",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "4436cb07-2121-49cc-a65f-2a29d7460684",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "7538ff50-9482-433e-a07e-9c97c67f2280",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2dee927d-22b4-4aa6-bf5f-85cd82dc39d5",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "a4da1494-b563-4214-9a73-6142d8c95294",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "dfbd6da0-5d8d-49c8-b072-163738445456",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              },
+              {
+                "id": "2e3c0664-4b3c-41b1-823f-583faa6631a6",
+                "type": "observation",
+                "description": "observation data from ElasticSearch"
+              }
+            ],
+            "has_chart": false,
+            "intent_type": "general",
+            "pipeline_mode_confirmed": "MedRAG + KG",
+            "error": null,
+            "execution_order": 2
+          }
+        ]
+      },
+      "representative_responses": {
+        "standard_rag": "Found: present it clearly (value, unit, date).\n\nThe patient's overall health status is complex, with multiple chronic conditions and abnormal laboratory findings.\n\n1. Chronic conditions:\n   1. Diabetes mellitus type 2 (disorder)\n   2. Essential hypertension (disorder)\n   3. Chronic kidney disease stage 3 (disorder)\n   4. Chronic obstructive lung disease (disorder)\n   5. Chronic pain syndrome (disorder)\n   6. Osteoarthritis of hip (disorder)\n   7. Osteoarthritis of knee (disorder)\n   8. Osteoporosis (disorder)\n   9. Peripheral arterial disease (Status: unknown)\n   10. Restless legs (disorder)\n\n2. Abnormal laboratory findings:\n   1. Elevated C REACTIVE PROTEIN: 2.5 (recorded on unknown date)\n   2. Elevated C REACTIVE PROTEIN: 2.8 (recorded on unknown date)\n   3. Elevated UREA NITROGEN: 71.0 (recorded on unknown date)\n   4. Elevated NATRIURETIC PEPTIDE.B PROHORMONE: 4460.0 (recorded on unknown date)\n   5. Elevated LEUKOCYTES: 560.0 (recorded on unknown date)\n   6. Elevated ANION GAP: 9.0 (recorded on unknown date)\n   7. Elevated CARBON DIOXIDE: 37.0 (recorded on unknown date)\n   8. Elevated CHLORIDE: 93.0 (recorded on unknown date)\n   9. Elevated CHOLESTEROL: 65.0 (recorded on unknown date)\n   10. Elevated GLUCOSE: 140.0 (recorded on unknown date)\n   11. Elevated ERYTHROCYTE SEDIMENTATION RATE: 42.0 (recorded on unknown date)\n   12. Elevated ERYTHROCYTES: 212.0 (recorded on unknown date)\n   13. Elevated POTASSIUM: 3.6 (recorded on unknown date)\n   14. Elevated SODIUM: 139.0 (recorded on unknown date)\n   15. Elevated CALCIUM: 10.7 (recorded on unknown date)\n   16. LOW CREATININE: 2.3 (recorded on unknown date)\n   17. LOW CALCIUM: 1.36 (recorded on unknown date)\n\n3. Other observations:\n   1. Heart rate: 100.0 (recorded on unknown date)\n   2. Heart rate: 105.0 (recorded on unknown date)\n\nThe most clinically significant findings are the elevated laboratory values, which suggest inflammation, kidney dysfunction, and cardiovascular disease.",
+        "medrag_kg": "1. Most likely diagnosis: Type 2 Diabetes Mellitus\n2. Supporting evidence: glucose: 140.0, hba1c: 5.7, fasting glucose\n3. Alternative diagnoses: \n   [1] Type 1 Diabetes Mellitus: distinguished by autoimmune markers (positive anti-GAD, anti-islet cell antibodies)\n   [2] Steroid-Induced Hyperglycemia: distinguished by active corticosteroid medication (prednisone, dexamethasone, etc.)\n4. Missing data: cortisol levels to confirm the absence of Cushing's Syndrome\n5. Clinical recommendation: Order a fasting cortisol test to rule out Cushing's Syndrome and further evaluate the patient's hyperglycemic condition."
+      },
+      "metrics": {
+        "latency": {
+          "standard_rag": {
+            "median": 105.039,
+            "iqr": 0.2,
+            "values": [
+              105.139,
+              104.939
+            ]
+          },
+          "medrag_kg": {
+            "median": 59.242,
+            "iqr": 0.257,
+            "values": [
+              59.37,
+              59.113
+            ]
+          }
+        },
+        "rouge_l_vs_each_other": 0.0811,
+        "consistency": {
+          "standard_rag": 1.0,
+          "medrag_kg": 1.0
+        },
+        "faithfulness": {
+          "standard_rag": 0.0,
+          "medrag_kg": 0.0
+        }
+      }
+    }
+  ]
+}

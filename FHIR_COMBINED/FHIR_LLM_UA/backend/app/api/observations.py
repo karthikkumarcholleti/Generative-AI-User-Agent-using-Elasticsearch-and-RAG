@@ -1,10 +1,13 @@
 # backend/app/api/observations.py
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from sqlalchemy import text
 from ..core.database import engine
 from .loinc_code_mapper import get_observation_display_from_code
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/patients", tags=["observations"])
 
@@ -114,3 +117,164 @@ def list_observations(
     } for r in rows]
 
     return {"total": total_count, "items": items}
+
+
+# ── LOINC variant groups — known aliases for the same measurement ──────────────
+_LOINC_VARIANTS: Dict[str, List[str]] = {
+    "4548-4":  ["4548-4", "17856-6", "59261-8"],   # HbA1c
+    "17856-6": ["4548-4", "17856-6", "59261-8"],
+    "2345-7":  ["2345-7", "27353-2", "2339-0"],    # Glucose
+    "27353-2": ["2345-7", "27353-2", "2339-0"],
+    "2160-0":  ["2160-0", "38483-4"],              # Creatinine
+    "38483-4": ["2160-0", "38483-4"],
+    "2093-3":  ["2093-3"],                         # Cholesterol total
+    "2085-9":  ["2085-9"],                         # HDL
+    "2089-1":  ["2089-1"],                         # LDL
+    "718-7":   ["718-7"],                          # Hemoglobin
+    "3094-0":  ["3094-0"],                         # BUN
+    "33914-3": ["33914-3"],                        # eGFR
+    "2823-3":  ["2823-3"],                         # Potassium
+    "2951-2":  ["2951-2"],                         # Sodium
+    "10839-9": ["10839-9"],                        # Troponin I
+    "42637-9": ["42637-9"],                        # BNP
+    "3016-3":  ["3016-3"],                         # TSH
+    "55284-4": ["55284-4", "8480-6", "8462-4"],   # Blood pressure
+    "8867-4":  ["8867-4"],                         # Heart rate
+    "59408-5": ["59408-5"],                        # O2 saturation
+}
+
+
+def _get_related_loinc_codes(loinc_code: str) -> List[str]:
+    return _LOINC_VARIANTS.get(loinc_code, [loinc_code])
+
+
+def _compute_scipy_trend(values: List[float], timestamps: List[str]) -> Dict[str, Any]:
+    if len(values) < 3:
+        return {"trend": "insufficient_data", "slope": None, "r_squared": None, "p_value": None}
+    try:
+        from scipy.stats import linregress
+        from datetime import datetime
+
+        def _parse(d: str):
+            d_clean = d.replace("T", " ").split("+")[0].split("Z")[0].strip()
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+                try:
+                    return datetime.strptime(d_clean[:len(d_clean)], fmt)
+                except ValueError:
+                    continue
+            return None
+
+        t0 = _parse(timestamps[0])
+        if t0 is None:
+            return {"trend": "error", "slope": None, "r_squared": None, "p_value": None}
+        x = []
+        for d in timestamps:
+            parsed = _parse(d)
+            if parsed is None:
+                return {"trend": "error", "slope": None, "r_squared": None, "p_value": None}
+            x.append((parsed - t0).days)
+
+        slope, _, r_value, p_value, _ = linregress(x, values)
+        r_sq = round(r_value ** 2, 3)
+        p_val = round(p_value, 4)
+
+        if p_val > 0.05 or r_sq < 0.5:
+            direction = "stable"
+        elif slope > 0:
+            direction = "increasing"
+        else:
+            direction = "decreasing"
+
+        return {"trend": direction, "slope": round(slope, 4), "r_squared": r_sq, "p_value": p_val}
+    except Exception as e:
+        logger.warning(f"[timeseries] trend error: {e}")
+        return {"trend": "error", "slope": None, "r_squared": None, "p_value": None}
+
+
+@router.get("/{patient_id}/observations/{loinc_code}/timeseries")
+def get_observation_timeseries(patient_id: str, loinc_code: str):
+    """
+    Deterministic timeseries endpoint — no LLM dependency.
+    Returns observed data points only (no interpolation).
+    Applies IQR×3.0 outlier clipping for physiologically implausible values.
+    Trend computed via scipy.stats.linregress (p < 0.05 and R² > 0.5 required).
+    """
+    from .elasticsearch_client import es_client
+    from .visualization_service import REFERENCE_RANGES
+
+    related_codes = _get_related_loinc_codes(loinc_code)
+
+    body = {
+        "query": {"bool": {"must": [
+            {"term": {"patient_id": patient_id}},
+            {"terms": {"code": related_codes}},
+            {"term": {"data_type": "observation"}},
+        ]}},
+        "sort": [
+            {"effective_date": {"order": "asc", "missing": "_last"}},
+            {"effective_datetime.keyword": {"order": "asc", "missing": "_last"}},
+        ],
+        "size": 500,
+    }
+
+    try:
+        hits = es_client.client.search(index="patient_data", body=body)["hits"]["hits"]
+    except Exception as e:
+        logger.error(f"[timeseries] ES query failed: {e}")
+        hits = []
+
+    timestamps: List[str] = []
+    values: List[float] = []
+    units: List[str] = []
+
+    for h in hits:
+        s = h["_source"]
+        v = s.get("value_numeric")
+        d = s.get("effective_datetime") or s.get("effective_date") or s.get("timestamp")
+        u = str(s.get("unit", "") or "").strip()
+
+        if v is None or not d:
+            continue
+        if u.lower() in ("unit", "", "none", "null"):
+            u = ""
+
+        try:
+            timestamps.append(d)
+            values.append(float(v))
+            units.append(u)
+        except (ValueError, TypeError):
+            continue
+
+    # IQR×3.0 outlier clipping — conservative; preserves clinical highs/lows
+    if len(values) >= 4:
+        try:
+            import numpy as np
+            arr = np.array(values)
+            q1, q3 = float(np.percentile(arr, 25)), float(np.percentile(arr, 75))
+            iqr = q3 - q1
+            lo, hi = q1 - 3.0 * iqr, q3 + 3.0 * iqr
+            filtered = [(t, v, u) for t, v, u in zip(timestamps, values, units) if lo <= v <= hi]
+            if filtered:
+                timestamps = [x[0] for x in filtered]
+                values = [x[1] for x in filtered]
+                units = [x[2] for x in filtered]
+        except ImportError:
+            pass  # numpy not available — skip clipping
+
+    ref = REFERENCE_RANGES.get(loinc_code, {})
+    trend = _compute_scipy_trend(values, timestamps)
+    display_name = get_observation_display_from_code(loinc_code) or loinc_code
+
+    return {
+        "patient_id": patient_id,
+        "loinc_code": loinc_code,
+        "display": display_name,
+        "count": len(values),
+        "timestamps": timestamps,
+        "values": values,
+        "unit": units[0] if units else "",
+        "reference_range": ref,
+        "trend": trend,
+        "interpolation": "none",
+        "outlier_method": "IQR×3.0",
+    }

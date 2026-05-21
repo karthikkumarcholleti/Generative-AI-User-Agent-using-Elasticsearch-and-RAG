@@ -137,7 +137,7 @@ class ElasticSearchClient:
                         "data_type": {"type": "keyword"},  # demographics, conditions, observations, notes
                         "content": {"type": "text"},
                         # Add dense_vector field for semantic search
-                        "content_embedding": {
+                        "embedding": {
                             "type": "dense_vector",
                             "dims": embedding_dim,
                             "index": True,  # Enable kNN search
@@ -174,12 +174,12 @@ class ElasticSearchClient:
             doc: Document dictionary with 'content' field
             
         Returns:
-            Document with 'content_embedding' field added if semantic search is enabled
+            Document with 'embedding' field added if semantic search is enabled
         """
         if self.semantic_search_enabled and self.embedding_service and "content" in doc:
             try:
                 embedding = self.embedding_service.generate_embedding(doc["content"])
-                doc["content_embedding"] = embedding
+                doc["embedding"] = embedding
             except Exception as e:
                 logger.warning(f"Failed to generate embedding for document: {e}")
         return doc
@@ -401,138 +401,89 @@ class ElasticSearchClient:
                     logger.warning(f"Failed to generate query embedding: {e}. Continuing with keyword search only.")
             
             # Build hybrid ElasticSearch query (keyword + semantic)
-            # Strategy: Combine keyword matching with vector similarity for best results
+            # must  → hard filter: only this patient's documents
+            # should → BM25 relevance scoring (optional — no minimum_should_match)
+            #          Documents that keyword-match rank higher; all patient docs are eligible
+            should_clauses = []
+            if query and query.strip():
+                should_clauses = [
+                    # Exact phrase in content — highest boost
+                    {"match_phrase": {"content": {"query": query, "boost": 5.0}}},
+                    # Exact phrase in display field
+                    {"match_phrase": {"display": {"query": query, "boost": 4.0}}},
+                    # Multi-field fuzzy match across searchable text fields
+                    {
+                        "multi_match": {
+                            "query": query,
+                            "fields": [
+                                "content^3.0",
+                                "display^2.5",
+                                "code^1.5",
+                            ],
+                            "type": "best_fields",
+                            "fuzziness": "AUTO",
+                            "operator": "or",
+                        }
+                    },
+                    # Phrase match across fields (terms must appear together)
+                    {
+                        "multi_match": {
+                            "query": query,
+                            "fields": ["content^3.0", "display^2.5"],
+                            "type": "phrase",
+                        }
+                    },
+                ]
+
+                # LOINC code boosting: when query contains clinical terms like "creatinine",
+                # boost docs by LOINC code so they rank high even if content tokenization fails.
+                # The ES content field uses LOINC long names (e.g. "CREATININE:MCNC:PT:SER/PLAS:QN:")
+                # which the English analyzer may not tokenize to match plain "creatinine".
+                try:
+                    from .loinc_code_mapper import get_loinc_codes_for_query
+                    loinc_hits = get_loinc_codes_for_query(query)
+                    if loinc_hits:
+                        should_clauses.append({
+                            "terms": {"code": loinc_hits, "boost": 8.0}
+                        })
+                        logger.debug(f"LOINC code boost applied for codes: {loinc_hits}")
+                except ImportError:
+                    pass
+
             search_body = {
                 "query": {
                     "bool": {
-                        "must": [
-                            {"term": {"patient_id": patient_id}}
-                        ],
-                        "should": [
-                            # 1. Exact phrase match in content (highest priority for RAG)
-                            {
-                                "match_phrase": {
-                                    "content": {
-                                        "query": query,
-                                        "boost": 5.0  # Highest boost for exact phrase matches
-                                    }
-                                }
-                            },
-                            # 2. Exact phrase match in display names (very high priority)
-                            {
-                                "match_phrase": {
-                                    "metadata.display": {
-                                        "query": query,
-                                        "boost": 4.0
-                                    }
-                                }
-                            },
-                            # 3. Multi-match with fuzzy matching (semantic search handles related concepts)
-                            {
-                                "multi_match": {
-                                    "query": query,
-                                    "fields": [
-                                        "content^3.0",           # High boost for content
-                                        "metadata.display^2.5",  # High boost for display
-                                        "metadata.value^2.0",    # Boost for values
-                                        "metadata.code^1.5"      # Boost for codes
-                                    ],
-                                    "type": "best_fields",
-                                    "fuzziness": "AUTO",
-                                    "operator": "or"
-                                }
-                            },
-                            # 4. Multi-match with phrase type (exact terms together)
-                            {
-                                "multi_match": {
-                                    "query": query,
-                                    "fields": [
-                                        "content^3.0",           # High boost for content
-                                        "metadata.display^2.5",  # High boost for display
-                                        "metadata.value^2.0",    # Boost for values
-                                        "metadata.code^1.5"      # Boost for codes
-                                    ],
-                                    "type": "phrase"  # Phrase matching - terms must appear together (no fuzziness allowed)
-                                }
-                            },
-                            # 5. Multi-match with best_fields (flexible matching)
-                            {
-                                "multi_match": {
-                                    "query": query,
-                                    "fields": [
-                                        "content^2.0",           # Standard boost
-                                        "metadata.display^1.5",
-                                        "metadata.value^1.0",
-                                        "metadata.code^0.8"
-                                    ],
-                                    "type": "best_fields",
-                                    "fuzziness": "AUTO",  # Allow fuzzy matching for typos/variations
-                                    "operator": "or"  # Any term can match
-                                }
-                            },
-                            # 6. Wildcard matching for partial terms (lower priority)
-                            {
-                                "wildcard": {
-                                    "metadata.display": {
-                                        "value": f"*{(query or '').lower()}*",
-                                        "boost": 1.5
-                                    }
-                                }
-                            },
-                            {
-                                "wildcard": {
-                                    "content": {
-                                        "value": f"*{(query or '').lower()}*",
-                                        "boost": 1.0
-                                    }
-                                }
-                            },
-                            # 7. Wildcard matching for partial terms (semantic search handles related concepts)
-                            {
-                                "wildcard": {
-                                    "metadata.display": {
-                                        "value": f"*{(query or '').lower()}*",
-                                        "boost": 1.2
-                                    }
-                                }
-                            },
-                            # 8. Individual term matching (for multi-word queries)
-                            {
-                                "match": {
-                                    "content": {
-                                        "query": query,
-                                        "operator": "and",  # All terms must be present
-                                        "fuzziness": "AUTO",
-                                        "boost": 1.5
-                                    }
-                                }
-                            }
-                        ],
-                        "minimum_should_match": 1  # At least one should clause must match
+                        # patient_id is the only hard requirement — every doc for this patient
+                        # is a candidate; BM25 should clauses rank by relevance, not gate
+                        "must": [{"term": {"patient_id": patient_id}}],
+                        "should": should_clauses,
+                        # NO minimum_should_match — should clauses are scoring bonuses only.
+                        # This ensures observations/notes with short content still surface.
                     }
                 },
-                "size": 150,  # Increased for broader retrieval
+                "size": 150,
                 "sort": [
-                    {"_score": {"order": "desc"}},  # Sort by relevance first
-                    {"timestamp": {"order": "desc"}}  # Then by date
-                ]
+                    {"_score": {"order": "desc"}},
+                    {"effective_date": {"order": "desc", "missing": "_last", "unmapped_type": "date"}},
+                    {"_doc": {"order": "asc"}},
+                ],
             }
             
             # Add semantic search (kNN) if embeddings are available
-            # Check if content_embedding field exists in index first
+            # Check if embedding field exists in index first
             if query_embedding:
                 try:
-                    # Check if index has content_embedding field
+                    # Check if index has embedding field
                     index_mapping = self.client.indices.get_mapping(index=index_name)
                     has_embedding_field = False
                     if index_name in index_mapping:
                         properties = index_mapping[index_name].get("mappings", {}).get("properties", {})
-                        has_embedding_field = "content_embedding" in properties
+                        has_embedding_field = "embedding" in properties
                     
                     if has_embedding_field:
                         # Prioritize semantic search - higher boost and more results
                         search_body["knn"] = {
-                            "field": "content_embedding",
+                            "field": "embedding",
                             "query_vector": query_embedding,
                             "k": 20,  # More nearest neighbors for semantic search
                             "num_candidates": 200,  # More candidates to consider
@@ -553,16 +504,25 @@ class ElasticSearchClient:
                             }
                         logger.debug("Added kNN semantic search to query")
                     else:
-                        logger.warning("content_embedding field not found in index. Using keyword search only. Reindex data to enable semantic search.")
+                        logger.warning("embedding field not found in index. Using keyword search only. Reindex data to enable semantic search.")
                 except Exception as e:
                     logger.warning(f"Could not check index mapping for semantic search: {e}. Using keyword search only.")
             
-            # Add data type filter if specified (for keyword search)
+            # Add data type filter if specified.
+            # Normalize plural forms (legacy rag_service convention) → singular (index values).
+            _PLURAL_TO_SINGULAR = {
+                "conditions": "condition",
+                "observations": "observation",
+                "notes": "note",
+                "encounters": "encounter",
+                "demographics": "demographics",  # kept as-is (no plural form used)
+            }
             if data_types:
+                normalized = [_PLURAL_TO_SINGULAR.get(t, t) for t in data_types]
                 if "filter" not in search_body["query"]["bool"]:
                     search_body["query"]["bool"]["filter"] = []
                 search_body["query"]["bool"]["filter"].append(
-                    {"terms": {"data_type": data_types}}
+                    {"terms": {"data_type": normalized}}
                 )
             
             # Add highlighting to extract relevant snippets (Intelligent RAG - Hybrid Approach)
@@ -610,12 +570,25 @@ class ElasticSearchClient:
                     # Highlighting disabled - use full content (old method, fallback)
                     content = hit.get("_source", {}).get("content", "")
                 
+                src = hit.get("_source", {})
                 results.append({
                     "score": hit["_score"],
-                    "data_type": hit.get("_source", {}).get("data_type", "unknown"),
-                    "content": content,  # Curated snippets or full content
-                    "metadata": hit.get("_source", {}).get("metadata", {}),
-                    "timestamp": hit.get("_source", {}).get("timestamp", "")
+                    "data_type": src.get("data_type", "unknown"),
+                    "content": content,
+                    # Surface top-level fields so rag_service can build context
+                    "display": src.get("display"),
+                    "code": src.get("code"),
+                    "value_numeric": src.get("value_numeric"),
+                    "unit": src.get("unit"),
+                    "ref_range_low": src.get("ref_range_low"),
+                    "ref_range_high": src.get("ref_range_high"),
+                    "clinical_status": src.get("clinical_status"),
+                    "icd_code": src.get("icd_code"),
+                    "source_hospital": src.get("source_hospital"),
+                    "source_type": src.get("source_type"),
+                    # timestamp field normalized to effective_date for rag_service sorting
+                    "timestamp": src.get("effective_date") or src.get("note_date") or "",
+                    "metadata": {},  # kept for compat; real data is now at top level
                 })
             
             # Log search results summary
@@ -638,58 +611,48 @@ class ElasticSearchClient:
         try:
             # Get all data for the patient
             search_body = {
-                "query": {
-                    "term": {"patient_id": patient_id}
-                },
+                "query": {"term": {"patient_id": patient_id}},
                 "size": 1000,
-                "sort": [{"timestamp": {"order": "desc"}}]
+                "sort": [{"effective_date": {"order": "desc", "missing": "_last", "unmapped_type": "date"}}],
             }
-            
+
             response = self.client.search(index=index_name, body=search_body)
-            
+
             summary = {
                 "patient_id": patient_id,
                 "total_documents": response["hits"]["total"]["value"],
                 "data_types": {},
                 "recent_observations": [],
                 "conditions": [],
-                "notes": []
+                "notes": [],
             }
-            
+
             for hit in response["hits"]["hits"]:
-                # Safely handle missing _source key
                 source = hit.get("_source", {})
                 if not isinstance(source, dict):
                     continue
                 data_type = source.get("data_type", "unknown")
-                
-                if data_type not in summary["data_types"]:
-                    summary["data_types"][data_type] = 0
-                summary["data_types"][data_type] += 1
-                
-                # Collect recent observations
-                if data_type == "observations" and len(summary["recent_observations"]) < 10:
+
+                summary["data_types"][data_type] = summary["data_types"].get(data_type, 0) + 1
+
+                if data_type == "observation" and len(summary["recent_observations"]) < 10:
                     summary["recent_observations"].append({
-                        "display": source["metadata"].get("display"),
-                        "value": source["metadata"].get("value"),
-                        "unit": source["metadata"].get("unit"),
-                        "date": source["metadata"].get("date")
+                        "display": source.get("display"),
+                        "value": source.get("value_numeric"),
+                        "unit": source.get("unit"),
+                        "date": source.get("effective_date"),
                     })
-                
-                # Collect conditions
-                elif data_type == "conditions":
+                elif data_type == "condition":
                     summary["conditions"].append({
-                        "display": source["metadata"].get("display"),
-                        "status": source["metadata"].get("status"),
-                        "date": source["metadata"].get("date")
+                        "display": source.get("content") or source.get("display"),
+                        "status": source.get("clinical_status"),
+                        "date": source.get("effective_date"),
                     })
-                
-                # Collect notes
-                elif data_type == "notes" and len(summary["notes"]) < 5:
+                elif data_type == "note" and len(summary["notes"]) < 5:
                     summary["notes"].append({
-                        "content": source["content"],
-                        "source_type": source["metadata"].get("source_type"),
-                        "date": source["metadata"].get("date")
+                        "content": source.get("content"),
+                        "source_type": source.get("source_type"),
+                        "date": source.get("note_date") or source.get("effective_date"),
                     })
             
             return summary
@@ -698,6 +661,14 @@ class ElasticSearchClient:
             logger.error(f"Failed to get patient summary: {e}")
             return {}
     
+    # ES indexes documents with singular data_type values; callers may pass plural.
+    _DATA_TYPE_MAP = {
+        "observations": "observation",
+        "conditions": "condition",
+        "notes": "note",
+        "encounters": "encounter",
+    }
+
     def get_all_patient_data_by_type(
         self,
         patient_id: str,
@@ -707,29 +678,35 @@ class ElasticSearchClient:
     ) -> List[Dict[str, Any]]:
         """
         Fetch ALL ES documents of a specific data_type for a patient.
-        Returns date-DESC sorted hits with full _source (LOINC-resolved metadata).
-        Used by the summary pipeline so it benefits from the same enriched data
-        as the chat pipeline, without relevance-ranking bias.
+        Normalises plural caller names (observations → observation) and avoids
+        sorting on nonexistent mapped fields; date ordering is done in Python.
         """
         if not self.is_connected():
             logger.warning("ES not connected — get_all_patient_data_by_type returning empty")
             return []
+        # Normalise plural → singular (ES indexes use singular values)
+        es_type = self._DATA_TYPE_MAP.get(data_type, data_type)
         try:
             body = {
                 "query": {"bool": {"must": [
                     {"term": {"patient_id": patient_id}},
-                    {"term": {"data_type": data_type}},
+                    {"term": {"data_type": es_type}},
                 ]}},
                 "size": size,
-                "sort": [{"timestamp": {"order": "desc"}}],
             }
             response = self.client.search(index=index_name, body=body)
             hits = response["hits"]["hits"]
+            docs = [h["_source"] for h in hits]
+            # Sort by date descending in Python (avoids ES fielddata issues on text fields)
+            def _doc_date(d):
+                return (d.get("effective_datetime") or d.get("effective_date") or
+                        d.get("note_date") or d.get("onset_datetime") or "")
+            docs.sort(key=_doc_date, reverse=True)
             logger.info(
-                "get_all_patient_data_by_type: patient=%s type=%s → %d docs",
-                patient_id, data_type, len(hits),
+                "get_all_patient_data_by_type: patient=%s type=%s(%s) → %d docs",
+                patient_id, data_type, es_type, len(docs),
             )
-            return [h["_source"] for h in hits]
+            return docs
         except Exception as e:
             logger.error("get_all_patient_data_by_type failed: %s", e)
             return []
@@ -765,7 +742,7 @@ class ElasticSearchClient:
             - index_exists: bool
             - total_documents: int
             - unique_patients: int
-            - has_embeddings: bool (checks if index has content_embedding field)
+            - has_embeddings: bool (checks if index has embedding field)
         """
         if not self.is_connected():
             return {
@@ -817,7 +794,7 @@ class ElasticSearchClient:
             has_embeddings = False
             if index_name in mapping:
                 props = mapping[index_name].get("mappings", {}).get("properties", {})
-                has_embeddings = "content_embedding" in props
+                has_embeddings = "embedding" in props
             
             return {
                 "index_exists": True,

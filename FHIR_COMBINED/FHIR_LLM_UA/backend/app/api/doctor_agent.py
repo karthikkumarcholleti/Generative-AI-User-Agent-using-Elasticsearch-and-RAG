@@ -19,6 +19,7 @@ Available tools (backed by existing infrastructure):
 """
 
 import logging
+import time
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -29,6 +30,7 @@ from .elasticsearch_client import es_client
 from .medrag_knowledge_graph import kg_service
 from .rag_service import DDX_INTENT_KEYWORDS, VALUE_LOOKUP_OVERRIDES
 from ..core.llm import generate_chat
+from .chat_agent import _write_audit_log
 
 logger = logging.getLogger(__name__)
 
@@ -465,8 +467,19 @@ def doctor_query(request: DoctorQuery):
     logger.info("[DoctorAgent] query patient=%s", request.patient_id)
     if not request.patient_id or not request.query:
         raise HTTPException(status_code=400, detail="patient_id and query are required")
+    _start = time.time()
     try:
-        return doctor_agent.run(request.patient_id, request.query)
+        result = doctor_agent.run(request.patient_id, request.query)
+        _write_audit_log(
+            patient_id=request.patient_id,
+            query=request.query,
+            pipeline_mode="MedRAG Doctor Agent",
+            intent_type="doctor_agent",
+            retrieved_count=len(result.sources),
+            data_found=bool(result.response),
+            elapsed_ms=int((time.time() - _start) * 1000),
+        )
+        return result
     except Exception as exc:
         logger.error("[DoctorAgent] error: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))

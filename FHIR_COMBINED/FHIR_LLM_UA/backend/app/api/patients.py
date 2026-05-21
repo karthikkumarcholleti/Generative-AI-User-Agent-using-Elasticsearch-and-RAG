@@ -71,7 +71,7 @@ def search_patients(query: str = Query(""), limit: int = 5000):
             WHEN RIGHT(p.patient_id, :q_len) = :q THEN 3
             ELSE 4
           END,
-          p.created_at DESC,
+          p.last_updated DESC,
           p.patient_id DESC
         LIMIT :limit
         """
@@ -103,7 +103,7 @@ def search_patients(query: str = Query(""), limit: int = 5000):
                 WHEN CONCAT(p.given_name, ' ', p.family_name) LIKE :nameprefix THEN 1
                 ELSE 4
               END,
-              p.created_at DESC,
+              p.last_updated DESC,
               p.patient_id DESC
             LIMIT :limit
             """
@@ -131,7 +131,7 @@ def search_patients(query: str = Query(""), limit: int = 5000):
                 WHEN CONCAT(p.given_name, ' ', p.family_name) LIKE :nameprefix THEN 1
                 ELSE 4
               END,
-              p.created_at DESC,
+              p.last_updated DESC,
               p.patient_id DESC
             LIMIT :limit
             """

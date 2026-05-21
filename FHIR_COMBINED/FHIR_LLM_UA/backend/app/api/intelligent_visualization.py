@@ -320,6 +320,15 @@ class IntelligentVisualizationService:
             logger.info("LLM classified query as 'analysis' intent (abnormal/risk values) - generating abnormal_values chart")
             # Return immediately - abnormal_values chart doesn't need retrieved_data, it queries DB directly
             return True, ["abnormal_values"]
+
+        # PRIORITY 0B: MedRAG DDx chart hints — KG identified specific observations as
+        # evidence for candidate diseases. Generate targeted charts for those observations
+        # so clinicians see the data that drove the DDx alongside the text response.
+        ddx_hints = intent.get("ddx_chart_hints", [])
+        if ddx_hints:
+            chart_types = [f"observation_trend:{obs}" for obs in ddx_hints[:3]]
+            logger.info(f"MedRAG DDx chart hints detected — generating {len(chart_types)} targeted chart(s): {chart_types}")
+            return True, chart_types
         
         # RAG-driven approach: Scan retrieved_data for numeric observations FIRST
         # (moved up so we can use the count to decide whether any intent type warrants a chart)

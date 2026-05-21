@@ -564,6 +564,21 @@ class KnowledgeGraphService:
         self.observation_map = OBSERVATION_TO_DISEASES
         self.condition_map = CONDITION_TO_KG_NODE
 
+        # Build L2-family ↔ L3-disease maps (paper's upward traversal + downward retrieval)
+        self._disease_to_family: Dict[str, str] = {}
+        self._family_to_diseases: Dict[str, List[str]] = {}
+        for category in self.kg.values():
+            for family_name, family_data in category.items():
+                diseases = list(family_data.keys())
+                self._family_to_diseases[family_name] = diseases
+                for d in diseases:
+                    self._disease_to_family[d] = family_name
+
+        # Observation degree map for discriminability: degree = # of distinct diseases linked
+        self._obs_degree: Dict[str, int] = {}
+        for obs_key, diseases in self.observation_map.items():
+            self._obs_degree[obs_key] = len(set(diseases))
+
     # ─────────────────────────────────────────────────────────────────────────
     # Step A: Find candidate diseases from retrieved patient data
     # ─────────────────────────────────────────────────────────────────────────
@@ -574,67 +589,102 @@ class KnowledgeGraphService:
         retrieved_data: List[Dict[str, Any]]
     ) -> List[str]:
         """
-        Given a user query and retrieved patient data, find candidate diseases
-        from the KG that are relevant to this patient's situation.
+        Paper-aligned upward traversal + downward retrieval (Zhao et al., WWW 2025).
 
-        Strategy (matching the MedRAG paper's "voting mechanism"):
-          1. Extract observation types from retrieved_data → look up OBSERVATION_TO_DISEASES
-          2. Extract condition names from retrieved_data → look up CONDITION_TO_KG_NODE
-          3. Extract keywords from query → look up SYMPTOM_TO_DISEASES
-          4. Score by vote count → return top-N candidates
+        Step 1 (Upward): matched patient features → vote for L2 disease family.
+        Step 2 (Downward): winning L2 family → retrieve ALL L3 diseases in it.
 
-        Returns:
-            List of disease names (Tier 3 KG nodes), ranked by relevance votes
+        Voting is pure count-based (+1 per matched feature per family) — no
+        source-type weights, matching the paper's unweighted voting mechanism.
         """
-        vote_counts: Dict[str, int] = {}
+        family_votes: Dict[str, int] = {}
+        query_lower = query.lower()
 
-        def vote(disease_name: str, weight: int = 1):
-            vote_counts[disease_name] = vote_counts.get(disease_name, 0) + weight
-
-        # --- Source 1: observations in retrieved_data (strongest signal, weight=3) ---
+        # Source 1: observation features in retrieved_data → vote for their L2 families
         for item in retrieved_data:
-            if item.get("data_type") != "observations":
+            if item.get("data_type") not in ("observation", "observations"):
                 continue
-            meta = item.get("metadata", {})
-            display = (meta.get("display") or "").lower().strip()
-            code = (meta.get("code") or "").lower().strip()
-
+            display = (item.get("display") or "").lower().strip()
+            content = (item.get("content") or "").lower()
+            search_text = f"{display} {content}"
             for obs_key, diseases in self.observation_map.items():
-                if obs_key in display or obs_key in code:
+                if obs_key in search_text:
                     for d in diseases:
-                        vote(d, weight=3)
+                        family = self._disease_to_family.get(d)
+                        if family:
+                            family_votes[family] = family_votes.get(family, 0) + 1
 
-        # --- Source 2: conditions already recorded for patient (weight=4, highest) ---
+        # Source 2: existing conditions → vote for their L2 families
+        # De-bias: halve the vote when the query explicitly asks about this condition
+        # so the KG explores beyond already-known diagnoses (reduces confirmation bias).
         for item in retrieved_data:
-            if item.get("data_type") != "conditions":
+            if item.get("data_type") not in ("condition", "conditions"):
                 continue
-            meta = item.get("metadata", {})
-            display = (meta.get("display") or "").lower().strip()
+            display = (item.get("display") or "").lower().strip()
             content = (item.get("content") or "").lower().strip()
-
             for cond_key, kg_node in self.condition_map.items():
                 if cond_key in display or cond_key in content:
-                    vote(kg_node, weight=4)
+                    family = self._disease_to_family.get(kg_node)
+                    if family:
+                        # If query directly asks about this condition, reduce weight so
+                        # the KG considers differential rather than confirming the known dx
+                        weight = 0.5 if cond_key in query_lower else 1.0
+                        family_votes[family] = family_votes.get(family, 0) + weight
 
-        # --- Source 3: query keywords → symptom map (weight=2) ---
-        query_lower = query.lower()
+        # Source 3: query symptom keywords → diseases → vote for their L2 families
         for symptom_key, diseases in self.symptom_map.items():
             if symptom_key in query_lower:
                 for d in diseases:
-                    vote(d, weight=2)
+                    family = self._disease_to_family.get(d)
+                    if family:
+                        family_votes[family] = family_votes.get(family, 0) + 1
 
-        # --- Source 4: query directly mentions an observation (weight=2) ---
+        # Source 4: query directly mentions an observation → vote for linked L2 families
         for obs_key, diseases in self.observation_map.items():
             if obs_key in query_lower:
                 for d in diseases:
-                    vote(d, weight=2)
+                    family = self._disease_to_family.get(d)
+                    if family:
+                        family_votes[family] = family_votes.get(family, 0) + 1
 
-        # Sort by votes descending, return top 5 candidates
-        ranked = sorted(vote_counts.items(), key=lambda x: x[1], reverse=True)
-        top_candidates = [disease for disease, _ in ranked[:5] if _ > 0]
+        if not family_votes:
+            return []
 
-        logger.info(f"[MedRAG KG] Candidate diseases: {top_candidates}")
-        return top_candidates
+        # Select winning L2 family(ies).
+        # Single-query DDx: argmax wins (one tight family).
+        # Multi-system queries: include runner-up families within 2 votes so the
+        # KG context covers all conditions the patient actually has (e.g. diabetes
+        # + hypertension + CKD each surface their own disease family).
+        sorted_families = sorted(family_votes.items(), key=lambda x: x[1], reverse=True)
+        max_votes = sorted_families[0][1]
+
+        # Include families within 2 votes of max, with ≥1 absolute vote
+        candidate_families = [f for f, v in sorted_families if v >= 1 and max_votes - v <= 2]
+
+        # Diversity constraint: ensure at least 2 distinct families when ≥2 exist with votes.
+        # Prevents skewed vote distributions from collapsing all candidates into one family.
+        if len(candidate_families) < 2 and len(sorted_families) >= 2:
+            second_family, second_votes = sorted_families[1]
+            if second_votes >= 1:
+                candidate_families.append(second_family)
+
+        winning_families = candidate_families
+
+        # Downward retrieval: top-4 diseases per winning family (expanded from top-2 to
+        # improve recall for multi-system DDx queries; diversity constraint above keeps
+        # total candidates bounded at 8-12 across 2-3 families).
+        candidates: List[str] = []
+        seen: set = set()
+        for family in winning_families:
+            count = 0
+            for disease in self._family_to_diseases.get(family, []):
+                if disease not in seen and count < 4:
+                    candidates.append(disease)
+                    seen.add(disease)
+                    count += 1
+
+        logger.info(f"[MedRAG KG] Winning families: {winning_families} → candidates: {candidates}")
+        return candidates
 
     # ─────────────────────────────────────────────────────────────────────────
     # Step B: Get distinguishing features for candidates (Tier 4)
@@ -697,13 +747,13 @@ class KnowledgeGraphService:
         patient_units: Dict[str, str] = {}  # display → unit
 
         for item in retrieved_data:
-            meta = item.get("metadata", {})
-            display = (meta.get("display") or "").lower()
-            value = str(meta.get("value") or "")
-            unit = str(meta.get("unit") or "")
+            # Fields are stored at top level (not inside metadata)
+            display = (item.get("display") or "").lower()
+            value = str(item.get("value_numeric") or item.get("value") or "")
+            unit = str(item.get("unit") or "")
             content = (item.get("content") or "").lower()
 
-            if item.get("data_type") == "observations":
+            if item.get("data_type") in ("observation", "observations"):
                 patient_obs_keys.add(display)
                 if display:
                     patient_values[display] = value
@@ -713,7 +763,7 @@ class KnowledgeGraphService:
                     if len(word) > 3:
                         patient_obs_keys.add(word)
 
-            elif item.get("data_type") == "conditions":
+            elif item.get("data_type") in ("condition", "conditions"):
                 patient_condition_keys.add(display)
                 for word in display.split():
                     if len(word) > 3:
@@ -780,7 +830,17 @@ class KnowledgeGraphService:
                     missing_obs.append(obs)
 
             total = len(key_obs) if key_obs else 1
-            confidence = round(len(found_obs) / total, 2)
+            raw_confidence = len(found_obs) / total
+
+            # Exclusionary penalty: each matched "against" feature reduces confidence.
+            # Prevents a disease with strong exclusionary evidence from ranking high.
+            against_features = feats.get("against", [])
+            against_matched = sum(
+                1 for a in against_features
+                if any(word in all_patient_keys for word in a.lower().split() if len(word) > 4)
+            )
+            exclusion_penalty = 0.15 * against_matched
+            confidence = round(max(0.0, raw_confidence - exclusion_penalty), 2)
 
             matched[disease] = {
                 "supporting_observations": found_obs,
@@ -797,28 +857,49 @@ class KnowledgeGraphService:
     # Step D: Generate proactive follow-up questions (KG-driven)
     # ─────────────────────────────────────────────────────────────────────────
 
+    def _discriminability(self, obs_name: str) -> float:
+        """
+        Paper's discriminability score: σ(feature) = (n-1) / degree(feature).
+        Higher score = feature is linked to fewer diseases = more discriminating.
+        Features with the highest σ are asked first as follow-up questions.
+        """
+        obs_lower = obs_name.lower()
+        # Use pre-built degree map; fall back to counting across all observation_map values
+        degree = self._obs_degree.get(obs_lower)
+        if degree is None:
+            # Partial match: count diseases where the obs name appears
+            degree = sum(
+                1 for obs_key, diseases in self.observation_map.items()
+                if obs_lower in obs_key or obs_key in obs_lower
+                for _ in set(diseases)
+            ) or 1
+        n = len(set(d for diseases in self.observation_map.values() for d in diseases))
+        return (n - 1) / max(degree, 1)
+
     def generate_followup_questions(
         self,
         matched_evidence: Dict[str, Dict[str, Any]]
     ) -> List[str]:
         """
-        Based on MISSING observations for the top candidate diseases,
-        generate targeted follow-up questions to help narrow the diagnosis.
-
-        This is the "proactive diagnostic questioning" mechanism described
-        in the MedRAG paper (Section 3.4).
+        Paper's discriminability-ranked follow-up questions (Section 3.4).
+        Missing observations linked to fewer diseases are asked first —
+        they most effectively narrow the differential diagnosis.
         """
-        questions: List[str] = []
+        scored: List[Tuple[float, str, str]] = []
         seen: set = set()
 
         for disease, evidence in matched_evidence.items():
             for missing_obs in evidence.get("missing_observations", []):
-                question = f"Do you have {missing_obs} data for this patient? (needed to evaluate {disease})"
-                if question not in seen:
-                    questions.append(question)
-                    seen.add(question)
+                if missing_obs not in seen:
+                    score = self._discriminability(missing_obs)
+                    scored.append((score, missing_obs, disease))
+                    seen.add(missing_obs)
 
-        return questions[:5]  # Return top 5 questions
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [
+            f"Do you have {obs} data for this patient? (helps differentiate {disease})"
+            for _, obs, disease in scored[:5]
+        ]
 
     # ─────────────────────────────────────────────────────────────────────────
     # Step E: Build KG context string for LLM prompt injection
@@ -830,70 +911,108 @@ class KnowledgeGraphService:
         matched_evidence: Dict[str, Dict[str, Any]]
     ) -> str:
         """
-        Format the KG differential diagnosis information into a structured
-        text block that will be injected into the LLM prompt alongside
-        patient records.
+        Paper's "Diagnostic Differences K(eL2s)" format (Zhao et al., WWW 2025).
 
-        This is the "KG-elicited reasoning" step from the MedRAG paper.
+        Single family (focused DDx query): full comparative Diagnostic Differences
+        block — shows HOW diseases within the family differ from each other.
+
+        Multiple families (multi-system query, e.g. diabetes + HTN + CKD):
+        compact 2-line summary per family — acknowledges all conditions without
+        exploding context size with full per-disease feature lists.
         """
         if not candidate_diseases:
             return ""
 
+        # Group candidates by L2 family
+        families: Dict[str, List[str]] = {}
+        for disease in candidate_diseases:
+            family = self._disease_to_family.get(disease, "Unclassified")
+            families.setdefault(family, []).append(disease)
+
+        multi_family = len(families) > 1
+
         lines = [
             "=" * 70,
-            "KNOWLEDGE GRAPH — DIFFERENTIAL DIAGNOSIS (MedRAG KG Layer)",
+            "DIAGNOSTIC KNOWLEDGE GRAPH — DIFFERENTIAL DIAGNOSIS",
+            "Based on MedRAG paper (Zhao et al., ACM WWW 2025)",
             "=" * 70,
             "",
-            f"Based on this patient's data, the following {len(candidate_diseases)} candidate",
-            "diagnos(es) have been identified from the medical knowledge graph.",
-            "Use these structured differences to reason about the most likely diagnosis.",
-            ""
         ]
 
-        for rank, disease in enumerate(candidate_diseases, 1):
-            evidence = matched_evidence.get(disease, {})
-            confidence = evidence.get("confidence", 0.0)
-            supporting = evidence.get("supporting_observations", [])
-            missing = evidence.get("missing_observations", [])
-            distinguishing = evidence.get("distinguishing_features", [])
-            against = evidence.get("against_features", [])
-
-            lines.append(f"[{rank}] {disease}  (Evidence found: {int(confidence * 100)}%)")
-            lines.append("-" * 50)
-
-            if supporting:
-                lines.append("  Patient data supporting this diagnosis:")
-                for obs in supporting:
-                    lines.append(f"    ✓ {obs}")
-
-            if distinguishing:
-                lines.append("  Key distinguishing features (from KG):")
-                for feat in distinguishing[:4]:  # Top 4 features
-                    lines.append(f"    • {feat}")
-
-            if against:
-                lines.append("  Evidence against this diagnosis:")
-                for feat in against[:2]:
-                    lines.append(f"    ✗ {feat}")
-
-            if missing:
-                lines.append("  Diagnostic gaps per KG clinical guidelines (may exist in records but not retrieved):")
-                for obs in missing[:1]:
-                    lines.append(f"    ? {obs}")
-
+        for family_name, family_diseases in families.items():
+            lines.append(f"Disease Family: [{family_name}]")
+            lines.append(
+                f"Relevant conditions: [{', '.join(family_diseases)}]"
+            )
             lines.append("")
 
-        lines += [
-            "=" * 70,
-            "INSTRUCTION TO LLM:",
-            "Use the above KG differential diagnosis context to:",
-            "1. Reason about which diagnosis best fits the patient evidence",
-            "2. Highlight the most likely diagnosis with supporting evidence",
-            "3. Mention alternative diagnoses that cannot be ruled out",
-            "4. For any '? diagnostic gap', mention it only if clinically critical — do NOT list it as absent from patient records",
-            "=" * 70,
-            ""
-        ]
+            if multi_family:
+                # Compact format for multi-system queries: top evidence + 2 features per disease
+                for disease in family_diseases:
+                    evidence = matched_evidence.get(disease, {})
+                    confidence = evidence.get("confidence", 0.0)
+                    supporting = evidence.get("supporting_observations", [])
+                    distinguishing = evidence.get("distinguishing_features", [])
+                    obs_str = ", ".join(supporting[:3]) if supporting else "no direct evidence"
+                    feat_str = " | ".join(distinguishing[:2]) if distinguishing else ""
+                    lines.append(f"  {disease} ({int(confidence * 100)}% match): {obs_str}")
+                    if feat_str:
+                        lines.append(f"    Key features: {feat_str}")
+                lines.append("")
+            else:
+                # Full Diagnostic Differences format for single-family focused DDx
+                lines.append(f"DIAGNOSTIC DIFFERENCES within [{family_name}]:")
+                lines.append("")
+                for rank, disease in enumerate(family_diseases, 1):
+                    evidence = matched_evidence.get(disease, {})
+                    confidence = evidence.get("confidence", 0.0)
+                    supporting = evidence.get("supporting_observations", [])
+                    distinguishing = evidence.get("distinguishing_features", [])
+                    against = evidence.get("against_features", [])
+
+                    lines.append(f"  [{rank}] {disease}  (evidence match: {int(confidence * 100)}%)")
+                    if supporting:
+                        lines.append(f"      Patient evidence found: {', '.join(supporting[:4])}")
+                    if distinguishing:
+                        lines.append("      Clinical guideline criteria (NOT patient records):")
+                        for feat in distinguishing[:4]:
+                            lines.append(f"        • {feat}")
+                    if against:
+                        lines.append("      Criteria that argue against this diagnosis:")
+                        for feat in against[:2]:
+                            lines.append(f"        • {feat}")
+                    lines.append("")
+
+                if len(family_diseases) >= 2:
+                    lines.append("  What distinguishes these diseases from each other:")
+                    comparison_parts = []
+                    for disease in family_diseases[:3]:
+                        ev = matched_evidence.get(disease, {})
+                        feats = ev.get("distinguishing_features", [])
+                        top_feat = feats[0] if feats else "see above"
+                        comparison_parts.append(f"{disease}: {top_feat}")
+                    lines.append("    " + " | ".join(comparison_parts))
+                    lines.append("")
+
+        if multi_family:
+            lines += [
+                "=" * 70,
+                "INSTRUCTION: This patient has conditions across multiple disease families.",
+                "Address each family's conditions in your response. For each, note the",
+                "key patient evidence and what it indicates clinically.",
+                "=" * 70,
+                "",
+            ]
+        else:
+            lines += [
+                "=" * 70,
+                "INSTRUCTION: Use the diagnostic differences above to identify which",
+                "disease best fits the patient's specific observations. Highlight the",
+                "single distinguishing feature that most strongly supports the top",
+                "diagnosis over its alternatives within the same disease family.",
+                "=" * 70,
+                "",
+            ]
 
         return "\n".join(lines)
 
@@ -914,7 +1033,7 @@ class KnowledgeGraphService:
         top = candidate_diseases[:2]
         lines = [
             "─" * 60,
-            "KG CLINICAL CONTEXT (reference only — do not use for DDx):",
+            "KG CLINICAL CONTEXT (use this to enrich your clinical interpretation):",
         ]
         for disease in top:
             evidence = matched_evidence.get(disease, {})
@@ -966,14 +1085,36 @@ class KnowledgeGraphService:
         # Step D: Generate proactive follow-up questions
         followups = self.generate_followup_questions(matched)
 
-        # Step E: Build KG context string for LLM
+        # Step E: Build KG context string for LLM (DDx) and compact summary (non-DDx)
         kg_context = self.build_kg_context(candidates, matched)
+        kg_summary = self.build_kg_summary(candidates, matched)
+
+        # Step F: Derive chart observation hints from supporting evidence
+        # These are the observation names (e.g. "glucose", "blood pressure") that
+        # the KG confirmed as present and plausible in the patient record.
+        # rag_service.py uses these to drive targeted chart generation for DDx queries.
+        chart_hints: List[str] = []
+        seen_hints: set = set()
+        for disease in candidates:
+            evidence = matched.get(disease, {})
+            for item in evidence.get("supporting_observations", []):
+                # item format: "glucose: 180 mg/dL" or "blood pressure: 142"
+                obs_name = item.split(":")[0].strip().lower()
+                if obs_name and obs_name not in seen_hints:
+                    chart_hints.append(obs_name)
+                    seen_hints.add(obs_name)
+                if len(chart_hints) >= 4:  # cap at 4 charts
+                    break
+            if len(chart_hints) >= 4:
+                break
 
         return {
-            "candidate_diseases":  candidates,
-            "matched_evidence":    matched,
-            "kg_context":          kg_context,
-            "followup_questions":  followups
+            "candidate_diseases":      candidates,
+            "matched_evidence":        matched,
+            "kg_context":              kg_context,
+            "kg_summary":              kg_summary,
+            "followup_questions":      followups,
+            "chart_observation_hints": chart_hints,
         }
 
 
