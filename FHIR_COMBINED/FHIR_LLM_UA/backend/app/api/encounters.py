@@ -25,7 +25,7 @@ def list_encounters(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    where = ["e.patient_id = :pid"]
+    where = ["e.enterprise_patient_id = :pid"]
     params = {"pid": patient_id, "limit": limit, "offset": offset}
 
     # Filter by window on the single 'date' column (your table schema)
@@ -39,7 +39,7 @@ def list_encounters(
     sql = f"""
         SELECT
           e.id,
-          e.patient_id AS patientId,
+          e.enterprise_patient_id AS patientId,
           COALESCE(e.class_display, e.class_code) AS klass,
           COALESCE(e.type_display,  e.type_code)  AS type,
           e.admission_reason AS reason,

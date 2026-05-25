@@ -37,13 +37,13 @@ def list_conditions(
     sql = """
     SELECT
       c.id,
-      c.patient_id      AS patientId,
+      c.enterprise_patient_id      AS patientId,
       c.code            AS code,
       c.display         AS display,
       c.clinical_status AS clinicalStatus,
       c.effectiveDateTime AS recordedDate
     FROM conditions c
-    WHERE c.patient_id = :pid
+    WHERE c.enterprise_patient_id = :pid
       AND (:has_q = 0 OR (c.display LIKE :like_q OR c.code LIKE :like_q))
     ORDER BY COALESCE(c.effectiveDateTime, '1000-01-01') DESC,
              c.id DESC
@@ -53,7 +53,7 @@ def list_conditions(
     sql_count = """
     SELECT COUNT(*) AS n
     FROM conditions c
-    WHERE c.patient_id = :pid
+    WHERE c.enterprise_patient_id = :pid
       AND (:has_q = 0 OR (c.display LIKE :like_q OR c.code LIKE :like_q))
     """
 

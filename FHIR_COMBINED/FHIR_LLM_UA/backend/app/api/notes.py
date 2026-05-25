@@ -33,14 +33,14 @@ def list_notes(
 
     sql = """
     SELECT
-      n.patient_id                         AS patientId,
+      n.enterprise_patient_id                         AS patientId,
       COALESCE(n.note_datetime, n.created_at) AS created,
       n.note_text                          AS text,
       n.source_type                        AS sourceType,
       n.filename_txt                       AS fileName,
       n.base_key                           AS baseKey
     FROM notes n
-    WHERE n.patient_id = :pid
+    WHERE n.enterprise_patient_id = :pid
       AND (:has_q = 0 OR (
             n.note_text    LIKE :like_q OR
             n.filename_txt LIKE :like_q OR
@@ -55,7 +55,7 @@ def list_notes(
     sql_count = """
     SELECT COUNT(*) AS n
     FROM notes n
-    WHERE n.patient_id = :pid
+    WHERE n.enterprise_patient_id = :pid
       AND (:has_q = 0 OR (
             n.note_text    LIKE :like_q OR
             n.filename_txt LIKE :like_q OR

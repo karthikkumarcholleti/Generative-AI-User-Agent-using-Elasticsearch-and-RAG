@@ -170,10 +170,12 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
     with engine.connect() as conn:
         # Get demographics
         sql_p = """
-        SELECT patient_id, CONCAT(given_name, ' ', family_name) AS name,
-               birth_date, gender, city, state, postal_code
+        SELECT enterprise_patient_id AS patient_id,
+               CONCAT(given_name, ' ', family_name) AS name,
+               birth_date, gender, city, state, postal_code,
+               visited_hospitals, data_sources
         FROM patients
-        WHERE patient_id = :pid
+        WHERE enterprise_patient_id = :pid
         LIMIT 1
         """
         p = conn.execute(text(sql_p), {"pid": patient_id}).mappings().first()
@@ -183,9 +185,10 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
         # Get conditions
         sql_c = """
         SELECT c.icd_code AS code, c.display, c.clinical_status,
+               c.source_hospital,
                COALESCE(c.onset_datetime, c.recorded_date) AS recordedDate
         FROM conditions c
-        WHERE c.patient_id = :pid
+        WHERE c.enterprise_patient_id = :pid
         ORDER BY COALESCE(c.onset_datetime, c.recorded_date, '1000-01-01') DESC, c.db_id DESC
         LIMIT :limit
         """
@@ -194,15 +197,17 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
             "code": r["code"],
             "display": r["display"],
             "clinicalStatus": r["clinical_status"],
+            "source_hospital": r["source_hospital"],
             "recordedDate": r["recordedDate"].isoformat() if r["recordedDate"] else None,
         } for r in rows_c]
         
         # Get observations
         sql_o = """
         SELECT o.code, o.display, o.value_numeric AS valueNumber, o.value_string AS valueString,
-               o.unit, COALESCE(o.effective_datetime, o.effective_date) AS effectiveDateTime
+               o.unit, o.source_hospital,
+               COALESCE(o.effective_datetime, o.effective_date) AS effectiveDateTime
         FROM observations o
-        WHERE o.patient_id = :pid
+        WHERE o.enterprise_patient_id = :pid
           AND (o.value_numeric IS NOT NULL OR o.value_string IS NOT NULL)
         ORDER BY COALESCE(o.effective_datetime, o.effective_date, '1000-01-01') DESC, o.db_id DESC
         LIMIT :limit
@@ -214,6 +219,7 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
             "valueNumber": float(r["valueNumber"]) if r["valueNumber"] is not None else None,
             "valueString": r["valueString"],
             "unit": r["unit"],
+            "source_hospital": r["source_hospital"],
             "effectiveDateTime": r["effectiveDateTime"].isoformat() if r["effectiveDateTime"] else None,
         } for r in rows_o]
         
@@ -227,7 +233,7 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
             SELECT n.note_date AS created, n.content AS text,
                    n.source_hospital AS sourceType, n.note_filename AS fileName
             FROM notes n
-            WHERE n.patient_id = :pid
+            WHERE n.enterprise_patient_id = :pid
             ORDER BY n.note_date DESC, n.db_id DESC
             LIMIT :limit
             """
@@ -262,7 +268,7 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
                         SELECT note_date AS created, content AS text,
                                source_hospital AS sourceType, note_filename AS fileName
                         FROM notes
-                        WHERE patient_id = %s
+                        WHERE enterprise_patient_id = %s
                         ORDER BY note_date DESC, db_id DESC
                         LIMIT %s
                     """, (patient_id, max_notes))
@@ -287,9 +293,10 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
         try:
             sql_e = """
             SELECT e.class_code, e.class_display, e.type_code, e.type_display,
-                   e.period_start AS date, e.reason_text AS admission_reason, e.source_type
+                   e.period_start AS date, e.reason_text AS admission_reason,
+                   e.source_type, e.source_hospital
             FROM encounters e
-            WHERE e.patient_id = :pid
+            WHERE e.enterprise_patient_id = :pid
             ORDER BY COALESCE(e.period_start, '1000-01-01') DESC, e.db_id DESC
             LIMIT :limit
             """
@@ -302,6 +309,7 @@ def get_patient_data_from_db(patient_id: str, for_indexing: bool = False) -> Dic
                 "date": r["date"].isoformat() if r["date"] else None,
                 "admissionReason": r["admission_reason"],
                 "sourceType": r["source_type"],
+                "sourceHospital": r["source_hospital"],
             } for r in rows_e]
         except Exception as e:
             # Table doesn't exist or other error - continue without encounters

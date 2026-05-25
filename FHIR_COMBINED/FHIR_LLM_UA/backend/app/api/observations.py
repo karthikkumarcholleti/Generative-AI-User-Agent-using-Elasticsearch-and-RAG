@@ -41,7 +41,7 @@ def list_observations(
 
     sql = """
     SELECT
-      o.patient_id     AS patientId,
+      o.enterprise_patient_id     AS patientId,
       o.code           AS code,
       o.display        AS display,
       o.value_numeric  AS valueNumber,
@@ -58,7 +58,7 @@ def list_observations(
         o.effectiveDateTime
       ) AS effDate
     FROM observations o
-    WHERE o.patient_id = :pid
+    WHERE o.enterprise_patient_id = :pid
       AND (:has_q = 0 OR (
             o.code LIKE :like_q OR
             o.display LIKE :like_q OR
@@ -81,7 +81,7 @@ def list_observations(
     sql_count = """
       SELECT COUNT(*) AS n
       FROM observations o
-      WHERE o.patient_id = :pid
+      WHERE o.enterprise_patient_id = :pid
         AND (:has_q = 0 OR (
               o.code LIKE :like_q OR
               o.display LIKE :like_q OR
@@ -206,7 +206,7 @@ def get_observation_timeseries(patient_id: str, loinc_code: str):
 
     body = {
         "query": {"bool": {"must": [
-            {"term": {"patient_id": patient_id}},
+            {"term": {"enterprise_patient_id": patient_id}},
             {"terms": {"code": related_codes}},
             {"term": {"data_type": "observation"}},
         ]}},
@@ -266,7 +266,7 @@ def get_observation_timeseries(patient_id: str, loinc_code: str):
     display_name = get_observation_display_from_code(loinc_code) or loinc_code
 
     return {
-        "patient_id": patient_id,
+        "enterprise_patient_id": patient_id,
         "loinc_code": loinc_code,
         "display": display_name,
         "count": len(values),

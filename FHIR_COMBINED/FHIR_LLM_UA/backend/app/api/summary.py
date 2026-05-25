@@ -478,11 +478,12 @@ def _get_patient_data(patient_id: str, category: str = "default"):
     with engine.connect() as conn:
         # Demographics
         sql_p = """
-        SELECT patient_id,
+        SELECT enterprise_patient_id AS patient_id,
                COALESCE(CONCAT_WS(' ', NULLIF(TRIM(given_name),''), NULLIF(TRIM(family_name),'')), 'Not recorded') AS name,
-               birth_date, gender, city, state, postal_code
+               birth_date, gender, city, state, postal_code,
+               visited_hospitals, data_sources
         FROM patients
-        WHERE patient_id = :pid
+        WHERE enterprise_patient_id = :pid
         LIMIT 1
         """
         p = conn.execute(text(sql_p), {"pid": patient_id}).mappings().first()
@@ -520,13 +521,13 @@ def _get_patient_data(patient_id: str, category: str = "default"):
             if len(conditions) >= max_conditions:
                 break
     else:
-        # MySQL fallback — llm_ua_ai schema uses icd_code, onset_datetime, recorded_date, db_id
+        # MySQL fallback — enterprise schema uses enterprise_patient_id
         with engine.connect() as conn:
             sql_c = """
             SELECT c.icd_code AS code, c.display, c.clinical_status,
                    COALESCE(c.onset_datetime, c.recorded_date) AS recordedDate
             FROM conditions c
-            WHERE c.patient_id = :pid
+            WHERE c.enterprise_patient_id = :pid
             ORDER BY COALESCE(c.onset_datetime, c.recorded_date, '1000-01-01') DESC, c.db_id DESC
             """
             rows_c = conn.execute(text(sql_c), {"pid": patient_id}).mappings().all()
@@ -588,7 +589,7 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                 "effectiveDateTime": eff_str,
             })
     else:
-        # MySQL fallback — llm_ua_ai schema uses effective_datetime/effective_date, db_id
+        # MySQL fallback — enterprise schema uses enterprise_patient_id
         with engine.connect() as conn:
             sql_o = """
             SELECT o.code, o.display, o.value_numeric AS valueNumber, o.value_string AS valueString,
@@ -596,7 +597,7 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                    COALESCE(o.effective_datetime, o.effective_date) AS effectiveDateTime,
                    o.value_numeric AS raw_num
             FROM observations o
-            WHERE o.patient_id = :pid
+            WHERE o.enterprise_patient_id = :pid
               AND (o.value_numeric IS NOT NULL OR o.value_string IS NOT NULL)
             ORDER BY COALESCE(o.effective_datetime, o.effective_date, '1000-01-01') DESC, o.db_id DESC
             LIMIT :limit
@@ -690,14 +691,14 @@ def _get_patient_data(patient_id: str, category: str = "default"):
                 "baseKey": None,
             })
     else:
-        # MySQL fallback — llm_ua_ai notes schema: note_date, content, note_filename, db_id
+        # MySQL fallback — enterprise schema uses enterprise_patient_id
         with engine.connect() as conn:
             sql_n = """
             SELECT n.note_date AS created, n.content AS text,
                    n.source_hospital AS sourceType,
                    n.note_filename AS fileName
             FROM notes n
-            WHERE n.patient_id = :pid
+            WHERE n.enterprise_patient_id = :pid
             ORDER BY n.note_date DESC, n.db_id DESC
             LIMIT :limit
             """
@@ -1076,11 +1077,12 @@ def get_patient_summary(patient_id: str):
     with engine.connect() as conn:
         # Demographics
         sql_p = """
-        SELECT patient_id,
+        SELECT enterprise_patient_id AS patient_id,
                COALESCE(CONCAT_WS(' ', NULLIF(TRIM(given_name),''), NULLIF(TRIM(family_name),'')), 'Not recorded') AS name,
-               birth_date, gender, city, state, postal_code
+               birth_date, gender, city, state, postal_code,
+               visited_hospitals, data_sources
         FROM patients
-        WHERE patient_id = :pid
+        WHERE enterprise_patient_id = :pid
         LIMIT 1
         """
         p = conn.execute(text(sql_p), {"pid": patient_id}).mappings().first()

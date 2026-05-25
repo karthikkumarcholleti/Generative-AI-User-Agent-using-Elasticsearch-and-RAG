@@ -132,7 +132,7 @@ class ElasticSearchClient:
                 },
                 "mappings": {
                     "properties": {
-                        "patient_id": {"type": "keyword"},
+                        "enterprise_patient_id": {"type": "keyword"},
                         "patient_name": {"type": "text"},
                         "data_type": {"type": "keyword"},  # demographics, conditions, observations, notes
                         "content": {"type": "text"},
@@ -212,7 +212,7 @@ class ElasticSearchClient:
             if "demographics" in patient_data:
                 demo = patient_data["demographics"]
                 doc = {
-                    "patient_id": patient_id,
+                    "enterprise_patient_id": patient_id,
                     "patient_name": patient_name,
                     "data_type": "demographics",
                     "content": f"Patient {patient_name} - Age: {demo.get('ageYears', 'Unknown')}, Gender: {demo.get('gender', 'Unknown')}, Location: {demo.get('city', 'Unknown')}, {demo.get('state', 'Unknown')}",
@@ -234,7 +234,7 @@ class ElasticSearchClient:
             if "conditions" in patient_data:
                 for condition in patient_data["conditions"]:
                     doc = {
-                        "patient_id": patient_id,
+                        "enterprise_patient_id": patient_id,
                         "patient_name": patient_name,
                         "data_type": "conditions",
                         "content": f"Condition: {condition.get('display', 'Unknown')} - Status: {condition.get('clinicalStatus', 'Unknown')}",
@@ -274,7 +274,7 @@ class ElasticSearchClient:
                         display = observation.get("display")
                     
                     doc = {
-                        "patient_id": patient_id,
+                        "enterprise_patient_id": patient_id,
                         "patient_name": patient_name,
                         "data_type": "observations",
                         "content": content,
@@ -297,7 +297,7 @@ class ElasticSearchClient:
                 for note in patient_data["notes"]:
                     if note.get("text"):
                         doc = {
-                            "patient_id": patient_id,
+                            "enterprise_patient_id": patient_id,
                             "patient_name": patient_name,
                             "data_type": "notes",
                             "content": note.get('text', ''),  # Full note - no truncation (Hybrid Approach)
@@ -322,7 +322,7 @@ class ElasticSearchClient:
                         date_str = f" on {encounter.get('date', '')[:10]}"
                     
                     doc = {
-                        "patient_id": patient_id,
+                        "enterprise_patient_id": patient_id,
                         "patient_name": patient_name,
                         "data_type": "encounters",
                         "content": f"Encounter: {encounter_type} - Class: {encounter.get('classDisplay', encounter.get('classCode', 'Unknown'))}{date_str}",
@@ -455,7 +455,7 @@ class ElasticSearchClient:
                     "bool": {
                         # patient_id is the only hard requirement — every doc for this patient
                         # is a candidate; BM25 should clauses rank by relevance, not gate
-                        "must": [{"term": {"patient_id": patient_id}}],
+                        "must": [{"term": {"enterprise_patient_id": patient_id}}],
                         "should": should_clauses,
                         # NO minimum_should_match — should clauses are scoring bonuses only.
                         # This ensures observations/notes with short content still surface.
@@ -489,7 +489,7 @@ class ElasticSearchClient:
                             "num_candidates": 200,  # More candidates to consider
                             "boost": 5.0,  # Higher boost to prioritize semantic results over keyword
                             "filter": {
-                                "term": {"patient_id": patient_id}
+                                "term": {"enterprise_patient_id": patient_id}
                             }
                         }
                         # Add data type filter to kNN if specified
@@ -497,7 +497,7 @@ class ElasticSearchClient:
                             search_body["knn"]["filter"] = {
                                 "bool": {
                                     "must": [
-                                        {"term": {"patient_id": patient_id}},
+                                        {"term": {"enterprise_patient_id": patient_id}},
                                         {"terms": {"data_type": data_types}}
                                     ]
                                 }
@@ -611,7 +611,7 @@ class ElasticSearchClient:
         try:
             # Get all data for the patient
             search_body = {
-                "query": {"term": {"patient_id": patient_id}},
+                "query": {"term": {"enterprise_patient_id": patient_id}},
                 "size": 1000,
                 "sort": [{"effective_date": {"order": "desc", "missing": "_last", "unmapped_type": "date"}}],
             }
@@ -619,7 +619,7 @@ class ElasticSearchClient:
             response = self.client.search(index=index_name, body=search_body)
 
             summary = {
-                "patient_id": patient_id,
+                "enterprise_patient_id": patient_id,
                 "total_documents": response["hits"]["total"]["value"],
                 "data_types": {},
                 "recent_observations": [],
@@ -689,7 +689,7 @@ class ElasticSearchClient:
         try:
             body = {
                 "query": {"bool": {"must": [
-                    {"term": {"patient_id": patient_id}},
+                    {"term": {"enterprise_patient_id": patient_id}},
                     {"term": {"data_type": es_type}},
                 ]}},
                 "size": size,
@@ -721,10 +721,10 @@ class ElasticSearchClient:
             # Delete by query
             delete_body = {
                 "query": {
-                    "term": {"patient_id": patient_id}
+                    "term": {"enterprise_patient_id": patient_id}
                 }
             }
-            
+
             response = self.client.delete_by_query(index=index_name, body=delete_body)
             logger.info(f"Deleted {response['deleted']} documents for patient {patient_id}")
             return True
@@ -777,7 +777,7 @@ class ElasticSearchClient:
                 "aggs": {
                     "unique_patients_terms": {
                         "terms": {
-                            "field": "patient_id",
+                            "field": "enterprise_patient_id",
                             "size": 10000  # Get all unique patient IDs (supports up to 10k)
                         }
                     }

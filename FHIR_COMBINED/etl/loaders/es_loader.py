@@ -119,8 +119,8 @@ DB_CONFIG = {
     "host":     "127.0.0.1",
     "port":     3306,
     "user":     "llm_ua_admin",
-    "password": "Admin@LLMUA2025!",
-    "database": "llm_ua_ai",
+    "password": "P@ssw0rd",
+    "database": "llm_ua_enterprise",
     "charset":  "utf8mb4",
 }
 
@@ -131,7 +131,7 @@ _INDEX_SETTINGS = {
     },
     "mappings": {
         "properties": {
-            "patient_id":      {"type": "keyword"},
+            "enterprise_patient_id": {"type": "keyword"},
             "data_type":       {"type": "keyword"},
             "source_hospital": {"type": "keyword"},
             "source_type":     {"type": "keyword"},
@@ -236,7 +236,7 @@ def _obs_actions(cx, stats: "InferenceStats | None" = None):
         """
         SELECT o.*, p.given_name, p.family_name, p.birth_date
         FROM observations o
-        LEFT JOIN patients p ON o.patient_id = p.patient_id
+        LEFT JOIN patients p ON o.enterprise_patient_id = p.enterprise_patient_id
         """
     )
     for row in cur:
@@ -288,7 +288,7 @@ def _obs_actions(cx, stats: "InferenceStats | None" = None):
             "_index": INDEX,
             "_id":    f"obs_{row['db_id']}",
             "_source": {
-                "patient_id":       row["patient_id"],
+                "enterprise_patient_id": row["enterprise_patient_id"],
                 "data_type":        "observation",
                 "source_type":      row.get("source_type"),
                 "source_hospital":  row.get("source_hospital"),
@@ -321,7 +321,7 @@ def _cond_actions(cx):
             "_index": INDEX,
             "_id":    f"cond_{row['db_id']}",
             "_source": {
-                "patient_id":      row["patient_id"],
+                "enterprise_patient_id": row["enterprise_patient_id"],
                 "data_type":       "condition",
                 "source_type":     row.get("source_type"),
                 "source_hospital": row.get("source_hospital"),
@@ -351,7 +351,7 @@ def _enc_actions(cx):
             "_index": INDEX,
             "_id":    f"enc_{row['db_id']}",
             "_source": {
-                "patient_id":      row["patient_id"],
+                "enterprise_patient_id": row["enterprise_patient_id"],
                 "data_type":       "encounter",
                 "source_type":     row.get("source_type"),
                 "source_hospital": row.get("source_hospital"),
@@ -371,7 +371,7 @@ def _note_actions(cx):
             "_index": INDEX,
             "_id":    f"note_{row['db_id']}",
             "_source": {
-                "patient_id":      row["patient_id"],
+                "enterprise_patient_id": row["enterprise_patient_id"],
                 "data_type":       "note",
                 "source_hospital": row.get("source_hospital"),
                 "note_date":       str(row["note_date"]) if row.get("note_date") else None,
@@ -380,3 +380,7 @@ def _note_actions(cx):
             },
         }
     cur.close()
+
+
+if __name__ == "__main__":
+    bulk_index_all(verbose=True)

@@ -13,7 +13,7 @@ load_dotenv(ROOT_DIR / ".env")
 # --- DB env ---
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
-DB_NAME = os.getenv("DB_NAME", "llm_ua_clinical")
+DB_NAME = os.getenv("DB_NAME", "llm_ua_enterprise")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_SOCKET = os.getenv("DB_SOCKET")  # optional; leave empty if not using socket

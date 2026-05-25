@@ -37,42 +37,39 @@ def search_patients(query: str = Query(""), limit: int = 5000):
     print(f"🔍 API Call - Search Patients")
     print(f"🔍 Query: '{query}'")
     print(f"🔍 Limit: {limit}")
-    
+
     q = (query or "").strip()
     isnum = 1 if q.isdigit() else 0
     q_len = len(q)
 
-    # Name tokens and helpers
     tokens = q.split()
     t1 = f"%{tokens[0]}%" if tokens else "%"
     t2 = f"%{tokens[1]}%" if len(tokens) > 1 else None
     nameprefix = f"{q}%" if q else "%"
     q_lower = q.lower()
 
-    # Build SQL conditionally to avoid NULL parameter issues
     if isnum == 1:
-        # Numeric search
         sql = """
         SELECT
-          p.patient_id AS patientId,
+          p.enterprise_patient_id AS patientId,
           CONCAT(p.given_name, ' ', p.family_name) AS displayName,
           p.birth_date AS dob,
           p.gender AS gender
         FROM patients p
-        WHERE p.patient_id = :q
-           OR p.patient_id LIKE :pidprefix
-           OR RIGHT(p.patient_id, :q_len) = :q
-           OR p.patient_id REGEXP CONCAT('^0*', :q, '$')
+        WHERE p.enterprise_patient_id = :q
+           OR p.enterprise_patient_id LIKE :pidprefix
+           OR RIGHT(p.enterprise_patient_id, :q_len) = :q
+           OR p.enterprise_patient_id REGEXP CONCAT('^0*', :q, '$')
         ORDER BY
           CASE
-            WHEN p.patient_id = :q THEN 0
-            WHEN p.patient_id REGEXP CONCAT('^0*', :q, '$') THEN 1
-            WHEN p.patient_id LIKE :pidprefix THEN 2
-            WHEN RIGHT(p.patient_id, :q_len) = :q THEN 3
+            WHEN p.enterprise_patient_id = :q THEN 0
+            WHEN p.enterprise_patient_id REGEXP CONCAT('^0*', :q, '$') THEN 1
+            WHEN p.enterprise_patient_id LIKE :pidprefix THEN 2
+            WHEN RIGHT(p.enterprise_patient_id, :q_len) = :q THEN 3
             ELSE 4
           END,
           p.last_updated DESC,
-          p.patient_id DESC
+          p.enterprise_patient_id DESC
         LIMIT :limit
         """
         params = {
@@ -82,11 +79,10 @@ def search_patients(query: str = Query(""), limit: int = 5000):
             "limit": limit,
         }
     else:
-        # Name search
         if t2:
             sql = """
             SELECT
-              p.patient_id AS patientId,
+              p.enterprise_patient_id AS patientId,
               CONCAT(p.given_name, ' ', p.family_name) AS displayName,
               p.birth_date AS dob,
               p.gender AS gender
@@ -104,7 +100,7 @@ def search_patients(query: str = Query(""), limit: int = 5000):
                 ELSE 4
               END,
               p.last_updated DESC,
-              p.patient_id DESC
+              p.enterprise_patient_id DESC
             LIMIT :limit
             """
             params = {
@@ -117,7 +113,7 @@ def search_patients(query: str = Query(""), limit: int = 5000):
         else:
             sql = """
             SELECT
-              p.patient_id AS patientId,
+              p.enterprise_patient_id AS patientId,
               CONCAT(p.given_name, ' ', p.family_name) AS displayName,
               p.birth_date AS dob,
               p.gender AS gender
@@ -132,7 +128,7 @@ def search_patients(query: str = Query(""), limit: int = 5000):
                 ELSE 4
               END,
               p.last_updated DESC,
-              p.patient_id DESC
+              p.enterprise_patient_id DESC
             LIMIT :limit
             """
             params = {
@@ -145,15 +141,14 @@ def search_patients(query: str = Query(""), limit: int = 5000):
     try:
         with engine.connect() as conn:
             rows = conn.execute(text(sql), params).mappings().all()
-        
+
         print(f"🔍 Query executed")
         print(f"✅ Results: {len(rows)} patients found")
         print(f"✅ Response sent to client\n")
 
-        # Generate id from patientId hash for API compatibility (cocm_db_unified doesn't have id column)
         return [
             {
-                "id": hash(r["patientId"]) % (10**9),  # Generate numeric id from patientId hash
+                "id": hash(r["patientId"]) % (10**9),
                 "patientId": r["patientId"],
                 "displayName": r["displayName"],
                 "dob": _iso(r["dob"]),
@@ -171,14 +166,14 @@ def search_patients(query: str = Query(""), limit: int = 5000):
 def get_demographics(patient_id: str):
     print(f"🔍 API Call - Get Demographics")
     print(f"🔍 Patient ID: {patient_id}")
-    
+
     sql_p = """
-      SELECT p.patient_id AS patientId,
+      SELECT p.enterprise_patient_id AS patientId,
              CONCAT(p.given_name, ' ', p.family_name) AS name,
              p.birth_date AS birthDate,
              p.gender, p.city, p.state, p.postal_code AS postalCode
       FROM patients p
-      WHERE p.patient_id = :pid
+      WHERE p.enterprise_patient_id = :pid
       LIMIT 1
     """
     with engine.connect() as conn:
@@ -187,7 +182,7 @@ def get_demographics(patient_id: str):
     if not prow:
         print(f"❌ Patient not found: {patient_id}")
         raise HTTPException(status_code=404, detail="patient not found")
-    
+
     print(f"✅ Patient found: {prow.get('name', 'Unknown')}")
     print(f"✅ Response sent to client\n")
 
@@ -199,9 +194,8 @@ def get_demographics(patient_id: str):
         return today.year - d.year - ((today.month, today.day) < (d.month, d.day))
 
     bdate = prow["birthDate"]
-    # Generate id from patientId hash for API compatibility (cocm_db_unified doesn't have id column)
     return Demographics(
-        id=hash(str(prow["patientId"])) % (10**9),  # Generate numeric id from patientId hash
+        id=hash(str(prow["patientId"])) % (10**9),
         patientId=str(prow["patientId"]),
         name=str(prow["name"]),
         birthDate=_iso(bdate),

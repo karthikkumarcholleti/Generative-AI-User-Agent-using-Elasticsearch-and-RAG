@@ -46,6 +46,35 @@ from .medrag_knowledge_graph import kg_service  # MedRAG KG singleton
 
 logger = logging.getLogger(__name__)
 
+# Hospital display names — maps internal ETL key → human-readable name for LLM context
+_HOSPITAL_DISPLAY: Dict[str, str] = {
+    "aspirus_houghton":    "Aspirus Houghton Clinic",
+    "aspirus_keweenaw":    "Aspirus Keweenaw Hospital",
+    "baraga_main":         "Baraga County Memorial Hospital",
+    "bronson":             "Bronson Battle Creek Hospital",
+    "corewell_system":     "Corewell Health",
+    "dickinson":           "Dickinson County Healthcare System",
+    "henry_ford_main":     "Henry Ford Hospital",
+    "henry_ford_macomb":   "Henry Ford Macomb Hospital",
+    "mclaren_macomb":      "McLaren Macomb",
+    "uphsm_munising":      "Munising Memorial Hospital",
+    "munson_charlevoix":   "Munson Healthcare Charlevoix Hospital",
+    "munson_traverse":     "Munson Medical Center",
+    "mymichigan_westbranch": "MyMichigan Medical Center West Branch",
+    "mymichigan_sault":    "MyMichigan Medical Center Sault",
+    "north_ottawa":        "North Ottawa Community Hospital",
+    "scmh_main":           "Schoolcraft Memorial Hospital",
+    "st_john":             "Ascension St. John Hospital",
+    "st_joseph_mercy_aa":  "Trinity Health Ann Arbor Hospital",
+    "uphsm_marquette":     "UP Health System Marquette",
+}
+
+def hospital_display(key: str) -> str:
+    """Convert internal source_hospital key to human-readable hospital name."""
+    if not key:
+        return ""
+    return _HOSPITAL_DISPLAY.get(key, key.replace("_", " ").title())
+
 # DDx intent keywords — exported for the debug endpoint
 DDX_INTENT_KEYWORDS = [
     "differential diagnosis", "differential", "ddx",
@@ -752,6 +781,23 @@ class RAGService:
                     content = item.get("content", "")
                     if content:
                         context_parts.append(f"- {content}")
+                # Append visited hospitals from MySQL patients table
+                try:
+                    import json as _json
+                    from ..core.database import engine as _engine
+                    from sqlalchemy import text as _text
+                    with _engine.connect() as _conn:
+                        _row = _conn.execute(
+                            _text("SELECT visited_hospitals FROM patients WHERE enterprise_patient_id = :pid LIMIT 1"),
+                            {"pid": patient_id}
+                        ).mappings().first()
+                    if _row and _row["visited_hospitals"]:
+                        _visited = _json.loads(_row["visited_hospitals"])
+                        if _visited:
+                            _names = ", ".join(hospital_display(h) for h in _visited)
+                            context_parts.append(f"- Visited Hospitals: {_names}")
+                except Exception:
+                    pass
             
             elif data_type == "conditions":
                 # Group and prioritize conditions by category
@@ -788,6 +834,7 @@ class RAGService:
                         "code": code,
                         "display": display,
                         "clinicalStatus": clinical_status,
+                        "source_hospital": item.get("source_hospital", ""),
                         "content": item.get("content", ""),
                     }
                     if "category" in metadata:
@@ -822,8 +869,10 @@ class RAGService:
                             name = cond.get("normalizedName") or cond.get("display", "Unknown")
                             status = cond.get("clinicalStatus") or "active"
                             onset_date = cond.get("onsetDateTime", "") or cond.get("onset", "unknown")
+                            hosp = hospital_display(cond.get("source_hospital", ""))
+                            hosp_tag = f" | {hosp}" if hosp else ""
                             context_parts.append(
-                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}"
+                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}{hosp_tag}"
                             )
                             _cond_idx += 1
 
@@ -835,8 +884,10 @@ class RAGService:
                             name   = cond.get("normalizedName") or cond.get("display") or cond.get("content", "Unknown")
                             status = cond.get("clinicalStatus") or "active"
                             onset_date = cond.get("onsetDateTime", "") or cond.get("onset", "unknown")
+                            hosp = hospital_display(cond.get("source_hospital", ""))
+                            hosp_tag = f" | {hosp}" if hosp else ""
                             context_parts.append(
-                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}"
+                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}{hosp_tag}"
                             )
                             _cond_idx += 1
             
@@ -899,6 +950,7 @@ class RAGService:
                             "ref_lo": ref_lo,
                             "ref_hi": ref_hi,
                             "date": date_str,
+                            "source_hospital": item.get("source_hospital", ""),
                             "content": item.get("content", ""),
                         }
                 
@@ -1005,8 +1057,10 @@ class RAGService:
                     # ────────────────────────────────────────────────────────
 
                     flag_label = "HIGH" if flag == " [HIGH]" else ("LOW" if flag == " [LOW]" else "normal")
+                    hosp = hospital_display(obs.get("source_hospital", ""))
+                    hosp_tag = f" | {hosp}" if hosp else ""
                     context_parts.append(
-                        f"[O-{_obs_idx}] {display}: {value_str}{unit_text} | {flag_label} | Date: {date_str}"
+                        f"[O-{_obs_idx}] {display}: {value_str}{unit_text} | {flag_label} | Date: {date_str}{hosp_tag}"
                     )
                     _obs_idx += 1
             
@@ -1105,6 +1159,7 @@ ANSWERING RULES:
 - Values flagged [HIGH] or [LOW] are abnormal — highlight those first.
 - If specific queried data is absent: acknowledge in ONE sentence and move on. Do not enumerate all other absent types.
 - For diagnosis questions: state the most likely diagnosis FIRST, then evidence from the records.
+- Each [C-N] and [O-N] citation ends with | Hospital Name. When asked WHERE a condition was diagnosed or recorded, always include that hospital name in your answer (e.g. "Hypertension [C-3] diagnosed at Baraga County Memorial Hospital").
 
 MEDICAL TERM MAPPING:
 - "CREATININE:MCNC:PT:SER/PLAS:QN::" = creatinine
@@ -1169,6 +1224,10 @@ MEDICAL TERM RECOGNITION:
 - "Chronic kidney disease" = "CKD" = "renal disease"
 - Always map technical LOINC/SNOMED codes to readable clinical terms
 
+HOSPITAL ATTRIBUTION:
+- Each [C-N] and [O-N] citation ends with | Hospital Name showing where it was recorded.
+- When asked WHERE a condition was diagnosed or a test was performed, always include that hospital name (e.g. "Hypertension [C-3] — Baraga County Memorial Hospital").
+
 IMPORTANT: This tool provides data analysis and KG-elicited reasoning only.
 All clinical decisions must be made by qualified healthcare providers.
 Use retrieved patient data only. When stating a patient-specific fact (a lab value,
@@ -1196,6 +1255,13 @@ ANSWERING RULES:
 - Example: "[O-13] Creatinine: 2.2 mg/dL — HIGH. This is consistent with the patient's CKD Stage 3b profile (75% evidence match), alongside elevated BUN and low hemoglobin indicating CKD-related anemia."
 - If the queried value is absent from the records: say so in one sentence, then stop.
 - Do NOT list every lab value — answer what was asked, then add clinical context.
+
+HOSPITAL ATTRIBUTION:
+- Each [C-N] condition line ends with | Hospital Name showing where it was recorded.
+- Each [O-N] observation line ends with | Hospital Name showing where it was performed.
+- When listing conditions, use this format: "[C-N] Condition name (status) — Hospital Name"
+- When asked WHERE something was diagnosed or recorded, always include the hospital name from the | separator.
+- Example: "[C-3] Hypertension (active) — Baraga County Memorial Hospital"
 
 MEDICAL TERM MAPPING:
 - "Hypertensive disorder" = hypertension | "Diabetes mellitus" = diabetes | "CKD" = chronic kidney disease
@@ -1232,9 +1298,12 @@ Before answering: identify the relevant [O-N] and [C-N] items in the data above.
 When you state a specific patient value or condition, include its label.
 
 FORMAT:
-- Lead with the specific retrieved value: "[O-N] [Observation]: [Value] [Unit] (Date: YYYY-MM-DD) — [HIGH/LOW/normal]"
+For observations: "[O-N] Observation name: Value Unit (Date: YYYY-MM-DD) — HIGH/LOW/normal — Hospital Name"
+For conditions: "[C-N] Condition name (status) — Hospital Name"
+  The hospital name comes from the | separator at the end of each [C-N] or [O-N] line in the records above.
 - Follow naturally with 1-2 sentences of clinical interpretation. Interpretation sentences do not need labels.
 - If the asked-about value does NOT appear in any record: state "No [test name] found in retrieved data." once, then stop.
+- When asked WHERE a condition was diagnosed or a test performed, ALWAYS include the hospital name.
 - Do NOT repeat the same value. If multiple records show the same test, report only the most recent non-null entry.
 - Do NOT open with an absence — always list present values first.
 - Do NOT use asterisks (*) or bold formatting (**text**).
@@ -1382,14 +1451,16 @@ Before answering: identify the relevant [O-N] and [C-N] items in the data above.
 When you state a specific patient value or condition, include its label.
 
 FORMAT:
-- Lead with the specific retrieved value: "[O-N] [Observation]: [Value] [Unit] (Date: YYYY-MM-DD) — [HIGH/LOW/normal]"
+For observations: "[O-N] Observation name: Value Unit (Date: YYYY-MM-DD) — HIGH/LOW/normal — Hospital Name"
+For conditions: "[C-N] Condition name (status) — Hospital Name"
+  The hospital name comes from the | separator at the end of each [C-N] line in the records above.
 - Follow with 1-2 sentences of clinical interpretation. Use the KG Clinical Context block above to connect the finding to the patient's condition profile. Interpretation sentences do not need labels.
 - If a KG Clinical Context block is present above: synthesize it into your interpretation (e.g. "This is consistent with the patient's CKD Stage 3b profile (75% match)."). Do NOT copy the KG block verbatim.
 - If the asked-about value does NOT appear in any record: state "No [test name] found in retrieved data." once, then stop.
-- Do NOT list every lab value — answer the specific question, then add context.
+- When the question asks WHERE something was diagnosed or recorded, ALWAYS include the hospital name from the | separator.
 - Do NOT open with an absence — always list present values first.
 - Do NOT use bold formatting (**text**) or asterisks (*).
-- Do NOT repeat the same value more than once.
+- Do NOT repeat the same item more than once.
 
 CLINICAL REFERENCE RANGES:
   Glucose (fasting): <100 normal | 100-125 pre-diabetes | >=126 diabetes
