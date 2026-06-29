@@ -55,7 +55,6 @@ FHIR_COMBINED/
 ├── README.md                  # This file
 ├── Code_work.md               # Step-by-step usage guide with expected output
 ├── KNOWLEDGE_TRANSFER.md      # Full system knowledge transfer document
-├── CLAUDE.md                  # Architecture reference for AI-assisted development
 ├── check_mode.sh              # Show current RAG/MedRAG mode
 ├── use_rag.sh                 # Switch to Standard RAG
 └── use_medrag.sh              # Switch to MedRAG + KG
@@ -139,6 +138,44 @@ See `KNOWLEDGE_TRANSFER.md` Section 16 for the full prioritized list. The most i
 3. Fix comparison script order effect before paper submission
 4. Clinician annotation of 5–10 cases for the paper (needs UPHP coordination)
 5. Persist source UUIDs to Elasticsearch so citation links survive server restarts
+
+---
+
+## Audit Logging
+
+Every query sent through the chat is automatically recorded in MySQL before the response goes back to the user. This is required for HIPAA compliance.
+
+**The backend terminal does not show audit log entries.** It only shows HTTP request lines like `POST /chat-agent/query 200`. The actual log records go to the MySQL database.
+
+To watch queries come in live, open a **separate terminal** and run:
+
+```bash
+watch -n 3 "mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
+  -e \"SELECT id, timestamp, patient_id, LEFT(query,45) AS query, pipeline_mode, elapsed_ms \
+       FROM clinical_audit_log ORDER BY timestamp DESC LIMIT 8;\""
+```
+
+This refreshes every 3 seconds. As soon as someone sends a query in the UI, a new row appears here.
+
+Other useful queries:
+
+```bash
+# Total queries logged so far
+mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
+  -e "SELECT COUNT(*) AS total FROM clinical_audit_log;"
+
+# Queries by pipeline (RAG vs MedRAG)
+mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
+  -e "SELECT pipeline_mode, COUNT(*) AS count, ROUND(AVG(elapsed_ms)/1000,1) AS avg_seconds \
+      FROM clinical_audit_log GROUP BY pipeline_mode;"
+
+# All queries for a specific patient
+mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
+  -e "SELECT timestamp, LEFT(query,60), pipeline_mode, elapsed_ms \
+      FROM clinical_audit_log WHERE patient_id='000000509' ORDER BY timestamp DESC LIMIT 10;"
+```
+
+Full audit log details (schema, all query options) are in `Code_work.md` Section 9.
 
 ---
 
