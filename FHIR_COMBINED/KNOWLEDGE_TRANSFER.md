@@ -68,11 +68,34 @@ working with FHIR-standardized longitudinal EHR data?
 **Critical shared-server rule:** Never kill GPU processes owned by other users (e.g., `ckadirim`
 runs Jupyter on the GPUs). Always check `ps -o user,pid -p <PID>` before killing anything.
 
-**Do not use `start_all.sh`** — it hardcodes the wrong Python path. Always use:
+**Starting services — three terminals, in order:**
+
 ```bash
-cd FHIR_LLM_UA/backend
+# Terminal 1 — Elasticsearch (leave this terminal open)
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
+./elasticsearch-8.14.0/bin/elasticsearch
+
+# Terminal 2 — Backend (Llama loads in 60–120 seconds)
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
 nohup /home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
   --host 0.0.0.0 --port 8001 --workers 1 > /tmp/backend.log 2>&1 &
+tail -f /tmp/backend.log   # wait for "Application startup complete."
+
+# Terminal 3 — Frontend
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_dashboard/backend/frontend
+npm run dev
+```
+
+**Stopping services:**
+
+```bash
+pkill -f "uvicorn.*8001"    # Stop backend
+pkill -f "next.*dev"        # Stop frontend
+
+# Stop Elasticsearch — verify owner first
+ES_PID=$(ps aux | grep elasticsearch | grep java | grep -v grep | awk '{print $2}' | head -1)
+ps -o user,pid -p $ES_PID  # must say kchollet
+kill $ES_PID
 ```
 
 ---
@@ -482,13 +505,14 @@ All scripts run from `/mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBI
 | Script | Purpose |
 |--------|---------|
 | `check_mode.sh` | Print current RAG/MedRAG mode |
-| `use_rag.sh` | Switch to Standard RAG (no restart) |
-| `use_medrag.sh` | Switch to MedRAG + KG (no restart) |
-| `start_all.sh` | Start ES + backend + frontend (use with caution — wrong Python path) |
-| `stop_all.sh` | Stop all services |
-| `setup_elasticsearch.sh` | Initialize/configure Elasticsearch index |
-| `scripts/fix_and_reindex_all.sh` | Delete ES index and reindex all patients |
+| `use_rag.sh` | Switch to Standard RAG (no restart needed) |
+| `use_medrag.sh` | Switch to MedRAG + KG (no restart needed) |
+| `setup_elasticsearch.sh` | Initialize/configure Elasticsearch index mapping |
+| `scripts/fix_and_reindex_all.sh` | Delete ES index and reindex all patients from MySQL |
 | `scripts/fix_elasticsearch_disk_space.sh` | Clear ES disk warning (sets flood stage watermark) |
+
+Services (Elasticsearch, backend, frontend) are started and stopped with explicit terminal
+commands — see Section 2 above and `Code_work.md` for the full step-by-step sequence.
 
 ---
 
