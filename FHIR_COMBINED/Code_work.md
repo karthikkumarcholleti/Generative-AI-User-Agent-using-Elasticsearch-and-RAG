@@ -49,47 +49,66 @@ ls /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/mod
 
 ## 2. Starting All Services
 
-Open **two terminals**.
+Open **three terminals** — one per service.
 
-### Terminal 1 — Elasticsearch (always start this first)
+### Terminal 1 — Elasticsearch (start this first)
 
-First check if it is already running:
+Check if already running:
 ```bash
 curl -s http://localhost:9200/_cluster/health | grep status
 ```
 
-- If you see `"status":"green"` or `"status":"yellow"` — **already running, skip to Terminal 2.**
-- If you get "connection refused" — start it:
+- `"status":"green"` or `"yellow"` → already running, move to Terminal 2.
+- Connection refused → start it:
 
 ```bash
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
 ./elasticsearch-8.14.0/bin/elasticsearch
 ```
 
-Leave this terminal open — closing it stops Elasticsearch. Wait 20–30 seconds, then confirm:
-
+Leave this terminal open. Wait 20–30 seconds, then verify:
 ```bash
 curl -s http://localhost:9200/_cluster/health?pretty | grep status
 ```
-
 Expected: `"status" : "green"` — do not proceed until you see this.
 
-### Terminal 2 — Backend + Frontend
+### Terminal 2 — Backend (FastAPI + Llama model)
 
 ```bash
-cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
-./start_all.sh
-```
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
 
-The Llama model takes **60–120 seconds** to load. The script will tell you when everything is ready. To monitor the backend loading in detail:
+nohup /home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
+  --host 0.0.0.0 --port 8001 --workers 1 > /tmp/backend.log 2>&1 &
 
-```bash
 tail -f /tmp/backend.log
 ```
 
-Look for: `INFO:     Application startup complete.`
+The Llama model takes **60–120 seconds** to load into GPU. Wait for this line:
+```
+INFO:     Application startup complete.
+```
 
-Then open: **http://localhost:3000**
+Then confirm it is healthy:
+```bash
+curl -s http://localhost:8001/health
+```
+Expected: `{"status":"ok","db":"ok"}`
+
+### Terminal 3 — Frontend (Next.js)
+
+```bash
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_dashboard/backend/frontend
+npm run dev
+```
+
+Wait for:
+```
+▲ Next.js 14.x.x
+- Local: http://localhost:3000
+✓ Ready in 3.2s
+```
+
+Then open **http://localhost:3000** in your browser.
 
 ---
 
@@ -522,60 +541,52 @@ curl -s "http://localhost:9200/patient_data/_search" \
 
 ## 11. Stopping All Services
 
-### Stop Backend + Frontend (safe, automatic)
+### Stop the Backend
 
 ```bash
-cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
-./stop_all.sh
+pkill -f "uvicorn.*8001"
 ```
 
-This stops the backend and frontend. It intentionally **does not stop Elasticsearch** because ES may be shared with other users.
-
-### Stop Elasticsearch (manually, when needed)
-
-First find the ES process ID:
+Confirm:
 ```bash
-ps aux | grep elasticsearch | grep -v grep | grep java | awk '{print $2}'
+curl -s http://localhost:8001/health 2>/dev/null || echo "Backend stopped"
 ```
 
-Before killing, confirm it belongs to you (`kchollet`):
+### Stop the Frontend
+
+In Terminal 3 (where `npm run dev` is running): press **Ctrl+C**.
+
+Or from any terminal:
 ```bash
-ps -o user,pid,cmd -p <PID_FROM_ABOVE> | head -2
+pkill -f "next.*dev"
 ```
 
-If it says `kchollet` in the user column, kill it:
+### Stop Elasticsearch (only when needed — this is a shared server)
+
+First verify the process belongs to you before killing:
 ```bash
-kill <PID_FROM_ABOVE>
-```
-
-Confirm it stopped:
-```bash
-curl -s http://localhost:9200/_cluster/health 2>/dev/null || echo "Elasticsearch is stopped"
-```
-
-### Stop everything in one go (all three)
-
-```bash
-cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
-
-# 1. Backend + Frontend
-./stop_all.sh
-
-# 2. Elasticsearch — get PID first, verify it's yours, then kill
 ES_PID=$(ps aux | grep elasticsearch | grep java | grep -v grep | awk '{print $2}' | head -1)
-echo "ES PID: $ES_PID — owned by: $(ps -o user= -p $ES_PID 2>/dev/null)"
-# Only run the next line if the owner is kchollet:
+ps -o user,pid -p $ES_PID
+```
+
+If the user column shows `kchollet`, kill it:
+```bash
 kill $ES_PID
 ```
 
-> **Shared server rule:** Always verify the process owner before killing. Never kill processes owned by other users (e.g., `ckadirim`, `hembroff`).
+Confirm:
+```bash
+curl -s http://localhost:9200/_cluster/health 2>/dev/null || echo "Elasticsearch stopped"
+```
+
+> **Important:** Never kill Elasticsearch processes owned by other users (`ckadirim`, `hembroff`, etc.).
 
 ### Verify everything is stopped
 
 ```bash
 curl -s http://localhost:8001/health 2>/dev/null || echo "Backend: stopped"
-curl -s http://localhost:9200 2>/dev/null || echo "Elasticsearch: stopped"
-curl -s http://localhost:3000 2>/dev/null | head -1 || echo "Frontend: stopped"
+curl -s http://localhost:9200/_cluster/health 2>/dev/null || echo "Elasticsearch: stopped"
+curl -s http://localhost:3000 > /dev/null 2>&1 || echo "Frontend: stopped"
 ```
 
 ---

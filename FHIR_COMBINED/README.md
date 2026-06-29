@@ -52,9 +52,7 @@ FHIR_COMBINED/
 ├── CLAUDE.md                  # Architecture reference for AI-assisted development
 ├── check_mode.sh              # Show current RAG/MedRAG mode
 ├── use_rag.sh                 # Switch to Standard RAG
-├── use_medrag.sh              # Switch to MedRAG + KG
-├── start_all.sh               # Start all services
-└── stop_all.sh                # Stop all services
+└── use_medrag.sh              # Switch to MedRAG + KG
 ```
 
 ---
@@ -63,23 +61,28 @@ FHIR_COMBINED/
 
 > **Prerequisite:** MySQL and Elasticsearch must already be populated. See `Code_work.md` for full setup.
 
+**Terminal 1 — Elasticsearch:**
 ```bash
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
+./elasticsearch-8.14.0/bin/elasticsearch
+```
+Wait for `started` in the output, then verify: `curl -s http://localhost:9200/_cluster/health | grep status`
 
-# 1. Start the backend (Terminal 1)
-cd FHIR_LLM_UA/backend
+**Terminal 2 — Backend:**
+```bash
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
 nohup /home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
   --host 0.0.0.0 --port 8001 --workers 1 > /tmp/backend.log 2>&1 &
-
-# Wait ~90 seconds for model to load, then verify:
-curl -s http://localhost:8001/health
-# Expected: {"status":"ok","db":"ok"}
-
-# 2. Start the frontend (Terminal 2)
-cd FHIR_dashboard/backend/frontend
-npm run dev
-# Access: http://localhost:3000
+tail -f /tmp/backend.log
 ```
+Wait for `Application startup complete.`, then verify: `curl -s http://localhost:8001/health`
+
+**Terminal 3 — Frontend:**
+```bash
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_dashboard/backend/frontend
+npm run dev
+```
+Open: **http://localhost:3000**
 
 ---
 
