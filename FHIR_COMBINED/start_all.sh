@@ -242,13 +242,13 @@ if [ ! -d "$BACKEND_DIR" ]; then
 fi
 log_success "Backend directory found"
 
-# Check virtual environment
-if [ ! -d "$VENV_DIR" ] || [ ! -f "$VENV_DIR/bin/activate" ]; then
-    log_error "Virtual environment not found: $VENV_DIR"
-    log_info "Please create it first: python -m venv $VENV_DIR"
+# Check miniconda python (venv replaced by conda env which has all dependencies)
+PYTHON_BIN="/home/kchollet/miniconda3/bin/python3"
+if [ ! -f "$PYTHON_BIN" ]; then
+    log_error "Python not found at $PYTHON_BIN"
     exit 1
 fi
-log_success "Virtual environment found"
+log_success "Python found: $PYTHON_BIN"
 
 # Check frontend directory
 if [ ! -d "$FRONTEND_DIR" ]; then
@@ -301,11 +301,9 @@ else
     log_step "Step 3: Starting Backend API (port ${BACKEND_PORT})"
 
     cd "$BACKEND_DIR"
-    # venv activation disabled: venv/Python3.13 lacks elasticsearch; conda env has all deps
-    # source "$VENV_DIR/bin/activate"
 
     log_info "Starting FastAPI backend..."
-    nohup python -m uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT} > "$BACKEND_LOG" 2>&1 &
+    nohup "$PYTHON_BIN" -m uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT} > /tmp/backend.log 2>&1 &
     BACKEND_PID=$!
 
     log_success "Backend started (PID: $BACKEND_PID)"
@@ -413,7 +411,7 @@ echo "   URL:      http://localhost:${BACKEND_PORT}"
 echo "   Health:   http://localhost:${BACKEND_PORT}/health"
 echo "   Docs:     http://localhost:${BACKEND_PORT}/docs"
 echo "   PID:      $BACKEND_PID"
-echo "   Logs:     $BACKEND_LOG"
+echo "   Logs:     /tmp/backend.log"
 echo ""
 
 if [ -n "${EXPRESS_PID:-}" ]; then
