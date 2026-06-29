@@ -71,9 +71,8 @@ Wait for `started` in the output, then verify: `curl -s http://localhost:9200/_c
 **Terminal 2 — Backend:**
 ```bash
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
-nohup /home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
-  --host 0.0.0.0 --port 8001 --workers 1 > /tmp/backend.log 2>&1 &
-tail -f /tmp/backend.log
+/home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
+  --host 0.0.0.0 --port 8001 --workers 1
 ```
 Wait for `Application startup complete.`, then verify: `curl -s http://localhost:8001/health`
 

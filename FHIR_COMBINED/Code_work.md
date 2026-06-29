@@ -77,10 +77,8 @@ Expected: `"status" : "green"` — do not proceed until you see this.
 ```bash
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
 
-nohup /home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
-  --host 0.0.0.0 --port 8001 --workers 1 > /tmp/backend.log 2>&1 &
-
-tail -f /tmp/backend.log
+/home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
+  --host 0.0.0.0 --port 8001 --workers 1
 ```
 
 The Llama model takes **60–120 seconds** to load into GPU. Wait for this line:
@@ -88,11 +86,13 @@ The Llama model takes **60–120 seconds** to load into GPU. Wait for this line:
 INFO:     Application startup complete.
 ```
 
-Then confirm it is healthy:
+Then confirm it is healthy (from any other terminal):
 ```bash
 curl -s http://localhost:8001/health
 ```
 Expected: `{"status":"ok","db":"ok"}`
+
+Leave this terminal open. Press **Ctrl+C** to stop the backend.
 
 ### Terminal 3 — Frontend (Next.js)
 
@@ -543,23 +543,11 @@ curl -s "http://localhost:9200/patient_data/_search" \
 
 ### Stop the Backend
 
-```bash
-pkill -f "uvicorn.*8001"
-```
-
-Confirm:
-```bash
-curl -s http://localhost:8001/health 2>/dev/null || echo "Backend stopped"
-```
+Press **Ctrl+C** in Terminal 2.
 
 ### Stop the Frontend
 
-In Terminal 3 (where `npm run dev` is running): press **Ctrl+C**.
-
-Or from any terminal:
-```bash
-pkill -f "next.*dev"
-```
+Press **Ctrl+C** in Terminal 3.
 
 ### Stop Elasticsearch (only when needed — this is a shared server)
 

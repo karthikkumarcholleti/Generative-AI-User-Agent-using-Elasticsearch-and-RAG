@@ -77,9 +77,9 @@ cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
 
 # Terminal 2 — Backend (Llama loads in 60–120 seconds)
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
-nohup /home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
-  --host 0.0.0.0 --port 8001 --workers 1 > /tmp/backend.log 2>&1 &
-tail -f /tmp/backend.log   # wait for "Application startup complete."
+/home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
+  --host 0.0.0.0 --port 8001 --workers 1
+# Wait for "Application startup complete." — leave terminal open, Ctrl+C to stop
 
 # Terminal 3 — Frontend
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_dashboard/backend/frontend
@@ -88,13 +88,14 @@ npm run dev
 
 **Stopping services:**
 
-```bash
-pkill -f "uvicorn.*8001"    # Stop backend
-pkill -f "next.*dev"        # Stop frontend
+- **Terminal 1 (Elasticsearch):** Ctrl+C
+- **Terminal 2 (Backend):** Ctrl+C
+- **Terminal 3 (Frontend):** Ctrl+C
 
-# Stop Elasticsearch — verify owner first
+Stop Elasticsearch only when needed — verify owner first:
+```bash
 ES_PID=$(ps aux | grep elasticsearch | grep java | grep -v grep | awk '{print $2}' | head -1)
-ps -o user,pid -p $ES_PID  # must say kchollet
+ps -o user,pid -p $ES_PID  # must say kchollet before killing
 kill $ES_PID
 ```
 
