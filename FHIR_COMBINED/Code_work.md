@@ -49,7 +49,7 @@ ls /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/mod
 
 ## 2. Starting All Services
 
-Open **two terminals**. Do not use `start_all.sh` — it uses the wrong Python path on this server.
+Open **two terminals**.
 
 ### Terminal 1 — Elasticsearch (always start this first)
 
@@ -58,68 +58,38 @@ First check if it is already running:
 curl -s http://localhost:9200/_cluster/health | grep status
 ```
 
-- If you see `"status":"green"` or `"status":"yellow"` — **it is already running, skip to Terminal 2.**
-- If you get "connection refused" — start it now:
+- If you see `"status":"green"` or `"status":"yellow"` — **already running, skip to Terminal 2.**
+- If you get "connection refused" — start it:
 
 ```bash
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
 ./elasticsearch-8.14.0/bin/elasticsearch
 ```
 
-Leave this terminal open — **if you close it, Elasticsearch stops.** Wait 20–30 seconds for it to fully start, then confirm in a new tab:
+Leave this terminal open — closing it stops Elasticsearch. Wait 20–30 seconds, then confirm:
 
 ```bash
-curl -s http://localhost:9200/_cluster/health?pretty
+curl -s http://localhost:9200/_cluster/health?pretty | grep status
 ```
 
-**Expected output:**
-```json
-{
-  "cluster_name" : "elasticsearch",
-  "status" : "green",
-  "number_of_nodes" : 1,
-  "active_primary_shards" : 5
-}
-```
+Expected: `"status" : "green"` — do not proceed until you see this.
 
-Do not proceed until you see `"status": "green"` or `"status": "yellow"`.
-
-### Terminal 1 — Backend (FastAPI + Llama)
+### Terminal 2 — Backend + Frontend
 
 ```bash
-cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/backend
-
-nohup /home/kchollet/miniconda3/bin/python3 -m uvicorn app.main:app \
-  --host 0.0.0.0 --port 8001 --workers 1 > /tmp/backend.log 2>&1 &
-
-echo "Backend PID: $!"
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
+./start_all.sh
 ```
 
-The Llama model takes **60–120 seconds** to load. Monitor progress:
+The Llama model takes **60–120 seconds** to load. The script will tell you when everything is ready. To monitor the backend loading in detail:
+
 ```bash
 tail -f /tmp/backend.log
 ```
 
-Look for this line before proceeding:
-```
-INFO:     Application startup complete.
-```
+Look for: `INFO:     Application startup complete.`
 
-### Terminal 2 — Frontend (Next.js)
-
-```bash
-cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_dashboard/backend/frontend
-npm run dev
-```
-
-**Expected output:**
-```
-   ▲ Next.js 14.x.x
-   - Local:        http://localhost:3000
-   - Network:      http://0.0.0.0:3000
-
- ✓ Ready in 3.2s
-```
+Then open: **http://localhost:3000**
 
 ---
 
