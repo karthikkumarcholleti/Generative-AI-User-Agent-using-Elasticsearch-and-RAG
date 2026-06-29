@@ -25,24 +25,25 @@ router = APIRouter(prefix="/chat-agent", tags=["chat-agent"])
 def _write_audit_log(patient_id: str, query: str, pipeline_mode: str,
                      intent_type: str, retrieved_count: int, data_found: bool,
                      elapsed_ms: int, session_id: str = None,
-                     oom_triggered: bool = False) -> None:
+                     oom_triggered: bool = False, llm_response: str = None) -> None:
     """Write one record to clinical_audit_log. Never raises — audit must not block the query."""
     try:
         with engine.connect() as conn:
             conn.execute(text("""
                 INSERT INTO llm_ua_ai.clinical_audit_log
                   (patient_id, query, pipeline_mode, intent_type,
-                   retrieved_count, data_found, elapsed_ms, session_id, oom_triggered)
+                   retrieved_count, data_found, llm_response, elapsed_ms, session_id, oom_triggered)
                 VALUES
                   (:patient_id, :query, :pipeline_mode, :intent_type,
-                   :retrieved_count, :data_found, :elapsed_ms, :session_id, :oom_triggered)
+                   :retrieved_count, :data_found, :llm_response, :elapsed_ms, :session_id, :oom_triggered)
             """), {
                 "patient_id":     patient_id,
-                "query":          query[:10000],  # guard against enormous queries
+                "query":          query[:10000],
                 "pipeline_mode":  pipeline_mode,
                 "intent_type":    intent_type,
                 "retrieved_count": retrieved_count,
                 "data_found":     int(data_found),
+                "llm_response":   llm_response[:20000] if llm_response else None,
                 "elapsed_ms":     elapsed_ms,
                 "session_id":     session_id,
                 "oom_triggered":  int(oom_triggered),
@@ -461,6 +462,7 @@ def process_chat_query(request: ChatQuery, http_request: Request):
             data_found=bool(data_found),
             elapsed_ms=_elapsed_ms,
             session_id=request.session_id,
+            llm_response=result.get("response"),
         )
 
         return ChatResponse(
