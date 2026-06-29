@@ -51,14 +51,23 @@ ls /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED/FHIR_LLM_UA/mod
 
 Open **two terminals**. Do not use `start_all.sh` — it uses the wrong Python path on this server.
 
-### Terminal 1 — Elasticsearch (if not already running)
+### Terminal 1 — Elasticsearch (always start this first)
+
+First check if it is already running:
+```bash
+curl -s http://localhost:9200/_cluster/health | grep status
+```
+
+- If you see `"status":"green"` or `"status":"yellow"` — **it is already running, skip to Terminal 2.**
+- If you get "connection refused" — start it now:
 
 ```bash
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
-./elasticsearch-8.14.0/bin/elasticsearch -d -p /tmp/elasticsearch.pid
+./elasticsearch-8.14.0/bin/elasticsearch
 ```
 
-Wait 20 seconds, then verify:
+Leave this terminal open — **if you close it, Elasticsearch stops.** Wait 20–30 seconds for it to fully start, then confirm in a new tab:
+
 ```bash
 curl -s http://localhost:9200/_cluster/health?pretty
 ```
@@ -72,6 +81,8 @@ curl -s http://localhost:9200/_cluster/health?pretty
   "active_primary_shards" : 5
 }
 ```
+
+Do not proceed until you see `"status": "green"` or `"status": "yellow"`.
 
 ### Terminal 1 — Backend (FastAPI + Llama)
 
@@ -541,28 +552,61 @@ curl -s "http://localhost:9200/patient_data/_search" \
 
 ## 11. Stopping All Services
 
+### Stop Backend + Frontend (safe, automatic)
+
+```bash
+cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
+./stop_all.sh
+```
+
+This stops the backend and frontend. It intentionally **does not stop Elasticsearch** because ES may be shared with other users.
+
+### Stop Elasticsearch (manually, when needed)
+
+First find the ES process ID:
+```bash
+ps aux | grep elasticsearch | grep -v grep | grep java | awk '{print $2}'
+```
+
+Before killing, confirm it belongs to you (`kchollet`):
+```bash
+ps -o user,pid,cmd -p <PID_FROM_ABOVE> | head -2
+```
+
+If it says `kchollet` in the user column, kill it:
+```bash
+kill <PID_FROM_ABOVE>
+```
+
+Confirm it stopped:
+```bash
+curl -s http://localhost:9200/_cluster/health 2>/dev/null || echo "Elasticsearch is stopped"
+```
+
+### Stop everything in one go (all three)
+
 ```bash
 cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
 
-# Stop all services (backend, frontend, ES)
+# 1. Backend + Frontend
 ./stop_all.sh
 
-# Or stop manually:
-# Backend: find PID and kill
-ps aux | grep uvicorn | grep -v grep
-kill <PID>
-
-# Elasticsearch:
-kill $(cat /tmp/elasticsearch.pid 2>/dev/null)
-
-# Frontend: Ctrl+C in Terminal 2
+# 2. Elasticsearch — get PID first, verify it's yours, then kill
+ES_PID=$(ps aux | grep elasticsearch | grep java | grep -v grep | awk '{print $2}' | head -1)
+echo "ES PID: $ES_PID — owned by: $(ps -o user= -p $ES_PID 2>/dev/null)"
+# Only run the next line if the owner is kchollet:
+kill $ES_PID
 ```
 
-> **Important:** This is a shared server. Before killing any process, verify it belongs to your user:
-> ```bash
-> ps -o user,pid,cmd -p <PID>
-> ```
-> Only kill processes owned by `kchollet`.
+> **Shared server rule:** Always verify the process owner before killing. Never kill processes owned by other users (e.g., `ckadirim`, `hembroff`).
+
+### Verify everything is stopped
+
+```bash
+curl -s http://localhost:8001/health 2>/dev/null || echo "Backend: stopped"
+curl -s http://localhost:9200 2>/dev/null || echo "Elasticsearch: stopped"
+curl -s http://localhost:3000 2>/dev/null | head -1 || echo "Frontend: stopped"
+```
 
 ---
 
