@@ -23,43 +23,51 @@ class IntelligentVisualizationService:
         Scan retrieved_data and identify numeric observations that have actual values.
         Returns dict mapping observation_type -> list of observation items with numeric values.
         """
+        import re as _re
         observations = {}
-        
+
         for item in retrieved_data:
-            if item.get("data_type") != "observations":
+            # Accept both "observation" (singular, from new ETL index) and
+            # "observations" (plural, legacy format after _TYPE_NORM in rag_service).
+            dt = item.get("data_type", "")
+            if dt not in ("observation", "observations"):
                 continue
-            
-            metadata = item.get("metadata", {})
-            if not isinstance(metadata, dict):
-                continue
-            
-            value_str = metadata.get("value", "")
-            if not value_str:
-                continue
-            
-            # Check if value is numeric
-            try:
-                import re
-                numbers = re.findall(r'-?\d+\.?\d*', str(value_str))
-                if not numbers:
+
+            # Value: prefer top-level value_numeric (new ETL); fall back to metadata.value (legacy).
+            raw_val = item.get("value_numeric")
+            if raw_val is not None:
+                try:
+                    float(raw_val)
+                except (ValueError, TypeError):
                     continue
-                numeric_value = float(numbers[0])
-            except (ValueError, TypeError):
-                continue
-            
-            # Identify observation type
-            display = metadata.get("display", "").lower() if metadata.get("display") else ""
-            code = metadata.get("code", "").lower() if metadata.get("code") else ""
-            
+            else:
+                metadata = item.get("metadata", {})
+                if not isinstance(metadata, dict):
+                    continue
+                value_str = metadata.get("value", "")
+                if not value_str:
+                    continue
+                try:
+                    numbers = _re.findall(r'-?\d+\.?\d*', str(value_str))
+                    if not numbers:
+                        continue
+                    float(numbers[0])
+                except (ValueError, TypeError):
+                    continue
+
+            # Identify observation type — top-level fields first, legacy metadata fallback.
+            metadata = item.get("metadata", {}) if not isinstance(item.get("metadata"), dict) else item.get("metadata", {})
+            display = (item.get("display") or metadata.get("display", "") or "").lower()
+            code = (item.get("code") or metadata.get("code", "") or "").lower()
+
             obs_type = self._identify_observation_type(display, code)
             if not obs_type:
                 continue
-            
-            # Only include if we have a valid numeric value
+
             if obs_type not in observations:
                 observations[obs_type] = []
             observations[obs_type].append(item)
-        
+
         return observations
     
     def _identify_observation_type(self, display: str, code: str) -> Optional[str]:
@@ -387,7 +395,12 @@ class IntelligentVisualizationService:
         if answer_text and not is_vital_signs_query:
             filtered_observations = self.filter_observations_by_answer_relevance(numeric_observations, answer_text)
             if not filtered_observations:
-                logger.info("RAG-driven chart generation: No observations relevant to answer_text found after filtering.")
+                # LLM may have replied "no data" even though we retrieved observations.
+                # Check the query itself — if the clinician explicitly named an observation,
+                # generate the chart regardless of what the LLM said.
+                filtered_observations = self.filter_observations_by_answer_relevance(numeric_observations, query)
+            if not filtered_observations:
+                logger.info("RAG-driven chart generation: No observations relevant to answer or query after filtering.")
                 return False, None
             logger.info(f"After Answer Filtering: {list(filtered_observations.keys())}")
             numeric_observations = filtered_observations
@@ -602,11 +615,14 @@ class IntelligentVisualizationService:
                 # Verify this observation exists in retrieved_data before generating chart
                 observation_found = False
                 for item in retrieved_data:
-                    if item.get("data_type") == "observations":
-                        display = (item.get("metadata", {}).get("display") or "").lower()
-                        code = (item.get("metadata", {}).get("code") or "").lower()
+                    if item.get("data_type") not in ("observation", "observations"):
+                        continue
+                    _meta = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+                    if True:
+                        display = (item.get("display") or _meta.get("display") or "").lower()
+                        code = (item.get("code") or _meta.get("code") or "").lower()
                         content = (item.get("content") or "").lower()
-                        
+
                         # Check for match in display, code, or content
                         if keyword in display or keyword in code or keyword in content:
                             # For heart rate, check for specific terms
@@ -650,27 +666,29 @@ class IntelligentVisualizationService:
         observation_types_found = {}
         
         for item in retrieved_data:
-            if item.get("data_type") == "observations":
-                metadata = item.get("metadata", {})
-                display = metadata.get("display") or ""
-                display = display.lower() if display else ""
-                
+            if item.get("data_type") not in ("observation", "observations"):
+                continue
+            _meta = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+            if True:
+                display = (item.get("display") or _meta.get("display") or "").lower()
+
                 # Extract the main observation keyword from display name
                 # This works for ANY observation type found in the data
                 observation_keyword = self._extract_observation_keyword(display, query_lower)
-                
+
                 if observation_keyword:
                     if observation_keyword not in observation_types_found:
                         observation_types_found[observation_keyword] = {
                             "count": 0,
-                            "display": metadata.get("display", ""),
+                            "display": item.get("display") or _meta.get("display", ""),
                             "has_numeric_value": False
                         }
                     observation_types_found[observation_keyword]["count"] += 1
-                    
+
                     # Check if it has a numeric value (for charting)
-                    value = metadata.get("value", "")
-                    if value and any(char.isdigit() for char in str(value)):
+                    raw_val = item.get("value_numeric")
+                    value = _meta.get("value", "") if raw_val is None else str(raw_val)
+                    if raw_val is not None or (value and any(ch.isdigit() for ch in str(value))):
                         observation_types_found[observation_keyword]["has_numeric_value"] = True
         
         # If we found a single, specific observation type with numeric values, create focused chart
@@ -881,15 +899,17 @@ class IntelligentVisualizationService:
         if not retrieved_data or not keywords:
             return False
         
-        observation_data = [item for item in retrieved_data if item.get("data_type") == "observations"]
+        observation_data = [item for item in retrieved_data
+                            if item.get("data_type") in ("observation", "observations")]
         if not observation_data:
             return False
-        
+
         for keyword in keywords:
             keyword_lower = keyword.lower()
             for item in observation_data:
-                display = (item.get("metadata", {}).get("display") or "").lower()
-                code = (item.get("metadata", {}).get("code") or "").lower()
+                _meta = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+                display = (item.get("display") or _meta.get("display") or "").lower()
+                code = (item.get("code") or _meta.get("code") or "").lower()
                 content = (item.get("content") or "").lower()
                 
                 # Special handling for A1C (must be exact match, not just hemoglobin)
@@ -927,11 +947,12 @@ class IntelligentVisualizationService:
                 # Check if we have other observation data
                 other_observations = []
                 for item in retrieved_data:
-                    if item.get("data_type") == "observations":
-                        display = item.get("metadata", {}).get("display") or ""
-                        display_lower = display.lower() if display else ""
-                        if keyword not in display_lower:
-                            other_observations.append(item)
+                    if item.get("data_type") not in ("observation", "observations"):
+                        continue
+                    _meta = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+                    display = (item.get("display") or _meta.get("display") or "").lower()
+                    if keyword not in display:
+                        other_observations.append(item)
                 if other_observations:
                     return True
         
@@ -943,40 +964,50 @@ class IntelligentVisualizationService:
         Intelligently decides between single multi-series chart or multiple charts.
         """
         # Get all available observations from retrieved data
-        available_observations = [item for item in retrieved_data 
-                                if item.get("data_type") == "observations"]
-        
+        available_observations = [item for item in retrieved_data
+                                   if item.get("data_type") in ("observation", "observations")]
+
         if not available_observations:
             # No observations at all - return None (let LLM handle the message)
             return None
-        
+
         # Group observations by type
         observation_groups = {}
+        import re as _re2
         for item in available_observations:
-            metadata = item.get("metadata", {})
-            display = metadata.get("display", "Unknown")
-            value = metadata.get("value", "")
-            
-            # Check if it has numeric value
+            _meta = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+            display = (item.get("display") or _meta.get("display", "") or "Unknown")
+            # Value: prefer top-level value_numeric, fall back to metadata.value string
+            raw_val = item.get("value_numeric")
+            numbers: list = []
             has_numeric = False
-            if value:
+            if raw_val is not None:
                 try:
-                    import re
-                    numbers = re.findall(r'-?\d+\.?\d*', str(value))
-                    if numbers:
-                        has_numeric = True
-                except:
+                    numbers = [str(float(raw_val))]
+                    has_numeric = True
+                except (ValueError, TypeError):
                     pass
-            
+            else:
+                value = _meta.get("value", "")
+                if value:
+                    try:
+                        numbers = _re2.findall(r'-?\d+\.?\d*', str(value))
+                        if numbers:
+                            has_numeric = True
+                    except Exception:
+                        pass
+
             if has_numeric:
                 # Clean display name for grouping
                 clean_display = self.viz_service._clean_observation_name(display)
                 if clean_display not in observation_groups:
                     observation_groups[clean_display] = []
+                date = (item.get("timestamp") or _meta.get("date", "") or "")
+                unit = (item.get("unit") or _meta.get("unit", "") or "")
                 observation_groups[clean_display].append({
-                    "date": metadata.get("date", ""),
+                    "date": date,
                     "value": float(numbers[0]) if numbers else None,
-                    "unit": metadata.get("unit", ""),
+                    "unit": unit,
                     "display": display
                 })
         

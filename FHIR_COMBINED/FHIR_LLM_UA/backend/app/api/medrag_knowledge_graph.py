@@ -517,6 +517,8 @@ OBSERVATION_TO_DISEASES: Dict[str, List[str]] = {
 
 CONDITION_TO_KG_NODE: Dict[str, str] = {
     "diabetes":                        "Type 2 Diabetes Mellitus",
+    "diabetic":                        "Type 2 Diabetes Mellitus",
+    "diabetic patients":               "Type 2 Diabetes Mellitus",
     "type 2 diabetes":                 "Type 2 Diabetes Mellitus",
     "type 1 diabetes":                 "Type 1 Diabetes Mellitus",
     "diabetes mellitus":               "Type 2 Diabetes Mellitus",
@@ -1116,6 +1118,7 @@ class KnowledgeGraphService:
             "followup_questions":      followups,
             "chart_observation_hints": chart_hints,
         }
+
 
 
 # Global singleton

@@ -1,6 +1,6 @@
 # backend/app/api/chat_agent.py
 
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Request
 from pydantic import BaseModel, validator
 from typing import List, Dict, Any, Optional
 import logging
@@ -30,7 +30,7 @@ def _write_audit_log(patient_id: str, query: str, pipeline_mode: str,
     try:
         with engine.connect() as conn:
             conn.execute(text("""
-                INSERT INTO clinical_audit_log
+                INSERT INTO llm_ua_ai.clinical_audit_log
                   (patient_id, query, pipeline_mode, intent_type,
                    retrieved_count, data_found, elapsed_ms, session_id, oom_triggered)
                 VALUES
@@ -823,132 +823,98 @@ def get_patient_context(patient_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get patient context: {str(e)}")
 
 @router.post("/index-all-patients")
-async def index_all_patients():
+async def index_all_patients(background_tasks: BackgroundTasks):
     """
-    Index all patients from the database into ElasticSearch with embeddings for semantic search.
-    This will check if indexing is needed and only index missing patients.
+    Index all patients into Elasticsearch with embeddings for semantic search.
+    Returns immediately; indexing runs in the background so the API stays responsive.
+    Monitor progress: tail -f /tmp/backend.log | grep index-all
     """
     try:
         from sqlalchemy import text
-        
-        # Check current indexing status
-        indexing_status = es_client.get_indexing_status()
-        indexed_patients = indexing_status.get("unique_patients", 0)
-        
-        # Get all unique patient IDs from the database
+
         with engine.connect() as conn:
-            patient_query = text("SELECT DISTINCT patient_id FROM patients ORDER BY patient_id")
-            result = conn.execute(patient_query)
+            result = conn.execute(text("SELECT DISTINCT enterprise_patient_id FROM patients ORDER BY enterprise_patient_id"))
             patient_ids = [row[0] for row in result.fetchall()]
-        
+
         total_patients = len(patient_ids)
-        
-        # Check if we need to re-index everything or just missing patients
-        needs_full_reindex = (
-            not indexing_status.get("index_exists", False) or
-            not indexing_status.get("has_embeddings", False) or
-            indexed_patients < total_patients * 0.5  # If less than 50% indexed, do full reindex
-        )
-        
-        if needs_full_reindex:
-            logger.info(f"Starting full reindexing: {total_patients} patients with embeddings for semantic search")
-            logger.info("Reason: Index missing or missing embeddings or less than 50% indexed")
-        else:
-            logger.info(f"Indexing status: {indexed_patients}/{total_patients} patients already indexed")
-            logger.info(f"Will index remaining {total_patients - indexed_patients} patients")
-        
-        # If index doesn't exist or doesn't have embeddings, recreate it
-        if needs_full_reindex and (not indexing_status.get("index_exists", False) or not indexing_status.get("has_embeddings", False)):
-            logger.info("Recreating index with embeddings support...")
-            if indexing_status.get("index_exists", False):
-                # Delete old index if it exists but doesn't have embeddings
-                es_client.client.indices.delete(index="patient_data")
-            es_client.create_patient_index("patient_data")
-        
-        logger.info(f"Starting to index patients with embeddings for semantic search")
-        
-        indexed_count = 0
-        errors = []
-        
-        # If doing full reindex, process all patients
-        # Otherwise, check which patients need indexing
-        patients_to_index = patient_ids
-        if not needs_full_reindex:
-            # Get list of already indexed patients
-            try:
-                agg_body = {
-                    "size": 0,
-                    "aggs": {
-                        "indexed_patients": {
-                            "terms": {
-                                "field": "patient_id",
-                                "size": 10000  # Get all unique patient IDs
-                            }
-                        }
-                    }
-                }
-                agg_response = es_client.client.search(index="patient_data", body=agg_body)
-                indexed_patient_ids = set([
-                    bucket["key"] 
-                    for bucket in agg_response.get("aggregations", {}).get("indexed_patients", {}).get("buckets", [])
-                ])
-                # Only index patients that aren't already indexed
-                patients_to_index = [pid for pid in patient_ids if pid not in indexed_patient_ids]
-                logger.info(f"Skipping {len(indexed_patient_ids)} already indexed patients, indexing {len(patients_to_index)} remaining")
-            except Exception as e:
-                logger.warning(f"Could not check indexed patients, will index all: {e}")
-                patients_to_index = patient_ids
-        
-        for i, patient_id in enumerate(patients_to_index):
-            try:
-                # Get patient data with all data (for_indexing=True)
-                patient_data = get_patient_data_from_db(patient_id, for_indexing=True)
-                
-                if not patient_data:
-                    errors.append(f"Patient {patient_id}: No data found")
-                    continue
-                
-                # Index with embeddings enabled for semantic search
-                if es_client.is_connected():
-                    success = es_client.index_patient_data(patient_id, patient_data, generate_embeddings=True)
-                    if success:
-                        indexed_count += 1
-                    else:
-                        errors.append(f"Patient {patient_id}: Indexing failed")
-                else:
-                    errors.append(f"Patient {patient_id}: ElasticSearch not connected")
-                
-                # Log progress every 100 patients
-                if (i + 1) % 100 == 0:
-                    logger.info(f"Progress: {i + 1}/{len(patients_to_index)} patients indexed ({indexed_count} successful, {len(errors)} errors)")
-                    
-            except Exception as e:
-                errors.append(f"Patient {patient_id}: {str(e)}")
-                logger.warning(f"Error indexing patient {patient_id}: {e}")
-        
-        # Get final status
-        final_status = es_client.get_indexing_status()
-        final_indexed = final_status.get("unique_patients", 0)
-        
-        logger.info(f"Indexing complete: {indexed_count} new patients indexed, {final_indexed} total patients now indexed")
-        
+
+        # Find already-indexed patients using the correct ES field name
+        already_indexed: set = set()
+        try:
+            agg_response = es_client.client.search(index="patient_data", body={
+                "size": 0,
+                "aggs": {"indexed_patients": {"terms": {"field": "enterprise_patient_id", "size": 10000}}}
+            })
+            already_indexed = {
+                b["key"] for b in
+                agg_response.get("aggregations", {}).get("indexed_patients", {}).get("buckets", [])
+            }
+        except Exception as e:
+            logger.warning(f"[index-all] Could not check already-indexed patients: {e}")
+
+        patients_to_index = [pid for pid in patient_ids if pid not in already_indexed]
+        skipped = len(already_indexed)
+
+        logger.info(f"[index-all] {skipped} already indexed, {len(patients_to_index)} to index out of {total_patients} total")
+
+        if not patients_to_index:
+            return {
+                "success": True,
+                "message": f"All {total_patients} patients are already indexed.",
+                "total_patients": total_patients,
+                "to_index": 0,
+                "already_indexed": skipped,
+            }
+
+        background_tasks.add_task(_index_patients_background, patients_to_index, total_patients)
+
         return {
             "success": True,
-            "message": f"Indexed {indexed_count} patients successfully. Total indexed: {final_indexed}/{total_patients}",
+            "message": f"Indexing started in background: {len(patients_to_index)} patients to index ({skipped} already done).",
             "total_patients": total_patients,
-            "indexed_count": indexed_count,
-            "total_indexed": final_indexed,
-            "was_full_reindex": needs_full_reindex,
-            "error_count": len(errors),
-            "errors": errors[:10]  # Only return first 10 errors to avoid huge response
+            "to_index": len(patients_to_index),
+            "already_indexed": skipped,
+            "monitor": "tail -f /tmp/backend.log | grep index-all",
         }
-        
+
     except Exception as e:
-        logger.error(f"Failed to index all patients: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        logger.error(f"[index-all] Failed to start indexing: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _index_patients_background(patients_to_index: list, total_patients: int):
+    """Background worker: delete stale docs then reindex each patient with embeddings."""
+    indexed_count = 0
+    error_count = 0
+
+    for i, patient_id in enumerate(patients_to_index):
+        try:
+            patient_data = get_patient_data_from_db(patient_id, for_indexing=True)
+            if not patient_data:
+                error_count += 1
+                logger.warning(f"[index-all] No data for patient {patient_id}")
+                continue
+
+            if es_client.is_connected():
+                es_client.delete_patient_data(patient_id)
+                success = es_client.index_patient_data(patient_id, patient_data, generate_embeddings=True)
+                if success:
+                    indexed_count += 1
+                else:
+                    error_count += 1
+                    logger.warning(f"[index-all] Indexing failed for patient {patient_id}")
+            else:
+                error_count += 1
+                logger.error("[index-all] Elasticsearch not connected")
+
+        except Exception as e:
+            error_count += 1
+            logger.warning(f"[index-all] Error on patient {patient_id}: {e}")
+
+        if (i + 1) % 100 == 0:
+            logger.info(f"[index-all] Progress: {i + 1}/{len(patients_to_index)} | indexed: {indexed_count} | errors: {error_count}")
+
+    logger.info(f"[index-all] COMPLETE — {indexed_count} indexed, {error_count} errors out of {total_patients} total in DB")
 
 @router.post("/patient/{patient_id}/index")
 def index_patient_data(patient_id: str):
@@ -1457,3 +1423,75 @@ def debug_intent(body: dict):
             "apply_ddx=False → compact direct-answer format."
         ),
     }
+
+
+# =============================================================================
+# Population Query Endpoint — Ziletti & D'Ambrosi (2025) two-step RAG + text-to-SQL
+# For cohort-level questions across the 12-patient evaluation panel.
+# =============================================================================
+
+class PopulationQuery(BaseModel):
+    patient_ids: List[str]
+    query: str
+    session_id: Optional[str] = None
+
+    @validator("patient_ids")
+    def validate_patient_ids(cls, v):
+        if not v:
+            raise ValueError("patient_ids must not be empty")
+        if len(v) > 50:
+            raise ValueError("patient_ids list exceeds maximum of 50")
+        return v
+
+    @validator("query")
+    def validate_query(cls, v):
+        if not v or not v.strip():
+            raise ValueError("query must not be empty")
+        if len(v) > 5000:
+            raise ValueError("query exceeds 5000 characters")
+        return v.strip()
+
+
+class PopulationQueryResponse(BaseModel):
+    response: str
+    sql_used: Optional[str] = None
+    patient_count: int
+    elapsed_ms: int
+    pipeline_mode: str
+    sources: List[Dict] = []
+
+
+@router.post("/population-query", response_model=PopulationQueryResponse)
+def process_population_query(request: PopulationQuery):
+    """
+    Answer a population-level clinical question across a defined cohort.
+
+    Implements the Ziletti & D'Ambrosi (2025) two-step RAG + text-to-SQL approach:
+    - Step 1: MedRAG KG concept expansion + schema context (ontology retrieval)
+    - Step 2a: LLM extracts structured intent JSON
+    - Step 2b: Python query builder → parameterized MySQL SQL
+    - Step 3: MySQL execution (llm_ua_reader, read-only)
+    - Step 4: LLM synthesizes clinical narrative from structured facts
+
+    Temporal reasoning handled by temporal_parser.py (TIMER arXiv:2503.04176).
+    """
+    from .population_query_service import process as pop_process
+
+    logger.info(f"Population query: {len(request.patient_ids)} patients — {request.query[:80]}")
+
+    try:
+        result = pop_process(
+            patient_ids=request.patient_ids,
+            query=request.query
+        )
+        return PopulationQueryResponse(
+            response=result["response"],
+            sql_used=result.get("sql_used"),
+            patient_count=result["patient_count"],
+            elapsed_ms=result.get("elapsed_ms", 0),
+            pipeline_mode=result["pipeline_mode"],
+            sources=result.get("sources", []),
+        )
+    except Exception as e:
+        logger.error(f"Population query error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Population query failed: {str(e)}")

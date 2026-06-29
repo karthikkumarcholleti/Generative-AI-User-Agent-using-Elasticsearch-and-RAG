@@ -377,7 +377,7 @@ class ElasticSearchClient:
     # Semantic search with vector embeddings automatically handles related concepts
     # No need for type-coded manual dictionaries - semantic search is more research-worthy
     
-    def search_patient_data(self, patient_id: str, query: str, data_types: List[str] = None, index_name: str = "patient_data", use_highlighting: bool = True) -> List[Dict[str, Any]]:
+    def search_patient_data(self, patient_id: str = None, query: str = "", data_types: List[str] = None, index_name: str = "patient_data", use_highlighting: bool = True, patient_ids: List[str] = None) -> List[Dict[str, Any]]:
         """
         Search patient data using ElasticSearch with hybrid approach:
         - Keyword search: Fuzzy matching, phrase matching, field boosting
@@ -388,7 +388,14 @@ class ElasticSearchClient:
         if not self.is_connected():
             logger.error("ElasticSearch not connected")
             return []
-        
+
+        # Cohort mode: patient_ids list → use scoped alias and terms filter
+        if patient_ids:
+            index_name = "patient_data_cohort"
+            patient_filter = {"terms": {"enterprise_patient_id": patient_ids}}
+        else:
+            patient_filter = {"term": {"enterprise_patient_id": patient_id}}
+
         try:
             # Generate embedding for semantic search (if enabled)
             # Semantic search automatically finds related concepts - no manual synonyms needed!
@@ -453,9 +460,8 @@ class ElasticSearchClient:
             search_body = {
                 "query": {
                     "bool": {
-                        # patient_id is the only hard requirement — every doc for this patient
-                        # is a candidate; BM25 should clauses rank by relevance, not gate
-                        "must": [{"term": {"enterprise_patient_id": patient_id}}],
+                        # patient filter — single patient (term) or cohort (terms)
+                        "must": [patient_filter],
                         "should": should_clauses,
                         # NO minimum_should_match — should clauses are scoring bonuses only.
                         # This ensures observations/notes with short content still surface.
@@ -488,16 +494,14 @@ class ElasticSearchClient:
                             "k": 20,  # More nearest neighbors for semantic search
                             "num_candidates": 200,  # More candidates to consider
                             "boost": 5.0,  # Higher boost to prioritize semantic results over keyword
-                            "filter": {
-                                "term": {"enterprise_patient_id": patient_id}
-                            }
+                            "filter": patient_filter
                         }
                         # Add data type filter to kNN if specified
                         if data_types:
                             search_body["knn"]["filter"] = {
                                 "bool": {
                                     "must": [
-                                        {"term": {"enterprise_patient_id": patient_id}},
+                                        patient_filter,
                                         {"terms": {"data_type": data_types}}
                                     ]
                                 }
@@ -586,8 +590,9 @@ class ElasticSearchClient:
                     "icd_code": src.get("icd_code"),
                     "source_hospital": src.get("source_hospital"),
                     "source_type": src.get("source_type"),
-                    # timestamp field normalized to effective_date for rag_service sorting
-                    "timestamp": src.get("effective_date") or src.get("note_date") or "",
+                    # timestamp: effective_date first (date-only), then effective_datetime (full ISO),
+                    # then note_date — so docs missing effective_date still sort correctly.
+                    "timestamp": src.get("effective_date") or src.get("effective_datetime") or src.get("note_date") or "",
                     "metadata": {},  # kept for compat; real data is now at top level
                 })
             

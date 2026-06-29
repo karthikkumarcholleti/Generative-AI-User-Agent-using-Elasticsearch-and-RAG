@@ -497,29 +497,29 @@ class VisualizationService:
             return encounters
 
         try:
-            result = self.es_client.es.search(
+            result = self.es_client.client.search(
                 index="patient_data",
                 body={
                     "size": 200,
                     "query": {
                         "bool": {
                             "must": [
-                                {"term": {"patient_id": str(patient_id)}},
-                                {"term": {"data_type": "encounters"}},
+                                {"term": {"enterprise_patient_id": str(patient_id)}},
+                                {"terms": {"data_type": ["encounter", "encounters"]}},
                             ]
                         }
                     },
-                    "_source": ["metadata", "content"],
                 },
             )
             for hit in result.get("hits", {}).get("hits", []):
-                meta = hit["_source"].get("metadata", {})
-                enc_date = meta.get("date")
+                src = hit.get("_source", {})
+                _meta = src.get("metadata", {}) if isinstance(src.get("metadata"), dict) else {}
+                enc_date = (src.get("period_start") or src.get("effective_date") or _meta.get("date") or "")
                 encounters.append({
                     "date": enc_date,
-                    "class": meta.get("class_display") or meta.get("class_code") or "",
-                    "reason": meta.get("admission_reason") or "",
-                    "type": meta.get("type_display") or meta.get("type_code") or "",
+                    "class": (src.get("class_code") or _meta.get("class_display") or _meta.get("class_code") or ""),
+                    "reason": (_meta.get("admission_reason") or ""),
+                    "type": (_meta.get("type_display") or _meta.get("type_code") or ""),
                 })
             # Sort by date (None dates last)
             encounters.sort(key=lambda e: e["date"] or "9999")
@@ -605,9 +605,9 @@ class VisualizationService:
                         "multi_match": {
                             "query": "heart rate",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields",
                             "fuzziness": "AUTO"
@@ -617,14 +617,14 @@ class VisualizationService:
                         "multi_match": {
                             "query": "pulse",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields"
                         }
                     },
-                    {"term": {"metadata.code": "8867-4"}}  # LOINC code for heart rate
+                    {"term": {"code": "8867-4"}}  # LOINC code for heart rate
                 ]
             elif observation_type_lower == "blood pressure":
                 # Unified multi-field search
@@ -633,9 +633,9 @@ class VisualizationService:
                         "multi_match": {
                             "query": "blood pressure",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields",
                             "fuzziness": "AUTO"
@@ -645,9 +645,9 @@ class VisualizationService:
                         "multi_match": {
                             "query": "systolic",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields"
                         }
@@ -656,20 +656,20 @@ class VisualizationService:
                         "multi_match": {
                             "query": "diastolic",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields"
                         }
                     },
-                    {"term": {"metadata.code": "8480-6"}},  # Systolic BP
-                    {"term": {"metadata.code": "8462-4"}}   # Diastolic BP
+                    {"term": {"code": "8480-6"}},  # Systolic BP
+                    {"term": {"code": "8462-4"}}   # Diastolic BP
                 ]
             elif observation_type_lower == "temperature":
                 search_queries = [
-                    {"match_phrase": {"metadata.display": "temperature"}},
-                    {"match_phrase": {"metadata.display": "temp"}},
+                    {"match_phrase": {"display": "temperature"}},
+                    {"match_phrase": {"display": "temp"}},
                     {"match_phrase": {"content": "temperature"}}
                 ]
             elif observation_type_lower == "glucose":
@@ -679,9 +679,9 @@ class VisualizationService:
                         "multi_match": {
                             "query": "glucose",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields",
                             "fuzziness": "AUTO"
@@ -691,15 +691,15 @@ class VisualizationService:
                         "multi_match": {
                             "query": "blood sugar",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields",
                             "fuzziness": "AUTO"
                         }
                     },
-                    {"term": {"metadata.code": "2339-0"}}  # LOINC code for glucose
+                    {"term": {"code": "2339-0"}}  # LOINC code for glucose
                 ]
             elif observation_type_lower == "creatinine":
                 # Unified multi-field search: searches display, code, AND content simultaneously
@@ -710,9 +710,9 @@ class VisualizationService:
                         "multi_match": {
                             "query": "creatinine",
                             "fields": [
-                                "metadata.display^3.0",  # High boost for display (when exists)
+                                "display^3.0",  # High boost for display (when exists)
                                 "content^2.5",           # High boost for content (notes, enhanced content)
-                                "metadata.code^2.0"       # Boost for codes (handles NULL display)
+                                "code^2.0"       # Boost for codes (handles NULL display)
                             ],
                             "type": "best_fields",
                             "fuzziness": "AUTO",
@@ -720,8 +720,8 @@ class VisualizationService:
                         }
                     },
                     # Also include specific LOINC codes for comprehensive coverage
-                    {"term": {"metadata.code": "2160-0"}},  # LOINC code for creatinine
-                    {"term": {"metadata.code": "33914-3"}}  # Alternative creatinine code
+                    {"term": {"code": "2160-0"}},  # LOINC code for creatinine
+                    {"term": {"code": "33914-3"}}  # Alternative creatinine code
                 ]
             elif observation_type_lower == "hemoglobin":
                 # Unified multi-field search
@@ -730,20 +730,20 @@ class VisualizationService:
                         "multi_match": {
                             "query": "hemoglobin",
                             "fields": [
-                                "metadata.display^3.0",
+                                "display^3.0",
                                 "content^2.5",
-                                "metadata.code^2.0"
+                                "code^2.0"
                             ],
                             "type": "best_fields",
                             "fuzziness": "AUTO"
                         }
                     },
-                    {"term": {"metadata.code": "718-7"}}  # LOINC code for hemoglobin
+                    {"term": {"code": "718-7"}}  # LOINC code for hemoglobin
                 ]
             elif observation_type_lower == "glomerular filtration":
                 search_queries = [
-                    {"match": {"metadata.display": "glomerular filtration"}},
-                    {"match": {"metadata.display": "GFR"}},
+                    {"match": {"display": "glomerular filtration"}},
+                    {"match": {"display": "GFR"}},
                     {"match": {"content": "glomerular filtration"}}
                 ]
             else:
@@ -754,9 +754,9 @@ class VisualizationService:
                         "multi_match": {
                             "query": observation_type,
                             "fields": [
-                                "metadata.display^3.0",  # High boost for display (when exists)
+                                "display^3.0",  # High boost for display (when exists)
                                 "content^2.5",           # High boost for content (notes, enhanced content)
-                                "metadata.code^2.0"      # Boost for codes (handles NULL display)
+                                "code^2.0"      # Boost for codes (handles NULL display)
                             ],
                             "type": "best_fields",
                             "fuzziness": "AUTO",
@@ -771,43 +771,38 @@ class VisualizationService:
                 "query": {
                     "bool": {
                         "must": [
-                            {"term": {"patient_id": patient_id}},
-                            {"term": {"data_type": "observations"}},
+                            {"term": {"enterprise_patient_id": patient_id}},
+                            {"terms": {"data_type": ["observation", "observations"]}},
                             {"bool": {"should": search_queries}}
                         ]
                     }
                 },
-                "size": 500,  # Increased to get more data points
-                "sort": [{"timestamp": {"order": "asc"}}]
+                "size": 500,
+                "sort": [{"effective_date": {"order": "asc", "missing": "_last", "unmapped_type": "date"}}]
             }
-            
+
             # Add semantic search (kNN) if embeddings are available
-            # This helps find observations even with NULL display names or unmapped codes
             if self.es_client.semantic_search_enabled and self.es_client.embedding_service:
                 try:
-                    # Generate embedding for the observation type query
                     query_embedding = self.es_client.embedding_service.generate_embedding(observation_type)
-                    
-                    # Check if index has content_embedding field
                     index_mapping = self.es_client.client.indices.get_mapping(index="patient_data")
                     has_embedding_field = False
                     if "patient_data" in index_mapping:
                         properties = index_mapping["patient_data"].get("mappings", {}).get("properties", {})
-                        has_embedding_field = "content_embedding" in properties
-                    
+                        has_embedding_field = "embedding" in properties or "content_embedding" in properties
+                    embed_field = "embedding" if has_embedding_field and "embedding" in (index_mapping.get("patient_data", {}).get("mappings", {}).get("properties", {})) else "content_embedding"
                     if has_embedding_field and query_embedding:
-                        # Add semantic search to complement keyword search
                         search_body["knn"] = {
-                            "field": "content_embedding",
+                            "field": embed_field,
                             "query_vector": query_embedding,
-                            "k": 50,  # Get more candidates for visualization
+                            "k": 50,
                             "num_candidates": 200,
-                            "boost": 3.0,  # Good boost but not too high (keyword still important)
+                            "boost": 3.0,
                             "filter": {
                                 "bool": {
                                     "must": [
-                                        {"term": {"patient_id": patient_id}},
-                                        {"term": {"data_type": "observations"}}
+                                        {"term": {"enterprise_patient_id": patient_id}},
+                                        {"terms": {"data_type": ["observation", "observations"]}}
                                     ]
                                 }
                             }
@@ -874,39 +869,45 @@ class VisualizationService:
                 source = hit.get("_source", {})
                 if not isinstance(source, dict):
                     continue
-                # Safely handle missing metadata key
-                metadata = source.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    continue
-                
+                # Support both new ETL (top-level fields) and legacy (nested metadata)
+                _meta = source.get("metadata", {})
+                if not isinstance(_meta, dict):
+                    _meta = {}
+
                 # CRITICAL: Filter to only include observations that actually match the requested type
-                display = metadata.get("display", "")
-                code = metadata.get("code", "")
-                
+                display = (source.get("display") or _meta.get("display", "") or "")
+                code = (source.get("code") or _meta.get("code", "") or "")
+
                 if not matches_observation_type(display, code, observation_type_lower):
                     continue  # Skip observations that don't match
-                
-                # Extract numeric value
-                value_str = metadata.get("value", "")
+
+                # Extract numeric value — top-level value_numeric first, then metadata.value string
+                import re as _re
                 numeric_value = None
-                
-                try:
-                    # Try to extract numeric value from string
+                raw_val = source.get("value_numeric")
+                if raw_val is not None:
+                    try:
+                        numeric_value = float(raw_val)
+                    except (ValueError, TypeError):
+                        pass
+                else:
+                    value_str = _meta.get("value", "")
                     if value_str:
-                        # Remove units and extract number
-                        import re
-                        numbers = re.findall(r'-?\d+\.?\d*', value_str)
-                        if numbers:
-                            numeric_value = float(numbers[0])
-                except (ValueError, TypeError):
-                    pass
-                
+                        try:
+                            numbers = _re.findall(r'-?\d+\.?\d*', value_str)
+                            if numbers:
+                                numeric_value = float(numbers[0])
+                        except (ValueError, TypeError):
+                            pass
+
                 if numeric_value is not None:
+                    date = (source.get("effective_date") or source.get("effective_datetime") or _meta.get("date", "") or "")
+                    unit = (source.get("unit") or _meta.get("unit", "") or "")
                     data_points.append({
-                        "date": metadata.get("date", ""),
+                        "date": date,
                         "value": numeric_value,
-                        "unit": metadata.get("unit", ""),
-                        "display": metadata.get("display", "")
+                        "unit": unit,
+                        "display": display
                     })
             
             # Normalize to canonical unit before returning (fixes mmol/L vs mg/dL mixing)
@@ -1042,47 +1043,53 @@ class VisualizationService:
             return observation_type_lower in display_lower
         
         # Extract observations from retrieved_data
+        import re as _re2
         observation_count = 0
         for item in retrieved_data:
-            if item.get("data_type") != "observations":
+            if item.get("data_type") not in ("observation", "observations"):
                 continue
-            
+
             observation_count += 1
-            metadata = item.get("metadata", {})
-            if not isinstance(metadata, dict):
-                continue
-            
-            display = metadata.get("display", "")
-            code = metadata.get("code", "")
-            
+            _meta = item.get("metadata", {})
+            if not isinstance(_meta, dict):
+                _meta = {}
+
+            display = (item.get("display") or _meta.get("display", "") or "")
+            code = (item.get("code") or _meta.get("code", "") or "")
+
             # Filter to only include observations that match the requested type
             if not matches_observation_type(display, code, observation_type_lower):
                 logger.debug(f"Skipping observation: {display} (code: {code}) - doesn't match {observation_type}")
                 continue
-            
+
             logger.info(f"Found matching observation: {display} (code: {code}) for {observation_type}")
-            
-            # Extract numeric value
-            value_str = metadata.get("value", "")
+
+            # Extract numeric value — top-level value_numeric first, then metadata.value
             numeric_value = None
-            
-            try:
-                # Try to extract numeric value from string
+            raw_val = item.get("value_numeric")
+            if raw_val is not None:
+                try:
+                    numeric_value = float(raw_val)
+                except (ValueError, TypeError):
+                    pass
+            else:
+                value_str = _meta.get("value", "")
                 if value_str:
-                    # Remove units and extract number
-                    import re
-                    numbers = re.findall(r'-?\d+\.?\d*', str(value_str))
-                    if numbers:
-                        numeric_value = float(numbers[0])
-            except (ValueError, TypeError):
-                pass
-            
+                    try:
+                        numbers = _re2.findall(r'-?\d+\.?\d*', str(value_str))
+                        if numbers:
+                            numeric_value = float(numbers[0])
+                    except (ValueError, TypeError):
+                        pass
+
             if numeric_value is not None:
+                date = (item.get("timestamp") or item.get("effective_date") or _meta.get("date", "") or "")
+                unit = (item.get("unit") or _meta.get("unit", "") or "")
                 data_points.append({
-                    "date": metadata.get("date", ""),
+                    "date": date,
                     "value": numeric_value,
-                    "unit": metadata.get("unit", ""),
-                    "display": metadata.get("display", "")
+                    "unit": unit,
+                    "display": display
                 })
         
         # Sort by date (chronological order)
@@ -1692,38 +1699,46 @@ class VisualizationService:
     def _generate_all_observations_chart_from_retrieved(self, patient_id: str, retrieved_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate all observations chart from retrieved_data (same source as answer)"""
         # Extract all observations from retrieved_data
+        import re as _re3
         all_observations = []
         for item in retrieved_data:
-            if item.get("data_type") == "observations":
-                metadata = item.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    continue
-                
-                # Extract numeric value
-                value_str = metadata.get("value", "")
-                numeric_value = None
-                
+            if item.get("data_type") not in ("observation", "observations"):
+                continue
+            _meta = item.get("metadata", {})
+            if not isinstance(_meta, dict):
+                _meta = {}
+
+            # Value: top-level first, metadata fallback
+            numeric_value = None
+            raw_val = item.get("value_numeric")
+            if raw_val is not None:
                 try:
-                    if value_str:
-                        import re
-                        numbers = re.findall(r'-?\d+\.?\d*', str(value_str))
-                        if numbers:
-                            numeric_value = float(numbers[0])
+                    numeric_value = float(raw_val)
                 except (ValueError, TypeError):
                     pass
-                
-                if numeric_value is not None:
-                    display = metadata.get("display", "")
-                    if not display or display.strip() == "Unknown":
-                        code = metadata.get("code", "")
-                        display = f"Code {code}" if code else "Unknown"
-                    
-                    all_observations.append({
-                        "date": metadata.get("date", ""),
-                        "value": numeric_value,
-                        "unit": metadata.get("unit", ""),
-                        "display": display
-                    })
+            else:
+                value_str = _meta.get("value", "")
+                if value_str:
+                    try:
+                        numbers = _re3.findall(r'-?\d+\.?\d*', str(value_str))
+                        if numbers:
+                            numeric_value = float(numbers[0])
+                    except (ValueError, TypeError):
+                        pass
+
+            if numeric_value is not None:
+                display = (item.get("display") or _meta.get("display", "") or "")
+                if not display or display.strip() == "Unknown":
+                    code = (item.get("code") or _meta.get("code", "") or "")
+                    display = f"Code {code}" if code else "Unknown"
+                date = (item.get("timestamp") or item.get("effective_date") or _meta.get("date", "") or "")
+                unit = (item.get("unit") or _meta.get("unit", "") or "")
+                all_observations.append({
+                    "date": date,
+                    "value": numeric_value,
+                    "unit": unit,
+                    "display": display
+                })
         
         if not all_observations:
             return {
@@ -2687,17 +2702,17 @@ class VisualizationService:
                 "query": {
                     "bool": {
                         "must": [
-                            {"term": {"patient_id": patient_id}},
-                            {"term": {"data_type": "observations"}}
+                            {"term": {"enterprise_patient_id": patient_id}},
+                            {"terms": {"data_type": ["observation", "observations"]}}
                         ]
                     }
                 },
-                "size": 200,  # Get more observations
-                "sort": [{"timestamp": {"order": "asc"}}]
+                "size": 200,
+                "sort": [{"effective_date": {"order": "asc", "missing": "_last", "unmapped_type": "date"}}]
             }
-            
+
             response = self.es_client.client.search(index="patient_data", body=search_body)
-            
+
             # Group observations by type and extract numeric values
             observation_groups = {}
             all_dates = set()
@@ -2707,40 +2722,45 @@ class VisualizationService:
                 source = hit.get("_source", {})
                 if not isinstance(source, dict):
                     continue
-                # Safely handle missing metadata key
-                metadata = source.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    continue
-                
-                # Extract numeric value
-                value_str = metadata.get("value", "")
+                # Support new ETL (top-level fields) and legacy (nested metadata)
+                _meta = source.get("metadata", {})
+                if not isinstance(_meta, dict):
+                    _meta = {}
+
+                # Extract numeric value — top-level first, then metadata
+                import re as _re4
                 numeric_value = None
-                
-                try:
+                raw_val = source.get("value_numeric")
+                if raw_val is not None:
+                    try:
+                        numeric_value = float(raw_val)
+                    except (ValueError, TypeError):
+                        pass
+                else:
+                    value_str = _meta.get("value", "")
                     if value_str:
-                        import re
-                        numbers = re.findall(r'-?\d+\.?\d*', value_str)
-                        if numbers:
-                            numeric_value = float(numbers[0])
-                except (ValueError, TypeError):
-                    continue
-                
+                        try:
+                            numbers = _re4.findall(r'-?\d+\.?\d*', value_str)
+                            if numbers:
+                                numeric_value = float(numbers[0])
+                        except (ValueError, TypeError):
+                            continue
+
                 if numeric_value is not None:
-                    display_name = metadata.get("display", "Unknown")
-                    date = metadata.get("date", "")
-                    
+                    display_name = (source.get("display") or _meta.get("display", "") or "Unknown")
+                    date = (source.get("effective_date") or source.get("effective_datetime") or _meta.get("date", "") or "")
+
                     # Clean up display name for better readability
-                    # Safely handle None display_name
                     display_name_safe = display_name or ""
                     clean_name = self._clean_observation_name(display_name_safe)
-                    
+
                     if clean_name and clean_name not in observation_groups:
                         observation_groups[clean_name] = []
-                    
+
                     observation_groups[clean_name].append({
                         "date": date,
                         "value": numeric_value,
-                        "unit": metadata.get("unit", ""),
+                        "unit": (source.get("unit") or _meta.get("unit", "") or ""),
                         "original_name": display_name
                     })
                     
@@ -2989,17 +3009,17 @@ class VisualizationService:
                 "query": {
                     "bool": {
                         "must": [
-                            {"term": {"patient_id": patient_id}},
-                            {"term": {"data_type": "observations"}}
+                            {"term": {"enterprise_patient_id": patient_id}},
+                            {"terms": {"data_type": ["observation", "observations"]}}
                         ]
                     }
                 },
-                "size": 500,  # Get more observations for categorization
-                "sort": [{"timestamp": {"order": "asc"}}]
+                "size": 500,
+                "sort": [{"effective_date": {"order": "asc", "missing": "_last", "unmapped_type": "date"}}]
             }
-            
+
             response = self.es_client.client.search(index="patient_data", body=search_body)
-            
+
             # Extract and categorize observations
             observation_data_points = {}  # Track data points per observation type
             
@@ -3008,29 +3028,34 @@ class VisualizationService:
                 source = hit.get("_source", {})
                 if not isinstance(source, dict):
                     continue
-                # Safely handle missing metadata key
-                metadata = source.get("metadata", {})
-                if not isinstance(metadata, dict):
-                    continue
-                if not isinstance(metadata, dict):
-                    metadata = {}
-                
-                display = metadata.get("display", "Unknown")
-                code = metadata.get("code", "")
-                value_str = metadata.get("value", "")
-                date = metadata.get("date", "")
-                unit = metadata.get("unit", "")
-                
-                # Extract numeric value
+                # Support new ETL (top-level fields) and legacy (nested metadata)
+                _meta = source.get("metadata", {})
+                if not isinstance(_meta, dict):
+                    _meta = {}
+
+                display = (source.get("display") or _meta.get("display", "") or "Unknown")
+                code = (source.get("code") or _meta.get("code", "") or "")
+                date = (source.get("effective_date") or source.get("effective_datetime") or _meta.get("date", "") or "")
+                unit = (source.get("unit") or _meta.get("unit", "") or "")
+
+                # Extract numeric value — top-level first, then metadata
+                import re as _re5
                 numeric_value = None
-                if value_str:
+                raw_val = source.get("value_numeric")
+                if raw_val is not None:
                     try:
-                        import re
-                        numbers = re.findall(r'-?\d+\.?\d*', str(value_str))
-                        if numbers:
-                            numeric_value = float(numbers[0])
+                        numeric_value = float(raw_val)
                     except (ValueError, TypeError):
                         pass
+                else:
+                    value_str = _meta.get("value", "")
+                    if value_str:
+                        try:
+                            numbers = _re5.findall(r'-?\d+\.?\d*', str(value_str))
+                            if numbers:
+                                numeric_value = float(numbers[0])
+                        except (ValueError, TypeError):
+                            pass
                 
                 # Categorize observation
                 category_info = categorize_observation(display, code)

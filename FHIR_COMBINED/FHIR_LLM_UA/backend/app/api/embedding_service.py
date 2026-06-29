@@ -38,8 +38,10 @@ class EmbeddingService:
             return
         
         try:
-            logger.info(f"Loading embedding model: {self.model_name}")
-            self.model = SentenceTransformer(self.model_name)
+            import torch
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.info(f"Loading embedding model: {self.model_name} on {device}")
+            self.model = SentenceTransformer(self.model_name, device=device)
             
             # Set embedding dimension based on model
             if "mpnet" in self.model_name.lower():
