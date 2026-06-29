@@ -298,8 +298,7 @@ The SQL result rows are passed to the LLM for a natural language answer. Uses `d
 **Evaluation:** `scripts/pop_eval_judge.py` runs LLM-as-judge evaluation.
 Best results: `scripts/population_results/population_results_final_20260527_v2.md`
 
-**Frontend status:** No UI toggle exists yet. Population queries currently require API calls directly.
-A future developer needs to add a "Cohort Mode" toggle to the `generative-ai` page.
+**Frontend status:** The population toggle is live. On the Generative AI page, there's a **Patient Level / Population Level** button in the header. Switching to Population opens a cohort selector (search + checkboxes + select all) and a chat panel that calls this endpoint directly.
 
 ---
 
@@ -392,9 +391,9 @@ These were identified in a full architectural review and must be addressed befor
 | P4 | MedRAG KG has anchoring bias | `medrag_knowledge_graph.py` `find_candidate_diseases()` | Existing diagnoses weighted 4× — biases DDx toward known conditions |
 | P5 | Comparison script has order effect | `scripts/compare_rag_vs_medrag.py` | Standard RAG always runs first; MedRAG runs on warmer GPU — timing is confounded |
 | P6 | Source UUIDs are ephemeral | `rag_service.py` `source_storage` dict | Server restart invalidates all citation links; clinicians get 404 |
-| P7 | Frontend is a 1960-line monolith | `FHIR_dashboard/.../generative-ai.tsx` | Unmaintainable; will break if Observation Explorer is added |
+| P7 | ~~Frontend is a 1960-line monolith~~ | ~~`generative-ai.tsx`~~ | **Done** — decomposed into components/hooks/services |
 | P8 | LOINC coverage is ~100 codes | `loinc_code_mapper.py` | ~40% of observations appear as "Other" in grouped view |
-| P9 | No population toggle in frontend | Missing UI component | Population queries require raw API calls |
+| P9 | ~~No population toggle in frontend~~ | ~~Missing UI component~~ | **Done** — Patient Level / Population Level toggle is live |
 | P10 | GPU concurrency uses polling | `core/llm.py` | Unreliable under multi-user load; should use `threading.PriorityQueue` |
 
 ---
@@ -463,39 +462,47 @@ from patient 740. Key issues: implausible blood pressure aggregates, corrupted d
 
 - **Framework:** Next.js 14, TypeScript
 - **Location:** `FHIR_dashboard/backend/frontend/`
-- **Primary page:** `pages/generative-ai.tsx` (~1960 lines — needs decomposition)
-- **API client:** `services/llmApi.ts`
+- **API clients:** `services/llmApi.ts` (patient queries), `services/populationApi.ts` (cohort queries)
+
+The old 1960-line monolith (`generative-ai.tsx`) has been decomposed into a proper component structure:
+
+```
+pages/generative-ai/
+└── index.tsx                    # Layout + mode toggle only (~220 lines)
+
+components/
+├── patient/
+│   ├── PatientSelector.tsx      # Search + scrollable patient list
+│   ├── SummaryPanel.tsx         # Section summaries with typing animation
+│   └── ChatPanel.tsx            # Messages, charts, sources, follow-ups, input
+├── population/
+│   ├── CohortSelector.tsx       # Search + checkboxes + Select All
+│   └── PopulationChat.tsx       # Cohort query UI with sample questions + SQL viewer
+└── shared/
+    └── LLMResponseFormatter.tsx # Shared LLM text renderer
+
+hooks/
+├── usePatients.ts               # Fetch patient list
+├── usePatientSummary.ts         # Summary generation + auto-refresh
+├── usePatientChat.ts            # Chat messages, send, follow-ups, source modal, backend cache sync
+└── usePopulationQuery.ts        # Population cohort query
+```
 
 ### What the frontend does
 
 - Loads patient list from `GET /patients`
 - Fetches all summaries from `GET /patients/{id}/all_summaries` (can take 2–5 minutes)
-- Sends chat queries to `POST /chat-agent/query`
-- Displays charts using `recharts` library based on chart payload in response
-- Shows source citations with clickable links to `GET /chat-agent/source/{id}`
+- Sends patient chat queries to `POST /chat-agent/query`
+- Sends population queries to `POST /chat-agent/population-query`
+- Displays charts using `recharts` based on chart payload in responses
+- Shows clickable source citations via `GET /chat-agent/source/{id}`
+- Patient Level / Population Level mode toggle in the header
 
 ### What the frontend does NOT do yet
 
-- No population-level mode toggle
-- No Observation Explorer with independent timeseries charts
-- No Doctor Agent mode in the UI
-- No session-based audit trail visible to clinicians
-
-### Recommended structure for next developer
-
-```
-pages/generative-ai/
-├── index.tsx               # Routing + layout only (~100 lines)
-├── ChatPanel.tsx           # Chat input + message history
-├── SummaryPanel.tsx        # Per-category LLM summaries
-├── ObservationExplorer.tsx # Lab explorer with charts calling /timeseries directly
-└── hooks/
-    ├── usePatientSummary.ts
-    ├── useChatMessages.ts
-    └── useObservationTimeseries.ts
-```
-
-Use `@tanstack/react-query` for data fetching and `zustand` for shared state.
+- No Observation Explorer with independent timeseries charts (would call `/timeseries` directly, no LLM)
+- No Doctor Agent mode in the UI (backend endpoint exists at `POST /doctor-agent/query`)
+- No session-based audit trail visible to clinicians in the UI
 
 ---
 
@@ -562,41 +569,49 @@ See Section 8 above for full schema.
 
 ---
 
-## 16. Continuation Priorities for Next Team
+## 16. What's Done and What's Next
 
-Listed in order of urgency:
+### Already working
 
-### Before any UPHP clinician access:
+- Patient-level chat: Standard RAG and MedRAG+KG, toggle without restart
+- AI summaries for all patient sections (deterministic, greedy decoding)
+- Population-level cohort analysis — UI toggle + CohortSelector + PopulationChat
+- Audit logging on every `/chat-agent/query` call
+- Clickable source citations (RAG sources in chat)
+- Frontend decomposed into clean components and hooks
+- Doctor Agent endpoint (backend only — no UI yet)
 
-1. **Add audit logging to Doctor Agent** (`doctor_agent.py`) — currently unlogged
-2. **ETL validation layer** — FHIRObservationValidator with date check, unit normalization, plausibility gate, quarantine table. Without this, every new patient batch repeats the same ETL bugs.
-3. **Audit log: encrypt PHI fields** — `patient_id`, `query`, `llm_response` should be encrypted at rest in `clinical_audit_log`
+### Before any UPHP clinician sees this
 
-### Before paper submission:
+1. **Doctor Agent audit logging** — add `_write_audit_log()` call in `doctor_agent.py` (same pattern as `chat_agent.py`). Right now Doctor Agent queries are completely unlogged, which is a HIPAA gap.
+2. **ETL validation** — add a `FHIRObservationValidator` that checks date format, unit plausibility, and required fields before writing to MySQL. Currently every new patient batch silently repeats the same bugs (corrupted dates, `"unit": "unit"` placeholders, impossible values).
+3. **Encrypt PHI in audit log** — `patient_id`, `query`, and `llm_response` in `clinical_audit_log` should be encrypted at rest before production.
 
-4. **Fix comparison script order effect** — randomize pipeline execution order per query; run 3× per query; report median ± IQR; add Wilcoxon signed-rank test
-5. **Add ROUGE-L and consistency metrics** to comparison script
-6. **De-bias MedRAG KG** — down-weight existing diagnoses in `find_candidate_diseases()` when query is about those diagnoses
-7. **Clinician annotation** — 5–10 cases, structured rating form (accuracy, actionability, completeness, safety)
+### Before paper submission
 
-### Before production deployment:
+4. **Fix comparison script** (`scripts/compare_rag_vs_medrag.py`) — randomize which pipeline runs first per query, run each query 3 times, report median ± IQR instead of mean, add Wilcoxon signed-rank test. The current setup always runs Standard RAG first, which artificially makes MedRAG look slower.
+5. **Add ROUGE-L and response consistency metrics** to the comparison script output.
+6. **De-bias MedRAG KG** — in `medrag_knowledge_graph.py` `find_candidate_diseases()`, down-weight conditions already in the patient record when the query is specifically about those conditions. The 4× weight causes confirmation bias, not real differential diagnosis.
+7. **Clinician annotation** — send 5–10 anonymized cases to UPHP clinicians for structured rating (accuracy, actionability, completeness, safety). This is required for the paper and can't be automated.
 
-8. **Persist source UUIDs** to Elasticsearch `source_cache` index with 7-day TTL (currently in-memory, lost on restart)
-9. **Frontend: add population-level toggle** to `generative-ai.tsx`
-10. **Frontend: decompose** `generative-ai.tsx` into component tree (ChatPanel, SummaryPanel, ObservationExplorer)
-11. **Replace LOINC mapper** with full LOINC CSV from Regenstrief Institute (100,000+ codes vs current 54)
-12. **Move DDx detection** into `IntentClassifier` as semantic classification (not keyword suppression)
-13. **Upgrade GPU concurrency** from polling to `threading.PriorityQueue` in `core/llm.py`
+### Before production deployment
+
+8. **Persist source UUIDs** — move `source_storage` dict in `rag_service.py` to an Elasticsearch `source_cache` index with a 7-day TTL. Right now citation links break on every server restart.
+9. **Add Observation Explorer to frontend** — a tab with independent timeseries charts calling `GET /patients/{id}/observations/{loinc_code}/timeseries` directly (no LLM). The backend endpoint already exists; just needs a UI component.
+10. **Add Doctor Agent mode to frontend** — a toggle or button that routes the chat to `POST /doctor-agent/query` instead of `/chat-agent/query`. The backend is fully implemented.
+11. **Replace LOINC mapper** with the full LOINC CSV from Regenstrief Institute. Currently ~100 codes are mapped manually; the rest show as "Other". The full database has 100,000+ codes and is free to download.
+12. **Move DDx detection to semantic classification** — the current keyword list in `VALUE_LOOKUP_OVERRIDES` incorrectly suppresses DDx for queries like "What is the sign of kidney disease". Fix: add "ddx" as a first-class intent in `IntentClassifier`.
+13. **Upgrade GPU concurrency** — replace the current polling approach in `core/llm.py` with `threading.PriorityQueue` (Priority 0 = chat, Priority 1 = summaries). The polling is unreliable under concurrent load.
 
 ---
 
 ## Final Notes
 
-The system is research-grade and working. The core hypothesis (MedRAG + KG vs Standard RAG)
-is demonstrable end-to-end. The comparison results in `scripts/comparison_results/comparison_20260330_232416.md`
-are the best produced to date (v7).
+The system is research-grade and working end-to-end. The core comparison (MedRAG + KG vs Standard RAG) is demonstrable. Best comparison result: `scripts/comparison_results/comparison_20260330_232416.md` (v7). Population pipeline results: `scripts/population_results/population_results_final_20260527_v2.md`.
 
-The population-level pipeline (`POST /chat-agent/population-query`) is functional but has no
+The three items that matter most before anyone outside the research team uses this are: Doctor Agent logging, ETL validation, and PHI encryption in the audit log. Everything else is important but those three are non-negotiable for a clinical setting.
+
+For the paper, fix the comparison script order effect first — that's the one a reviewer will immediately flag.
 frontend UI yet — it represents Ziletti & D'Ambrosi (2025) RAG+A+C applied to cohort analytics.
 
 The biggest risks before UPHP deployment are: (1) no ETL validation means new patient data

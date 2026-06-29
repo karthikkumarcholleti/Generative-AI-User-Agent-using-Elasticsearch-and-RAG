@@ -35,6 +35,12 @@ FHIR_COMBINED/
 │   └── sql/                   # MySQL schema definitions
 ├── FHIR_dashboard/
 │   └── backend/frontend/      # Next.js frontend (port 3000)
+│       ├── pages/generative-ai/index.tsx  # Main AI page (mode toggle + layout)
+│       ├── components/patient/            # PatientSelector, SummaryPanel, ChatPanel
+│       ├── components/population/         # CohortSelector, PopulationChat
+│       ├── components/shared/             # LLMResponseFormatter
+│       ├── hooks/                         # usePatients, usePatientChat, usePatientSummary, usePopulationQuery
+│       └── services/                      # llmApi.ts, populationApi.ts
 ├── elasticsearch-8.14.0/      # Bundled Elasticsearch instance
 ├── scripts/
 │   ├── compare_rag_vs_medrag.py    # RAG vs MedRAG benchmark runner
@@ -113,6 +119,26 @@ Open: **http://localhost:3000**
 3. **Every query is audit-logged** — written to `llm_ua_ai.clinical_audit_log` before response is returned.
 4. **Five independent pipelines** — Visualization, Summary, Standard RAG, MedRAG+KG, Doctor Agent. Failure in one does not cascade.
 5. **Single source of truth for reference ranges** — `REFERENCE_RANGES` in `visualization_service.py` is used by all abnormality scoring, plausibility checks, and clinical priority scoring.
+
+---
+
+## What's Working Right Now
+
+- Patient-level chat with Standard RAG and MedRAG+KG (toggle with `./check_mode.sh`)
+- AI summaries for each patient section (demographics, conditions, observations, notes, care plans)
+- Population-level cohort analysis — select patients from the UI, ask analytics questions
+- Audit logging to `llm_ua_ai.clinical_audit_log` on every query
+- Clickable RAG source citations in chat responses
+
+## What Still Needs to Be Done
+
+See `KNOWLEDGE_TRANSFER.md` Section 16 for the full prioritized list. The most important items:
+
+1. Add audit logging for Doctor Agent queries (`doctor_agent.py`) — currently unlogged
+2. ETL validation layer to catch corrupted dates and implausible values before they reach the DB
+3. Fix comparison script order effect before paper submission
+4. Clinician annotation of 5–10 cases for the paper (needs UPHP coordination)
+5. Persist source UUIDs to Elasticsearch so citation links survive server restarts
 
 ---
 

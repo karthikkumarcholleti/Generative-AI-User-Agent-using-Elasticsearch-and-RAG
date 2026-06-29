@@ -158,24 +158,26 @@ cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
 
 Open: **http://localhost:3000**
 
-### Steps in the UI:
+### Patient-Level Mode
 
 1. Click **"Generative AI"** in the left sidebar.
-2. Select a patient from the dropdown (e.g., patient `000000509`).
-3. Wait for the patient summary to load (takes 30–120 seconds on first load).
-4. In the chat box, type a question and press Enter.
+2. The header shows two buttons: **Patient Level** and **Population Level** — make sure Patient Level is selected.
+3. Find a patient in the left panel (search by name or ID, e.g. type `dominic`). Click their name.
+4. Summaries start generating automatically — takes 30–120 seconds on first load.
+5. Use the left nav to browse sections: Observations, Conditions, Notes, Care Plans.
+6. Click **AI Chat Interface** in the nav, type a question, press Enter.
 
-### Sample Queries to Try:
+### Sample Patient Queries:
 
 | Query | What You Should See |
 |-------|---------------------|
-| `Show me heart rate trend` | Chat response + a line chart of heart rate over time |
+| `Show me heart rate trend` | Chat response + line chart of heart rate over time |
 | `What is this patient's glucose trend?` | Chat response + glucose trend chart |
-| `What is the differential diagnosis?` | 5-step DDx format: Diagnosis / Evidence / Alternatives / Gaps / Recommendation |
-| `What are the most recent lab values?` | Table-style response listing recent labs |
+| `What is the differential diagnosis?` | 5-step DDx: Diagnosis / Evidence / Alternatives / Gaps / Recommendation |
+| `What are the most recent lab values?` | Table-style list of recent labs |
 | `Show all vital signs` | Multi-series chart with all vitals |
 
-### Expected Chat Response Format (MedRAG + KG mode):
+### Expected Chat Response (MedRAG + KG mode):
 
 ```
 Primary Diagnosis: Type 2 Diabetes (High Confidence)
@@ -186,6 +188,23 @@ Recommendation: Schedule follow-up HbA1c in 3 months
 
 Sources: [1] [2] [3]
 ```
+
+### Population-Level Mode
+
+1. Click **Population Level** in the header toggle.
+2. The left panel becomes a **Cohort Selector** — search patients, check boxes, or hit **Select all**.
+3. The count badge shows how many patients are selected.
+4. In the main area, type your question or click a sample question, then click **Analyze**.
+5. The result shows the LLM answer, patient count, elapsed time, and a link to view the generated SQL.
+
+### Sample Population Queries:
+
+| Query | What You'll Get |
+|-------|----------------|
+| `What is the average HbA1c across this cohort?` | Average value with context |
+| `Which patients have both diabetes and hypertension?` | Count or list |
+| `How many patients had an encounter in the last 6 months?` | Count with temporal filter |
+| `What are the most common diagnoses in this group?` | Ranked list of conditions |
 
 ---
 
@@ -301,7 +320,7 @@ cd /mnt/shared/LLM/LLM_UA_karthik_1.0/fhir_karthik/FHIR_COMBINED
 
 ## 7. Population-Level Queries
 
-Population queries answer questions across a cohort of patients using SQL — not individual RAG.
+The easiest way is through the UI — see Section 4. But you can also call the API directly:
 
 ```bash
 curl -s -X POST "http://localhost:8001/chat-agent/population-query" \
@@ -326,11 +345,7 @@ curl -s -X POST "http://localhost:8001/chat-agent/population-query" \
 }
 ```
 
-### Sample population questions:
-- `"What is the average HbA1c across this cohort?"`
-- `"Which patients have both hypertension and diabetes?"`
-- `"How many patients had an encounter in the last 6 months?"`
-- `"What are the most common diagnoses in this group?"`
+Population queries generate real MySQL SQL from your natural language question. You can expand **"View generated SQL"** in the UI to see exactly what query ran.
 
 ---
 
