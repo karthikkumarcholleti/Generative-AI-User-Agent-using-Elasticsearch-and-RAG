@@ -1,0 +1,170 @@
+id,question,pipeline_mode,medical_accuracy,safety,completeness,helpfulness,clarity,weighted_score,reasoning,error
+POP1,Find all patients of mine with a BMI > 30 who have not been diagnosed with Type II Diabetes but have elevated HbA1c or f,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP2,Which of my patients have eGFR < 60 for more than one year but have no CKD diagnosis code in their record?,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP5,Identify patients over 65 with a COPD diagnosis and no documented spirometry in the past two years.,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP6,"How many of my patients have a combination of cardiovascular disease, Type II Diabetes, and CKD (the cardiorenal-metabol",population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP7,What is the most common two-condition comorbidity pair across my patient panel?,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP8,Which patients in my panel have five or more active chronic conditions across at least three disease categories?,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP9,How many patients with heart failure also have an active depression diagnosis?,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP10,Group my diabetic patients by glycaemic control status (controlled vs. uncontrolled) and summarise their other comorbidi,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP17,What percentage of my hypertensive patients have blood pressure controlled below 130/80 based on their most recent recor,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP19,How many patients with a previous MI have documented annual lipid panels?,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP21,Which patients have been seen at more than three different hospitals in the consortium in the past two years?,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP22,"Are there patients in my panel whose diagnoses at one consortium hospital contradict diagnoses at another (e.g., coded a",population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "
+POP23,Find patients with a heart failure diagnosis who have had no echocardiogram recorded at any consortium site in the past ,population_sql,0,0,0,0,0,0.0,"Judge call failed: No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ ","No JSON in response: {
+  ""medical_accuracy"": 5,
+  ""safety"": 5,
+  ""completeness"": 5,
+  ""helpfulness"": 5,
+  ""clarity"": 5,
+ "

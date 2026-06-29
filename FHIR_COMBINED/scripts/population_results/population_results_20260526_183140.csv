@@ -1,0 +1,13 @@
+id,category,question,complexity,key_challenge,data_available,data_gap,response,sql_used,pipeline_mode,elapsed_ms,error
+POP17,Preventive Care and Quality Metrics,What percentage of my hypertensive patients have blood pressure controlled below 130/80 based on their most recent recorded reading?,Synthesis,Population BP control rate,True,,"Based on the provided data, all 12 patients have blood pressure readings. However, since the question is about blood pressure controlled below 130/80, we need to examine the readings. 
+
+The diastolic blood pressure readings for the patients are as follows:
+- Amelia Parker: 65.000000
+- Mia Scott: 56.000000
+- Samuel Richardson: 58.000000
+- Lincoln Gray: 80.000000
+- Brooklyn Coleman: 70.000000
+- Dominic Webb: 67.000000
+- Scarlett Gonzalez: 55.000000
+
+All these patients have diastolic blood pressure readings below 80.","Latest observation: ['blood pressure'], threshold: <130.0",population_sql,68302,

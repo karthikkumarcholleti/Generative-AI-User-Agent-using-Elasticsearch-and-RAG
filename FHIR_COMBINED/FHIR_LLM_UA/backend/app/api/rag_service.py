@@ -843,53 +843,25 @@ class RAGService:
                         condition_data["normalizedName"] = metadata.get("normalizedName", display)
                     conditions_list.append(condition_data)
                 
-                # Group by category
-                grouped = group_conditions_by_category(conditions_list)
-                
-                # Build context organized by category with priority
+                # Group conditions by hospital for structured attribution
+                _hosp_conds: dict = {}
+                for cond in conditions_list:
+                    _hk = cond.get("source_hospital", "") or "unknown"
+                    _hosp_conds.setdefault(_hk, []).append(cond)
+
                 _cond_idx = 1
                 context_parts.append("\n== RETRIEVED CONDITIONS — cite as [C-N] ==")
-                category_order = [
-                    "Cardiovascular", "Metabolic", "Respiratory", "Neurological",
-                    "Mental Health", "Musculoskeletal", "Gastrointestinal", "Renal",
-                    "Endocrine", "Oncology", "Acute", "Other"
-                ]
-
-                for category in category_order:
-                    if category in grouped:
-                        cat_conditions = grouped[category]
-                        # Sort by priority: high first
-                        sorted_conditions = sorted(
-                            cat_conditions,
-                            key=lambda c: {"high": 3, "medium": 2, "low": 1}.get(c.get("priority", "low"), 1),
-                            reverse=True
+                for _hk in sorted(_hosp_conds.keys(), key=lambda h: hospital_display(h)):
+                    context_parts.append(f"\n--- {hospital_display(_hk)} ---")
+                    for cond in _hosp_conds[_hk]:
+                        name   = cond.get("normalizedName") or cond.get("display") or cond.get("content", "Unknown")
+                        status = cond.get("clinicalStatus") or "active"
+                        onset_date = cond.get("onsetDateTime", "") or cond.get("onset", "")
+                        onset_str  = f" | Onset: {onset_date}" if onset_date and onset_date != "unknown" else ""
+                        context_parts.append(
+                            f"[C-{_cond_idx}] {name} ({status}){onset_str}"
                         )
-                        context_parts.append(f"\n**{category}:**")
-                        for cond in sorted_conditions:
-                            name = cond.get("normalizedName") or cond.get("display", "Unknown")
-                            status = cond.get("clinicalStatus") or "active"
-                            onset_date = cond.get("onsetDateTime", "") or cond.get("onset", "unknown")
-                            hosp = hospital_display(cond.get("source_hospital", ""))
-                            hosp_tag = f" | {hosp}" if hosp else ""
-                            context_parts.append(
-                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}{hosp_tag}"
-                            )
-                            _cond_idx += 1
-
-                # Handle any remaining categories (including "Other" where SNOMED conditions land)
-                for category, cat_conditions in grouped.items():
-                    if category not in category_order:
-                        context_parts.append(f"\n**{category}:**")
-                        for cond in cat_conditions:
-                            name   = cond.get("normalizedName") or cond.get("display") or cond.get("content", "Unknown")
-                            status = cond.get("clinicalStatus") or "active"
-                            onset_date = cond.get("onsetDateTime", "") or cond.get("onset", "unknown")
-                            hosp = hospital_display(cond.get("source_hospital", ""))
-                            hosp_tag = f" | {hosp}" if hosp else ""
-                            context_parts.append(
-                                f"[C-{_cond_idx}] {name} | Status: {status} | Onset: {onset_date}{hosp_tag}"
-                            )
-                            _cond_idx += 1
+                        _cond_idx += 1
             
             elif data_type == "observations":
                 context_parts.append("**Clinical Observations:**")
@@ -954,115 +926,118 @@ class RAGService:
                             "content": item.get("content", ""),
                         }
                 
-                # Add unique observations to context with proper formatting
-                # Sort by date to show chronological order
-                sorted_observations = sorted(
-                    unique_observations.values(),
-                    key=lambda x: (x.get("date", ""), x.get("display", ""))
-                )
+                # Group observations by hospital, sort each group by date
+                _hosp_obs: dict = {}
+                for _obs_item in unique_observations.values():
+                    _hk = _obs_item.get("source_hospital", "") or "unknown"
+                    _hosp_obs.setdefault(_hk, []).append(_obs_item)
 
                 _obs_idx = 1
                 context_parts.append("\n== RETRIEVED OBSERVATIONS — cite as [O-N] ==")
-                for obs in sorted_observations:
-                    value    = obs.get("value", "")
-                    display  = obs.get("display", "")
-                    date_str = obs.get("date", "")
-                    ref_lo   = obs.get("ref_lo")
-                    ref_hi   = obs.get("ref_hi")
-
-                    # Fallback: if ES has no reference range, look up by LOINC code
-                    if ref_lo is None or ref_hi is None:
-                        obs_code_for_ref = obs.get("code", "")
-                        if obs_code_for_ref:
-                            try:
-                                from .loinc_code_mapper import get_reference_range_for_code
-                                _rlo, _rhi = get_reference_range_for_code(obs_code_for_ref)
-                                if _rlo is not None:
-                                    ref_lo = _rlo
-                                    ref_hi = _rhi
-                            except ImportError:
-                                pass
-
-                    if not (value and display):
-                        continue
-
-                    value_str = str(value).strip()
-                    unit      = (obs.get("unit") or "").strip()
-                    display   = str(display)
-
-                    # ── Implausibility filter ──────────────────────────────
-                    try:
-                        _num    = float(value_str.split()[0])
-                        _disp_l = display.lower()
-                        _is_ratio = "ratio" in _disp_l
-                        _implausible = (
-                            ("cholesterol" in _disp_l and (_num < 10 or _num > 700)) or
-                            ("creatinine"  in _disp_l and not _is_ratio and (_num < 0.05 or _num > 30)) or
-                            ("glucose"     in _disp_l and (_num < 0.5 or _num > 1500)) or
-                            ("hemoglobin"  in _disp_l and "a1c" not in _disp_l and (_num < 1 or _num > 25)) or
-                            ("blood pressure" in _disp_l and _num > 300) or
-                            ("heart rate"     in _disp_l and (_num < 10 or _num > 350)) or
-                            ("body temperature" in _disp_l and (_num < 25 or _num > 46))
-                        )
-                        if _implausible:
-                            logger.warning(f"[Context filter] Skipping implausible: {display}={_num} unit={unit}")
-                            continue
-                    except (ValueError, TypeError, IndexError):
-                        pass
-                    # ────────────────────────────────────────────────────────
-
-                    # ── Unit normalization ────────────────────────────────
-                    try:
-                        _raw_num = float(value_str.split()[0])
-                        _norm_num, _norm_unit = _normalize_context_value(display, _raw_num, unit)
-                        if _norm_unit != unit:
-                            value_str = str(_norm_num)
-                            unit = _norm_unit
-                    except (ValueError, TypeError, IndexError):
-                        pass
-                    # ────────────────────────────────────────────────────────
-
-                    # Strip placeholder unit label; look up canonical unit from LOINC mapper
-                    if unit == "unit" or not unit:
-                        obs_code = obs.get("code", "")
-                        canonical = ""
-                        if obs_code:
-                            try:
-                                from .loinc_code_mapper import get_canonical_unit_for_code
-                                canonical = get_canonical_unit_for_code(obs_code)
-                            except ImportError:
-                                pass
-                        unit = canonical  # "" if code not in canonical unit map
-                    if value_str.endswith(" unit"):
-                        value_str = value_str[:-5].strip()
-
-                    unit_text = f" {unit}" if unit and unit not in value_str else ""
-
-                    # ── Abnormality flag from reference range ─────────────
-                    flag = ""
-                    try:
-                        _v = float(value_str)
-                        if ref_lo is not None and ref_hi is not None:
-                            ref_text = f" (ref: {ref_lo}-{ref_hi}{unit_text})"
-                            if _v > float(ref_hi):
-                                flag = " [HIGH]"
-                            elif _v < float(ref_lo):
-                                flag = " [LOW]"
-                            else:
-                                flag = " [normal]"
-                        else:
-                            ref_text = ""
-                    except (ValueError, TypeError):
-                        ref_text = ""
-                    # ────────────────────────────────────────────────────────
-
-                    flag_label = "HIGH" if flag == " [HIGH]" else ("LOW" if flag == " [LOW]" else "normal")
-                    hosp = hospital_display(obs.get("source_hospital", ""))
-                    hosp_tag = f" | {hosp}" if hosp else ""
-                    context_parts.append(
-                        f"[O-{_obs_idx}] {display}: {value_str}{unit_text} | {flag_label} | Date: {date_str}{hosp_tag}"
+                for _hk in sorted(_hosp_obs.keys(), key=lambda h: hospital_display(h)):
+                    context_parts.append(f"\n--- {hospital_display(_hk)} ---")
+                    _sorted_hosp_obs = sorted(
+                        _hosp_obs[_hk],
+                        key=lambda x: (x.get("date", ""), x.get("display", ""))
                     )
-                    _obs_idx += 1
+                    for obs in _sorted_hosp_obs:
+                        value    = obs.get("value", "")
+                        display  = obs.get("display", "")
+                        date_str = obs.get("date", "")
+                        ref_lo   = obs.get("ref_lo")
+                        ref_hi   = obs.get("ref_hi")
+
+                        # Fallback: if ES has no reference range, look up by LOINC code
+                        if ref_lo is None or ref_hi is None:
+                            obs_code_for_ref = obs.get("code", "")
+                            if obs_code_for_ref:
+                                try:
+                                    from .loinc_code_mapper import get_reference_range_for_code
+                                    _rlo, _rhi = get_reference_range_for_code(obs_code_for_ref)
+                                    if _rlo is not None:
+                                        ref_lo = _rlo
+                                        ref_hi = _rhi
+                                except ImportError:
+                                    pass
+
+                        if not (value and display):
+                            continue
+
+                        value_str = str(value).strip()
+                        unit      = (obs.get("unit") or "").strip()
+                        display   = str(display)
+
+                        # ── Implausibility filter ──────────────────────────────
+                        try:
+                            _num    = float(value_str.split()[0])
+                            _disp_l = display.lower()
+                            _is_ratio = "ratio" in _disp_l
+                            _implausible = (
+                                ("cholesterol" in _disp_l and (_num < 10 or _num > 700)) or
+                                ("creatinine"  in _disp_l and not _is_ratio and (_num < 0.05 or _num > 30)) or
+                                ("glucose"     in _disp_l and (_num < 0.5 or _num > 1500)) or
+                                ("hemoglobin"  in _disp_l and "a1c" not in _disp_l and (_num < 1 or _num > 25)) or
+                                ("blood pressure" in _disp_l and _num > 300) or
+                                ("heart rate"     in _disp_l and (_num < 10 or _num > 350)) or
+                                ("body temperature" in _disp_l and (_num < 25 or _num > 46))
+                            )
+                            if _implausible:
+                                logger.warning(f"[Context filter] Skipping implausible: {display}={_num} unit={unit}")
+                                continue
+                        except (ValueError, TypeError, IndexError):
+                            pass
+                        # ────────────────────────────────────────────────────────
+
+                        # ── Unit normalization ────────────────────────────────
+                        try:
+                            _raw_num = float(value_str.split()[0])
+                            _norm_num, _norm_unit = _normalize_context_value(display, _raw_num, unit)
+                            if _norm_unit != unit:
+                                value_str = str(_norm_num)
+                                unit = _norm_unit
+                        except (ValueError, TypeError, IndexError):
+                            pass
+                        # ────────────────────────────────────────────────────────
+
+                        # Strip placeholder unit label; look up canonical unit from LOINC mapper
+                        if unit == "unit" or not unit:
+                            obs_code = obs.get("code", "")
+                            canonical = ""
+                            if obs_code:
+                                try:
+                                    from .loinc_code_mapper import get_canonical_unit_for_code
+                                    canonical = get_canonical_unit_for_code(obs_code)
+                                except ImportError:
+                                    pass
+                            unit = canonical  # "" if code not in canonical unit map
+                        if value_str.endswith(" unit"):
+                            value_str = value_str[:-5].strip()
+
+                        unit_text = f" {unit}" if unit and unit not in value_str else ""
+
+                        # ── Abnormality flag from reference range ─────────────
+                        flag = ""
+                        try:
+                            _v = float(value_str)
+                            if ref_lo is not None and ref_hi is not None:
+                                ref_text = f" (ref: {ref_lo}-{ref_hi}{unit_text})"
+                                if _v > float(ref_hi):
+                                    flag = " [HIGH]"
+                                elif _v < float(ref_lo):
+                                    flag = " [LOW]"
+                                else:
+                                    flag = " [normal]"
+                            else:
+                                ref_text = ""
+                        except (ValueError, TypeError):
+                            ref_text = ""
+                        # ────────────────────────────────────────────────────────
+
+                        flag_label = "HIGH" if flag == " [HIGH]" else ("LOW" if flag == " [LOW]" else "normal")
+                        context_parts.append(
+                            f"[O-{_obs_idx}] {display}: {value_str}{unit_text} | {flag_label} | Date: {date_str}"
+                        )
+                        _obs_idx += 1
             
             elif data_type == "notes":
                 context_parts.append("**Clinical Notes:**")
@@ -1159,7 +1134,7 @@ ANSWERING RULES:
 - Values flagged [HIGH] or [LOW] are abnormal — highlight those first.
 - If specific queried data is absent: acknowledge in ONE sentence and move on. Do not enumerate all other absent types.
 - For diagnosis questions: state the most likely diagnosis FIRST, then evidence from the records.
-- Each [C-N] and [O-N] citation ends with | Hospital Name. When asked WHERE a condition was diagnosed or recorded, always include that hospital name in your answer (e.g. "Hypertension [C-3] diagnosed at Baraga County Memorial Hospital").
+- The EHR context is organized by hospital section (--- Hospital Name ---). Each section contains only that facility's conditions and observations. When asked WHERE a condition was diagnosed or a test was performed, identify the hospital from the section header above that citation.
 
 MEDICAL TERM MAPPING:
 - "CREATININE:MCNC:PT:SER/PLAS:QN::" = creatinine
@@ -1225,8 +1200,7 @@ MEDICAL TERM RECOGNITION:
 - Always map technical LOINC/SNOMED codes to readable clinical terms
 
 HOSPITAL ATTRIBUTION:
-- Each [C-N] and [O-N] citation ends with | Hospital Name showing where it was recorded.
-- When asked WHERE a condition was diagnosed or a test was performed, always include that hospital name (e.g. "Hypertension [C-3] — Baraga County Memorial Hospital").
+- The EHR context is organized by hospital section (--- Hospital Name ---). Each section contains only that facility's conditions and observations. When asked WHERE something was diagnosed or recorded, identify the hospital from the section header above that citation.
 
 IMPORTANT: This tool provides data analysis and KG-elicited reasoning only.
 All clinical decisions must be made by qualified healthcare providers.
@@ -1257,11 +1231,7 @@ ANSWERING RULES:
 - Do NOT list every lab value — answer what was asked, then add clinical context.
 
 HOSPITAL ATTRIBUTION:
-- Each [C-N] condition line ends with | Hospital Name showing where it was recorded.
-- Each [O-N] observation line ends with | Hospital Name showing where it was performed.
-- When listing conditions, use this format: "[C-N] Condition name (status) — Hospital Name"
-- When asked WHERE something was diagnosed or recorded, always include the hospital name from the | separator.
-- Example: "[C-3] Hypertension (active) — Baraga County Memorial Hospital"
+- The EHR context is organized by hospital section (--- Hospital Name ---). Each section contains only that facility's conditions and observations. When asked WHERE something was diagnosed or recorded, identify the hospital from the section header above that citation.
 
 MEDICAL TERM MAPPING:
 - "Hypertensive disorder" = hypertension | "Diabetes mellitus" = diabetes | "CKD" = chronic kidney disease

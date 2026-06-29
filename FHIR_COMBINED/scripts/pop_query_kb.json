@@ -1,0 +1,164 @@
+[
+  {
+    "id": "KB-01",
+    "question": "How many patients with COPD also have congestive heart failure?",
+    "masked_question": "How many patients with [CONDITION] also have [CONDITION]?",
+    "category": "intersection",
+    "description": "Two-condition intersection: find patients who have BOTH conditions active. SQL: INTERSECT or self-join on conditions table. Returns patient list + count.",
+    "entity_slots": ["conditions[0]", "conditions[1]"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-02",
+    "question": "Which patients have both asthma and allergic rhinitis as active diagnoses?",
+    "masked_question": "Which patients have both [CONDITION] and [CONDITION] as active diagnoses?",
+    "category": "intersection",
+    "description": "Two-condition co-occurrence: patients must have BOTH conditions coded in their record.",
+    "entity_slots": ["conditions[0]", "conditions[1]"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-03",
+    "question": "Find patients with diabetes, hypertension, AND obesity (the metabolic syndrome triad).",
+    "masked_question": "Find patients with [CONDITION], [CONDITION], AND [CONDITION] (the [CONDITION] triad).",
+    "category": "intersection",
+    "description": "Three-condition intersection: all three conditions must be present. SQL: triple INTERSECT or multiple JOINs on conditions.",
+    "entity_slots": ["conditions[0]", "conditions[1]", "conditions[2]"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-04",
+    "question": "What is the most frequent single chronic condition in our patient registry?",
+    "masked_question": "What is the most frequent single [CONDITION] in our patient registry?",
+    "category": "comorbidity_pair",
+    "description": "Condition frequency ranking: count patients per condition, sort by count descending. SQL: GROUP BY display, COUNT DISTINCT patient.",
+    "entity_slots": [],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-05",
+    "question": "What are the top three two-disease comorbidity pairs among our diabetic patients?",
+    "masked_question": "What are the top [THRESHOLD] two-disease comorbidity pairs among our [CONDITION] patients?",
+    "category": "comorbidity_pair",
+    "description": "Pairwise comorbidity ranking: self-join conditions table, count patient pairs per condition combination, return top N. Python itertools.combinations over per-patient condition lists.",
+    "entity_slots": [],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-06",
+    "question": "Which patients have four or more chronic conditions across at least two disease categories?",
+    "masked_question": "Which patients have [THRESHOLD] or more [CONDITION] across at least [THRESHOLD] disease categories?",
+    "category": "multimorbidity",
+    "description": "Multimorbidity index: GROUP BY patient, COUNT DISTINCT conditions, HAVING count >= N. min_count extracted from query text.",
+    "entity_slots": ["min_count"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-07",
+    "question": "Find patients with LDL above 190 but no hyperlipidemia diagnosis coded in their record.",
+    "masked_question": "Find patients with [OBSERVATION] above [THRESHOLD] but no [CONDITION] diagnosis coded in their record.",
+    "category": "absence_condition",
+    "description": "Undiagnosed risk: patients who have an abnormal lab value but lack the corresponding diagnosis code. SQL: patients_with_high_obs MINUS patients_with_condition.",
+    "entity_slots": ["observations[0]", "obs_threshold", "obs_operator", "negated_conditions[0]"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-08",
+    "question": "Which patients have had systolic blood pressure above 140 without a hypertension diagnosis?",
+    "masked_question": "Which patients have had [OBSERVATION] above [THRESHOLD] without a [CONDITION] diagnosis?",
+    "category": "absence_condition",
+    "description": "Lab-elevated but undiagnosed: observation threshold check combined with condition negation.",
+    "entity_slots": ["observations[0]", "obs_threshold", "obs_operator", "negated_conditions[0]"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-09",
+    "question": "Find diabetic patients with no HbA1c laboratory test documented in the past 12 months.",
+    "masked_question": "Find [CONDITION] patients with no [OBSERVATION] documented in the past [TIME_WINDOW].",
+    "category": "absence_observation",
+    "description": "Surveillance gap: patients with a condition but missing a required monitoring test within a time window. SQL: has_condition MINUS has_obs_in_window.",
+    "entity_slots": ["conditions[0]", "negated_observations[0]"],
+    "temporal_slot": "date_filter"
+  },
+  {
+    "id": "KB-10",
+    "question": "Which patients with atrial fibrillation had no electrocardiogram recorded in the past year?",
+    "masked_question": "Which patients with [CONDITION] had no [OBSERVATION] recorded in the past [TIME_WINDOW]?",
+    "category": "absence_observation",
+    "description": "Condition-triggered surveillance gap: patients with diagnosis but missing required procedure/test within time window.",
+    "entity_slots": ["conditions[0]", "negated_observations[0]"],
+    "temporal_slot": "date_filter"
+  },
+  {
+    "id": "KB-11",
+    "question": "Find patients over 70 with osteoporosis and no bone density scan in the past three years.",
+    "masked_question": "Find patients over [AGE_FILTER] with [CONDITION] and no [OBSERVATION] in the past [TIME_WINDOW].",
+    "category": "absence_observation",
+    "description": "Age-filtered surveillance gap: condition present + procedure absent within time window + age filter. SQL: age_filter AND has_condition MINUS has_obs_in_window.",
+    "entity_slots": ["age_min", "conditions[0]", "negated_observations[0]"],
+    "temporal_slot": "date_filter"
+  },
+  {
+    "id": "KB-12",
+    "question": "What percentage of our hypertensive patients have LDL controlled below 100 mg/dL?",
+    "masked_question": "What percentage of our [CONDITION] patients have [OBSERVATION] controlled below [THRESHOLD]?",
+    "category": "latest_observation",
+    "description": "Population rate: get latest lab value per patient, apply threshold, compute percentage. SQL: latest observation value per patient HAVING value < threshold.",
+    "entity_slots": ["conditions[0]", "observations[0]", "obs_threshold", "obs_operator"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-13",
+    "question": "How many patients in our CKD registry have eGFR consistently below 45 mL/min?",
+    "masked_question": "How many patients in our [CONDITION] registry have [OBSERVATION] consistently below [THRESHOLD]?",
+    "category": "latest_observation",
+    "description": "Observation threshold count: latest observation value per patient, count those meeting threshold.",
+    "entity_slots": ["observations[0]", "obs_threshold", "obs_operator"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-14",
+    "question": "Group hypertensive patients by blood pressure control status: controlled below 130 over 80 versus not controlled.",
+    "masked_question": "Group [CONDITION] patients by [OBSERVATION] control status: controlled below [THRESHOLD] versus not controlled.",
+    "category": "stratification",
+    "description": "Sub-cohort stratification: split patients into groups by lab/vital threshold. Returns controlled vs uncontrolled counts and patient lists.",
+    "entity_slots": ["conditions[0]", "observations[0]", "obs_threshold"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-15",
+    "question": "How many post-myocardial infarction patients have received at least one cholesterol panel annually?",
+    "masked_question": "How many [CONDITION] patients have received at least one [OBSERVATION] annually?",
+    "category": "absence_observation",
+    "description": "Monitoring compliance: patients with condition and at least one observation per year. SQL: patients_with_condition who also have obs_in_window (recurrence check).",
+    "entity_slots": ["conditions[0]", "observations[0]"],
+    "temporal_slot": "date_filter"
+  },
+  {
+    "id": "KB-16",
+    "question": "Which patients have visited more than two different healthcare facilities in the past year?",
+    "masked_question": "Which patients have visited more than [THRESHOLD] different healthcare facilities in the past [TIME_WINDOW]?",
+    "category": "cross_hospital",
+    "description": "Multi-site utilization: COUNT DISTINCT source_hospital per patient in encounters, HAVING count > N. Returns patient list with hospital counts.",
+    "entity_slots": ["min_hospitals"],
+    "temporal_slot": "date_filter"
+  },
+  {
+    "id": "KB-17",
+    "question": "Are there patients in our cohort coded with asthma at one hospital site but not at another site?",
+    "masked_question": "Are there patients in our cohort coded with [CONDITION] at one hospital site but not at another site?",
+    "category": "cross_hospital",
+    "description": "Cross-site diagnostic coherence: patients with same condition coded differently (active vs resolved/absent) across different source_hospital values.",
+    "entity_slots": ["conditions[0]"],
+    "temporal_slot": null
+  },
+  {
+    "id": "KB-18",
+    "question": "Find patients with a cardiac diagnosis and no cardiac stress test at any consortium site in the past two years.",
+    "masked_question": "Find patients with a [CONDITION] diagnosis and no [OBSERVATION] at any consortium site in the past [TIME_WINDOW].",
+    "category": "absence_observation",
+    "description": "Multi-site imaging gap: condition present but monitoring procedure absent across ALL consortium sites within time window.",
+    "entity_slots": ["conditions[0]", "negated_observations[0]"],
+    "temporal_slot": "date_filter"
+  }
+]

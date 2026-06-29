@@ -1,0 +1,214 @@
+[
+  {
+    "id": "POP1",
+    "category": "Undiagnosed Risk Identification",
+    "question": "Find all patients of mine with a BMI > 30 who have not been diagnosed with Type II Diabetes but have elevated HbA1c or fasting glucose.",
+    "complexity": "Inference",
+    "key_challenge": "Multi-criterion negative + lab logic",
+    "data_available": true
+  },
+  {
+    "id": "POP2",
+    "category": "Undiagnosed Risk Identification",
+    "question": "Which of my patients have eGFR < 60 for more than one year but have no CKD diagnosis code in their record?",
+    "complexity": "Inference",
+    "key_challenge": "Undiagnosed CKD detection",
+    "data_available": true
+  },
+  {
+    "id": "POP3",
+    "category": "Undiagnosed Risk Identification",
+    "question": "Find all hypertensive patients with no documented antihypertensive prescriptions in the past 6 months.",
+    "complexity": "Inference",
+    "key_challenge": "Treatment gap + medication absence",
+    "data_available": false,
+    "data_gap": "No prescriptions/medications table in llm_ua_enterprise"
+  },
+  {
+    "id": "POP4",
+    "category": "Undiagnosed Risk Identification",
+    "question": "Which of my patients have had three or more ED visits in the past year for cardiac complaints but no cardiology referral?",
+    "complexity": "Inference",
+    "key_challenge": "High-utilisation care gap",
+    "data_available": false,
+    "data_gap": "Encounters table only has AMB (ambulatory) class; no ED visits or referral data"
+  },
+  {
+    "id": "POP5",
+    "category": "Undiagnosed Risk Identification",
+    "question": "Identify patients over 65 with a COPD diagnosis and no documented spirometry in the past two years.",
+    "complexity": "Inference",
+    "key_challenge": "Surveillance gap identification",
+    "data_available": true
+  },
+  {
+    "id": "POP6",
+    "category": "Comorbidity Clustering and Multimorbidity",
+    "question": "How many of my patients have a combination of cardiovascular disease, Type II Diabetes, and CKD (the cardiorenal-metabolic triad)?",
+    "complexity": "Synthesis",
+    "key_challenge": "Multi-condition co-occurrence query",
+    "data_available": true
+  },
+  {
+    "id": "POP7",
+    "category": "Comorbidity Clustering and Multimorbidity",
+    "question": "What is the most common two-condition comorbidity pair across my patient panel?",
+    "complexity": "Synthesis",
+    "key_challenge": "Population-level co-occurrence ranking",
+    "data_available": true
+  },
+  {
+    "id": "POP8",
+    "category": "Comorbidity Clustering and Multimorbidity",
+    "question": "Which patients in my panel have five or more active chronic conditions across at least three disease categories?",
+    "complexity": "Synthesis",
+    "key_challenge": "Multimorbidity index computation",
+    "data_available": true
+  },
+  {
+    "id": "POP9",
+    "category": "Comorbidity Clustering and Multimorbidity",
+    "question": "How many patients with heart failure also have an active depression diagnosis?",
+    "complexity": "Synthesis",
+    "key_challenge": "Cross-category comorbidity detection",
+    "data_available": true
+  },
+  {
+    "id": "POP10",
+    "category": "Comorbidity Clustering and Multimorbidity",
+    "question": "Group my diabetic patients by glycaemic control status (controlled vs. uncontrolled) and summarise their other comorbidities.",
+    "complexity": "Synthesis",
+    "key_challenge": "Sub-cohort stratification + analytics",
+    "data_available": true
+  },
+  {
+    "id": "POP11",
+    "category": "Medication and Safety Surveillance",
+    "question": "Which patients are currently prescribed an NSAID and also have a documented peptic ulcer disease diagnosis or CKD?",
+    "complexity": "Inference",
+    "key_challenge": "Drug-disease interaction surveillance",
+    "data_available": false,
+    "data_gap": "No prescriptions/medications table in llm_ua_enterprise"
+  },
+  {
+    "id": "POP12",
+    "category": "Medication and Safety Surveillance",
+    "question": "Find all patients on long-term corticosteroids with no osteoporosis diagnosis or DEXA scan on record.",
+    "complexity": "Inference",
+    "key_challenge": "Preventive care gap for medication risk",
+    "data_available": false,
+    "data_gap": "No prescriptions/medications table in llm_ua_enterprise"
+  },
+  {
+    "id": "POP13",
+    "category": "Medication and Safety Surveillance",
+    "question": "Which of my patients are prescribed both an anticoagulant and an antiplatelet agent without a documented indication for dual therapy?",
+    "complexity": "Inference",
+    "key_challenge": "Polypharmacy safety alert",
+    "data_available": false,
+    "data_gap": "No prescriptions/medications table in llm_ua_enterprise"
+  },
+  {
+    "id": "POP14",
+    "category": "Medication and Safety Surveillance",
+    "question": "How many patients have been prescribed opioids for more than 90 consecutive days in the past year?",
+    "complexity": "Synthesis",
+    "key_challenge": "Chronic opioid use surveillance",
+    "data_available": false,
+    "data_gap": "No prescriptions/medications table in llm_ua_enterprise"
+  },
+  {
+    "id": "POP15",
+    "category": "Medication and Safety Surveillance",
+    "question": "List patients who are currently on metformin but have documented eGFR < 30.",
+    "complexity": "Inference",
+    "key_challenge": "Guideline-based contraindication alert",
+    "data_available": false,
+    "data_gap": "No prescriptions/medications table in llm_ua_enterprise"
+  },
+  {
+    "id": "POP16",
+    "category": "Preventive Care and Quality Metrics",
+    "question": "How many of my diabetic patients aged 40-75 are not on a statin despite no documented contraindication?",
+    "complexity": "Inference",
+    "key_challenge": "Quality measure gap (HEDIS DM-CE)",
+    "data_available": false,
+    "data_gap": "No prescriptions/medications table in llm_ua_enterprise"
+  },
+  {
+    "id": "POP17",
+    "category": "Preventive Care and Quality Metrics",
+    "question": "What percentage of my hypertensive patients have blood pressure controlled below 130/80 based on their most recent recorded reading?",
+    "complexity": "Synthesis",
+    "key_challenge": "Population BP control rate",
+    "data_available": true
+  },
+  {
+    "id": "POP18",
+    "category": "Preventive Care and Quality Metrics",
+    "question": "Which patients over 50 in my panel have no documented colorectal cancer screening in the past 10 years?",
+    "complexity": "Inference",
+    "key_challenge": "Cancer screening gap detection",
+    "data_available": false,
+    "data_gap": "Colorectal cancer screening not documented in observations table"
+  },
+  {
+    "id": "POP19",
+    "category": "Preventive Care and Quality Metrics",
+    "question": "How many patients with a previous MI have documented annual lipid panels?",
+    "complexity": "Synthesis",
+    "key_challenge": "Monitoring compliance metric",
+    "data_available": true
+  },
+  {
+    "id": "POP20",
+    "category": "Preventive Care and Quality Metrics",
+    "question": "Find all patients in my panel who have been hospitalised in the past year and have no documented primary care follow-up within 30 days of discharge.",
+    "complexity": "Inference",
+    "key_challenge": "Transition of care quality metric",
+    "data_available": false,
+    "data_gap": "Encounters table only has AMB class; no inpatient/hospitalisation data"
+  },
+  {
+    "id": "POP21",
+    "category": "Cross-Hospital Utilisation and Care Coordination",
+    "question": "Which patients have been seen at more than three different hospitals in the consortium in the past two years?",
+    "complexity": "Synthesis",
+    "key_challenge": "Multi-site utilisation tracking",
+    "data_available": true
+  },
+  {
+    "id": "POP22",
+    "category": "Cross-Hospital Utilisation and Care Coordination",
+    "question": "Are there patients in my panel whose diagnoses at one consortium hospital contradict diagnoses at another (e.g., coded as diabetic at one site and non-diabetic at another)?",
+    "complexity": "Inference",
+    "key_challenge": "Cross-site data coherence auditing",
+    "data_available": true
+  },
+  {
+    "id": "POP23",
+    "category": "Cross-Hospital Utilisation and Care Coordination",
+    "question": "Find patients with a heart failure diagnosis who have had no echocardiogram recorded at any consortium site in the past two years.",
+    "complexity": "Inference",
+    "key_challenge": "Multi-site imaging gap detection",
+    "data_available": true
+  },
+  {
+    "id": "POP24",
+    "category": "Cross-Hospital Utilisation and Care Coordination",
+    "question": "Which of my complex patients have been seen by more than four specialities across the consortium in the past year?",
+    "complexity": "Synthesis",
+    "key_challenge": "Care coordination complexity index",
+    "data_available": false,
+    "data_gap": "Encounters table has no specialty/department field"
+  },
+  {
+    "id": "POP25",
+    "category": "Cross-Hospital Utilisation and Care Coordination",
+    "question": "How many patients have had duplicate imaging studies (same modality, same body part) within 90 days across different consortium facilities?",
+    "complexity": "Inference",
+    "key_challenge": "Redundant utilisation detection",
+    "data_available": false,
+    "data_gap": "Imaging modality/body part not consistently coded in observations"
+  }
+]

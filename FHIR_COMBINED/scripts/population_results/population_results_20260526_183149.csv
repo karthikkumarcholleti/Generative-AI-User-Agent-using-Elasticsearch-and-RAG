@@ -1,0 +1,2 @@
+id,category,question,complexity,key_challenge,data_available,data_gap,response,sql_used,pipeline_mode,elapsed_ms,error
+POP17,Preventive Care and Quality Metrics,What percentage of my hypertensive patients have blood pressure controlled below 130/80 based on their most recent recorded reading?,Synthesis,Population BP control rate,True,,"Based on the provided data, all 12 patients have blood pressure readings available. However, none of the patients have a diastolic blood pressure below 80 mmHg.","Latest observation: ['blood pressure'], threshold: <130.0",population_sql,58975,
