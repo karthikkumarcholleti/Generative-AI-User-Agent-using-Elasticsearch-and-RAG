@@ -143,39 +143,29 @@ See `KNOWLEDGE_TRANSFER.md` Section 16 for the full prioritized list. The most i
 
 ## Audit Logging
 
-Every query sent through the chat is automatically recorded in MySQL before the response goes back to the user. This is required for HIPAA compliance.
+Every query sent through the chat is automatically recorded — patient ID, the question asked, the full AI response, which pipeline was used, and how long it took. This is required for HIPAA compliance.
 
-**The backend terminal does not show audit log entries.** It only shows HTTP request lines like `POST /chat-agent/query 200`. The actual log records go to the MySQL database.
+**The backend terminal does not show audit log entries.** It only shows HTTP request lines. The actual records go to MySQL.
 
-To watch queries come in live, open a **separate terminal** and run:
+### Viewing audit logs with Adminer (recommended)
 
+Adminer is a lightweight database UI that runs in the browser — no SQL needed.
+
+**Start it once (Terminal 4):**
 ```bash
-watch -n 3 "mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
-  -e \"SELECT id, timestamp, patient_id, LEFT(query,45) AS query, pipeline_mode, elapsed_ms \
-       FROM clinical_audit_log ORDER BY timestamp DESC LIMIT 8;\""
+podman run -d --name adminer --network host adminer
 ```
 
-This refreshes every 3 seconds. As soon as someone sends a query in the UI, a new row appears here.
+Open **http://localhost:8080** and log in with your database credentials (Server: `127.0.0.1`).
 
-Other useful queries:
+Then go to **`llm_ua_ai`** → **`clinical_audit_log`** → **Select data**.
 
+You'll see every query with the full AI response. Hit browser refresh after sending a chat message and the new row appears immediately.
+
+**Stop Adminer when done:**
 ```bash
-# Total queries logged so far
-mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
-  -e "SELECT COUNT(*) AS total FROM clinical_audit_log;"
-
-# Queries by pipeline (RAG vs MedRAG)
-mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
-  -e "SELECT pipeline_mode, COUNT(*) AS count, ROUND(AVG(elapsed_ms)/1000,1) AS avg_seconds \
-      FROM clinical_audit_log GROUP BY pipeline_mode;"
-
-# All queries for a specific patient
-mysql -u llm_ua_reader -p'P@ssw0rd' llm_ua_ai \
-  -e "SELECT timestamp, LEFT(query,60), pipeline_mode, elapsed_ms \
-      FROM clinical_audit_log WHERE patient_id='000000509' ORDER BY timestamp DESC LIMIT 10;"
+podman stop adminer && podman rm adminer
 ```
-
-Full audit log details (schema, all query options) are in `Code_work.md` Section 9.
 
 ---
 
