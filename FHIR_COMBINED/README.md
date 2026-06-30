@@ -167,20 +167,4 @@ You'll see every query with the full AI response. Hit browser refresh after send
 podman stop adminer && podman rm adminer
 ```
 
----
 
-## Primary Test Patient
-
-Patient ID: `000000509` — 41 conditions, 200+ observations. Used for all benchmark comparisons.
-
-```bash
-curl -s http://localhost:8001/patients/000000509 | python3 -m json.tool | head -20
-```
-
----
-
-## Research Paper
-
-Best comparison result: `scripts/comparison_results/comparison_20260330_232416.md`
-Population-level final results: `scripts/population_results/population_results_final_20260527_v2.md`
-Paper content: `PAPER_SECTIONS/`
